@@ -16,7 +16,8 @@
 	<resolver algo="sha256" proto="https">g33k.holbrook.no</resolver>
 	<identity keyid="f1d2d2f924e986ac86fdf7b36c94bcdf32beec15" didtype="web">nondominium.org/lash/</identity>
 	<identity keyid="f1d2d2f924e986ac86fdf7b36c94bcdf32beec15" didtype="web">holbrook.no</identity>
-	<incoming serial="231" digest="b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c">
+	<incoming serial="231">
+		<digest algo="sha512">b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944cb5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c</digest>
 		<sig keyid="58851ae2166b3f1454193e0a7e821402dd1c1a91">1f74a9c0196a025f27d4e940c4abedfa2d37504f268aea359659cb65b85bd4d7974369507950006964c93391d3d4580ab8064f6d30a62908468ef771be952e95</sig>
 		<sig keyid="566c38287d3f31c7e50836cae58e426c6bccc52d">117a57c72ed210b91469307a1c2e73fe2d5ee306cd8ccf1a9db4ecb15d38ecbbfc97d62fec4ab8aadb08c531f2d1ede34cb6e4d3987bcba63322a0767e532e13</sig>
 		<real unit="BTC">
@@ -49,7 +50,7 @@
 			<attachment mime="image/jpeg">
 				<slug>troll</slug>
 				<description>The face of a troll</description>
-				<digest algo="sha256">777b30c8fc40aea3c717777831a05c9f29c7b6735f1573e9b0b55373c264f6f3</digest>
+				<digest algo="sha512">777b30c8fc40aea3c717777831a05c9f29c7b6735f1573e9b0b55373c264f6f3777b30c8fc40aea3c717777831a05c9f29c7b6735f1573e9b0b55373c264f6f3</digest>
 			</attachment>
 		</data>
 		<sig keyid="e242ed3bffccdf271b7fbaf34ed72d089537b42f">0cf9180a764aba863a67b6d72f0918bc131c6772642cb2dce5a34f0a702f9470ddc2bf125c12198b1995c233c34b4afd346c54a2334c350a948a51b6e8b4e6b6/</sig>
