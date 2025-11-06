@@ -14,6 +14,40 @@ logg = logging.getLogger()
 DEFAULTPARENT = b'\x00' * 64
 
 
+class State:
+
+    def __init__(self):
+        self.serial = 0
+        self.base = DEFAULTPARENT
+
+
+    def poke(self, serial, base):
+        if serial > self.serial:
+            logg.debug('new latest state {} {}'.format(serial, base.hex()))
+            self.serial = serial
+            self.base = base
+        return self.serial
+
+
+    def save(self):
+        f = open('.state', 'wb')
+        b = self.serial.to_bytes(8, byteorder='big')
+        f.write(b)
+        f.close()
+        return self.serial
+
+
+    def load(self):
+        try:
+            f = open('.state', 'rb')
+        except FileNotFoundError:
+            return self.save()
+        b = f.read(8)
+        f.close()
+        self.serial = int.from_bytes(b, byteorder='big')
+        return self.serial
+
+
 class DemoWallet:
 
     def __init__(self, privatekey=None, publickey=None):
@@ -300,20 +334,18 @@ class RunningTotal:
 
 class Ledger:
 
-    def __init__(self, base, unitindex, tree=None):
+    def __init__(self, serial, base, unitindex, tree=None):
         self.uidx = unitindex
-        self.base = bytes.fromhex(base)
+        #self.base = bytes.fromhex(base)
         self.sigs = {}
         self.entries = {}
         self.running = {}
         self.tree = tree
+        self.state = State()
+        self.state.poke(serial, base)
    
 
-    def add_entry_from_tree(self, tree):
-        o = tree.find('data/parent')
-
-
-    # TODO: add allowed pubkey and actually verify sig
+    # TODO: add check against trusted pubkey list
     def check_sigs(self, entry):
         for k in entry.sigs.keys():
             b = bytes.fromhex(k)
@@ -334,7 +366,8 @@ class Ledger:
         except KeyError:
             self.entries[entry.serial] = []
             entries = self.entries[entry.serial]
-        self.base = entry.sum()
+        #self.state.base = entry.sum()
+        self.state.poke(entry.serial, entry.sum())
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
@@ -349,8 +382,10 @@ class Ledger:
     @staticmethod
     def from_tree(tree, unitindex):
         part = tree.find('incoming')
+        serial = int(part.get('serial'))
         o = part.find('digest').text # verify that is sha512
-        r = Ledger(o, unitindex, tree=tree)
+        r = Ledger(serial, bytes.fromhex(o), unitindex, tree=tree)
+
         for sig in part.iter('sig'):
             keyid = sig.get('keyid')
             digest = sig.text
@@ -391,7 +426,7 @@ class Ledger:
 
 
     def __str__(self):
-        return "state: " + self.base.hex()
+        return "state: " + self.state.base.hex()
 
 
 def init_ledger(tree, units):

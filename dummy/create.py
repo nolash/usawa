@@ -5,7 +5,7 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Ledger, Entry, DemoWallet, get_units, init_ledger
+from svcontas import Ledger, Entry, DemoWallet, State, get_units, init_ledger
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
@@ -13,24 +13,6 @@ seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e8862
 state_serial = 0
 state_digest = b'00' * 64
 
-
-def save_state():
-    f = open('.state', 'wb')
-    b = state_serial.to_bytes(8, byteorder='big')
-    f.write(b)
-    f.close()
-    return state_serial
-
-
-def load_state():
-    try:
-        f = open('.state', 'rb')
-    except FileNotFoundError:
-        return save_state()
-    b = f.read(8)
-    f.close()
-    state_serial = int.from_bytes(b, byteorder='big')
-    return state_serial
 
 
 if __name__ == '__main__':
@@ -46,7 +28,6 @@ if __name__ == '__main__':
     argp.add_argument('--xml-file', dest='xml_file', type=str, default='running.xml', help='xml file to manipulate')
     arg = argp.parse_args()
 
-    load_state()
     tree = lxml.etree.parse(arg.xml_file)
     root = tree.getroot()
     units = get_units(root)
@@ -54,15 +35,10 @@ if __name__ == '__main__':
     
     amount = units.from_floatstring(arg.u, arg.amount, allow_negative=False)
 
-    state_serial += 1
-    entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date, parent=ledger.base)
+    entry = Entry(arg.t, amount, arg.u, ledger.state.serial + 1, arg.a, arg.date, parent=ledger.state.base)
     wallet = DemoWallet(privatekey=seed)
     entry.sign(wallet)
     ledger.add_entry(entry)
-    #r = lxml.etree.tostring(entry.to_tree())
-    #print(r.decode('utf-8'))
     tree = ledger.to_tree()
     r = lxml.etree.tostring(tree, method='c14n2', strip_text=True)
     print(r.decode('utf-8'))
-
-    save_state()
