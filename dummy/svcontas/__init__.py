@@ -372,6 +372,7 @@ class Ledger:
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
             self.tree.append(entry.to_tree())
+        logg.debug(self.running[entry.unit])
 
 
     def add_signature(self, sigdata, identity):
@@ -431,8 +432,6 @@ class Ledger:
 
 def init_ledger(tree, units):
     return Ledger.from_tree(tree, units)
-    #o = tree.find('incoming')
-    #return Ledger.from_tree(o, units)
     
 
 def get_units(tree):
