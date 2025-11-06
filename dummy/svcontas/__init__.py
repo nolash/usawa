@@ -123,7 +123,7 @@ class UnitIndex:
 class Entry:
 
     # TODO: parent only 0 if serial 0  
-    def __init__(self, typ, amount, unit, serial, account, tx_date, ref=None, description=None, parent=None):
+    def __init__(self, typ, amount, unit, serial, account, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
         self.typ = typ
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
@@ -140,7 +140,9 @@ class Entry:
         self.serial = serial
         self.account = account
         self.dt = tx_date
-        self.dtreg = datetime.datetime.now()
+        if tx_datereg == None:
+            tx_datereg = datetime.datetime.now()
+        self.dtreg = tx_datereg
         self.attachment = []
         self.sigs = {}
         self.description = description
@@ -161,8 +163,16 @@ class Entry:
         unit = unitindex.get(o.find('unit').text)
         serial = int(o.find('serial').text)
         account = o.find('account').text
+        ref = o.find('ref').text
+        parent = o.find('parent').text
+        description = o.find('description')
+        if description != None:
+            description = description.text
         dt = datetime.date.fromisoformat(o.find('date').text)
-        r = Entry(tree.get('type'), amount, unit, serial, account, dt)
+        dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered').text, '%Y-%m-%dT%H:%M:%SZ')
+        r = Entry(tree.get('type'), amount, unit, serial, account, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
+        for sig in tree.iter('sig'):
+            r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
         return r
 
 
@@ -176,6 +186,7 @@ class Entry:
                 self.unit,
                 self.amount,
                 ]
+        logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
 
 
@@ -220,7 +231,7 @@ class Entry:
         data.append(o)
 
         o = etree.Element('dateTimeRegistered')
-        o.text = self.dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        o.text = self.dtreg.strftime('%Y-%m-%dT%H:%M:%SZ')
         data.append(o)
         
         o = etree.Element('account')
@@ -233,7 +244,7 @@ class Entry:
             data.append(o)
 
         o = etree.Element('amount')
-        o.text = self.account
+        o.text = str(self.amount)
         data.append(o)
 
         tree.append(data)
@@ -319,6 +330,7 @@ class Ledger:
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
             r = wallet.verify(v, sig)
+            logg.debug('having sig {}'.format(r.hex()))
         return True
 
 
@@ -328,6 +340,7 @@ class Ledger:
         self.running[entry.unit].apply_entry(entry)
         try:
             entries = self.entries[entry.serial]
+            logg.debug('------------------------ {}'.format(entries))
         except KeyError:
             self.entries[entry.serial] = []
             entries = self.entries[entry.serial]
@@ -367,13 +380,18 @@ class Ledger:
             r.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
             logg.debug(r.running[sym])
 
+        r.apply_tree(tree)
         return r.check()
 
 
     def apply_tree(self, tree):
         for v in tree.iter('entry'):
+            logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx)
-            self.entries[o.serial] = o
+            self.check_sigs(o)
+            if self.entries.get(o.serial) == None:
+                self.entries[o.serial] = []
+            self.entries[o.serial].append(o)
             self.running[o.unit].apply_entry(o)
 
     def to_tree(self):
