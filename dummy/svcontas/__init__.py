@@ -334,18 +334,19 @@ class Ledger:
         return True
 
 
-    def add_entry(self, entry):
+    def add_entry(self, entry, modify_tree=True):
         if not self.check_sigs(entry):
             raise ValueError('entry must have at least one valid signature')
         self.running[entry.unit].apply_entry(entry)
         try:
             entries = self.entries[entry.serial]
-            logg.debug('------------------------ {}'.format(entries))
         except KeyError:
             self.entries[entry.serial] = []
             entries = self.entries[entry.serial]
+        self.base = entry.sum()
         self.entries[entry.serial].append(entry)
-        if self.tree != None:
+        self.running[entry.unit].apply_entry(entry)
+        if self.tree != None and modify_tree:
             self.tree.append(entry.to_tree())
 
 
@@ -388,11 +389,8 @@ class Ledger:
         for v in tree.iter('entry'):
             logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx)
-            self.check_sigs(o)
-            if self.entries.get(o.serial) == None:
-                self.entries[o.serial] = []
-            self.entries[o.serial].append(o)
-            self.running[o.unit].apply_entry(o)
+            self.add_entry(o, modify_tree=False)
+
 
     def to_tree(self):
         return self.tree

@@ -56,7 +56,7 @@ if __name__ == '__main__':
     amount = units.from_floatstring(arg.u, arg.amount, allow_negative=False)
 
     state_serial += 1
-    entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date)
+    entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date, parent=ledger.base)
     wallet = DemoWallet(privatekey=seed)
     entry.sign(wallet)
     ledger.add_entry(entry)
