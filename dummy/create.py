@@ -5,25 +5,14 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Ledger, Entry, get_units, init_ledger
+from svcontas import Ledger, Entry, DemoWallet, get_units, init_ledger
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
-pk = nacl.signing.SigningKey(seed)
-pubk = pk.verify_key
+#pubk = pk.verify_key
 
 state_serial = 0
 state_digest = b'00' * 64
-
-
-class DemoWallet:
-   
-    def sign(self, v):
-        r = pk.sign(v)
-        return r.signature
-
-    def pubkey(self):
-        return pubk.encode()
 
 
 def save_state():
@@ -68,7 +57,7 @@ if __name__ == '__main__':
 
     state_serial += 1
     entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date)
-    wallet = DemoWallet()
+    wallet = DemoWallet(privatekey=seed)
     entry.sign(wallet)
     ledger.add_entry(entry)
     #r = lxml.etree.tostring(entry.to_tree())

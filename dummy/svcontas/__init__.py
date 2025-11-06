@@ -6,11 +6,44 @@ import hashlib
 
 from lxml import etree
 import rencode
+import nacl.signing
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 DEFAULTPARENT = b'\x00' * 64
+
+
+class DemoWallet:
+
+    def __init__(self, privatekey=None, publickey=None):
+        publickey_chk = None
+        if privatekey == None:
+            if publickey == None:
+                privatekey = nacl.signing.SigningKey.generate()
+        if privatekey != None:
+            self.pk = nacl.signing.SigningKey(privatekey)
+            publickey_chk = self.pk.verify_key
+        if publickey == None:
+            if publickey_chk == None:
+                raise AttributeError('wallet must be created with either public or private key')
+            publickey = publickey_chk    
+        elif publickey_chk != None and publickey != publickey_chk.encode():
+            raise ValueError('publickey supplied does not match privatekey')
+        else:
+            publickey = nacl.signing.VerifyKey(publickey)
+        self.pubk = publickey
+   
+    def sign(self, v):
+        r = self.pk.sign(v)
+        return r.signature
+
+    def pubkey(self):
+        return self.pubk.encode()
+
+
+    def verify(self, v, sig):
+        return self.pubk.verify(v, sig)
 
 
 class NoopSigVerifier:
@@ -146,16 +179,20 @@ class Entry:
         return rencode.dumps(d)
 
 
-    def sign(self, wallet):
+    def sum(self):
         b = self.serialize()
         h = hashlib.new('sha512')
         h.update(b)
-        z = h.digest()
-        r = wallet.sign(z)
+        return h.digest()
+
+
+    def sign(self, wallet):
+        b = self.sum()
+        r = wallet.sign(b)
         pubk_hx = wallet.pubkey().hex()
         self.sigs[pubk_hx] = r
         logg.debug('added signature from key {}'.format(pubk_hx))
-        return (b, z, r,)
+        return (b, r,)
 
 
     def to_tree(self):
@@ -276,7 +313,13 @@ class Ledger:
 
     # TODO: add allowed pubkey and actually verify sig
     def check_sigs(self, entry):
-        return len(entry.sigs) > 0
+        for k in entry.sigs.keys():
+            b = bytes.fromhex(k)
+            sig = entry.sigs[k]
+            wallet = DemoWallet(publickey=b)
+            v = entry.sum()
+            r = wallet.verify(v, sig)
+        return True
 
 
     def add_entry(self, entry):
