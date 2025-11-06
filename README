@@ -1,5 +1,22 @@
 Example in folder dummy.
 
+It includes two demo data files:
+
+* running.xml
+* present.xsl
+
+running.xml is an example of a fully flattened ledger with signature chains and serial ledger entries. It also includes:
+
+* Descriptions of the account units used
+* How to resolve content hashes (attachments)
+* Reference to more information about identities behind public keys.
+
+It is still missing a schema, that's next step.
+
+present.xsl is a small stylesheet stub just to demonstrate how xsl transformations work.
+
+--
+
 To run the python example:
 
 ```
@@ -21,6 +38,5 @@ python demo.py
 python create.py 124
 
 # The makefile has a single stanza that performs xsl transformation on the xml
-# It is nonsensical, but it illustrates what it is and how it is intended to work to generate final output to render
 make
 ```
