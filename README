@@ -1,0 +1,26 @@
+Example in folder dummy.
+
+To run the python example:
+
+```
+cd dummy
+
+# first time only
+python3 -mvenv .venv
+
+# every time
+. .venv/bin/activate
+
+# first time only
+pip install -r requirements.txt
+
+# demo.py just loads the state of the xml and outputs a bit of the data loaded
+python demo.py
+
+# create.py adds an entry to the ledger with signature and outputs the updated xml
+python create.py 124
+
+# The makefile has a single stanza that performs xsl transformation on the xml
+# It is nonsensical, but it illustrates what it is and how it is intended to work to generate final output to render
+make
+```
