@@ -12,8 +12,6 @@ running.xml is an example of a fully flattened ledger with signature chains and 
 * How to resolve content hashes (attachments)
 * Reference to more information about identities behind public keys.
 
-It is still missing a schema, that's next step.
-
 present.xsl is a small stylesheet stub just to demonstrate how xsl transformations work.
 
 ---
@@ -49,4 +47,12 @@ python create.py --xml-file two.xml -a foobar -t expense 12 > two.xml
 etc..
 ```
 
+---
 
+schema.xsd is the schema for the ledger xml object.
+
+Validate the xml with:
+
+```
+xmllint --schema schema.xsd --pretty 1 file.xml
+```

@@ -5,15 +5,10 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Ledger, Entry, DemoWallet, State, get_units, init_ledger
+from svcontas import Ledger, Entry, DemoWallet, State, get_units, init_ledger, nsmap
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
-
-state_serial = 0
-state_digest = b'00' * 64
-
-
 
 if __name__ == '__main__':
     now = datetime.datetime.now()
@@ -40,5 +35,6 @@ if __name__ == '__main__':
     entry.sign(wallet)
     ledger.add_entry(entry)
     tree = ledger.to_tree()
-    r = lxml.etree.tostring(tree, method='c14n2', strip_text=True)
+    #r = lxml.etree.tostring(tree, method='c14n2', strip_text=True, inclusive_ns_prefixes='sv')
+    r = lxml.etree.tostring(tree, method='xml', standalone=True, xml_declaration=True, encoding='UTF-8')
     print(r.decode('utf-8'))

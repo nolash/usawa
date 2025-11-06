@@ -1,0 +1,113 @@
+<?xml version="1.0" ?>
+
+<xs:schema xmlns:xs = "http://www.w3.org/2001/XMLSchema"
+	targetNamespace = "http://svcontas.defalsify.org"
+	xmlns = "http://svcontas.defalsify.org"
+	elementFormDefault = "qualified">
+
+	<xs:element name="ledger">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="retrieved" type="xs:dateTime" />
+				<xs:element name="src" type="xs:string" minOccurs="1" maxOccurs="1" />
+				<xs:element name="units" type="Units" minOccurs="1" maxOccurs="1" />
+				<xs:element name="resolver" type="Resolver" />
+				<xs:element name="identity" type="Identity" maxOccurs="unbounded" />
+				<xs:element name="incoming" type="Incoming" minOccurs="0" maxOccurs="1" />
+				<xs:element name="entry" type="Entry" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:complexType name="Incoming">
+		<xs:sequence>
+			<xs:element name="real" type="Balance" />
+			<xs:element name="virt" type="Balance" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="digest" type="Digest" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
+		</xs:sequence>
+		<xs:attribute name="serial" type="xs:positiveInteger" />
+	</xs:complexType>
+
+	<xs:complexType name="Balance">
+		<xs:sequence>
+			<xs:element name="income" type="xs:integer" minOccurs="0"/>
+			<xs:element name="expense" type="xs:integer" minOccurs="0" />
+			<xs:element name="asset" type="xs:integer" />
+			<xs:element name="liability" type="xs:integer" />
+		</xs:sequence>
+		<xs:attribute name="unit" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="Units">
+		<xs:sequence>
+			<xs:element name="unit" type="Unit" minOccurs="1" maxOccurs="unbounded" />
+		</xs:sequence>
+		<xs:attribute name="base" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="Digest">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="algo" type="xs:string" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<xs:complexType name="Signature">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="keyid" type="xs:string" />
+				<xs:attribute name="type" type="xs:string" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<xs:complexType name="Unit">
+		<xs:sequence>
+			<xs:element name="precision" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+			<xs:element name="ex" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+		</xs:sequence>
+		<xs:attribute name="sym" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="Identity">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="keyid" type="xs:string" />
+				<xs:attribute name="didtype" type="xs:string" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<xs:complexType name="Resolver">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="algo" type="xs:string" />
+				<xs:attribute name="proto" type="xs:string" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<xs:complexType name="Entry">
+		<xs:sequence>
+			<xs:element name="data" type="EntryData" />
+			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
+		</xs:sequence>
+		<!-- TODO: attribute enum -->
+		<xs:attribute name="type" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="EntryData">
+		<xs:sequence>
+			<xs:element name="parent" type="xs:string" />
+			<xs:element name="ref" type="xs:string" />
+			<xs:element name="serial" type="xs:positiveInteger" />
+			<xs:element name="unit" type="xs:string" />
+			<xs:element name="date" type="xs:date" />
+			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
+			<xs:element name="account" type="xs:string" />
+			<xs:element name="amount" type="xs:positiveInteger" />
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

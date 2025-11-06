@@ -12,7 +12,12 @@ logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 DEFAULTPARENT = b'\x00' * 64
+NS = 'http://svcontas.defalsify.org'
+NAMESPACES = {None: NS}
+NSPREFIX = '{' + NS + '}'
 
+def nsmap():
+    return NAMESPACES
 
 class State:
 
@@ -92,9 +97,11 @@ class UnitIndex:
     @staticmethod
     def from_tree(tree):
         r = UnitIndex(tree.get('base'))
-        for o in tree.iter('unit'):
-            r.detail[o.get('sym')] = int(o.find('precision').text)
-            r.exchange[o.get('sym')] = int(o.find('ex').text)
+        logg.debug('base {}'.format(tree))
+        for o in tree.iter(NSPREFIX + 'unit'):
+            logg.debug('add unit ' + o.get('sym'))
+            r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
+            r.exchange[o.get('sym')] = int(o.find('ex', namespaces=nsmap()).text)
         r.check()
         return r
 
@@ -186,20 +193,20 @@ class Entry:
 
     @staticmethod
     def from_tree(tree, unitindex):
-        o = tree.find('data')
-        amount = int(o.find('amount').text)
-        unit = unitindex.get(o.find('unit').text)
-        serial = int(o.find('serial').text)
-        account = o.find('account').text
-        ref = o.find('ref').text
-        parent = o.find('parent').text
-        description = o.find('description')
+        o = tree.find('data', namespaces=nsmap())
+        amount = int(o.find('amount', namespaces=nsmap()).text)
+        unit = unitindex.get(o.find('unit', namespaces=nsmap()).text)
+        serial = int(o.find('serial', namespaces=nsmap()).text)
+        account = o.find('account', namespaces=nsmap()).text
+        ref = o.find('ref', namespaces=nsmap()).text
+        parent = o.find('parent', namespaces=nsmap()).text
+        description = o.find('description', namespaces=nsmap())
         if description != None:
             description = description.text
-        dt = datetime.date.fromisoformat(o.find('date').text)
-        dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered').text, '%Y-%m-%dT%H:%M:%SZ')
+        dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
+        dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
         r = Entry(tree.get('type'), amount, unit, serial, account, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
-        for sig in tree.iter('sig'):
+        for sig in tree.iter(NSPREFIX + 'sig'):
             r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
         return r
 
@@ -336,7 +343,6 @@ class Ledger:
 
     def __init__(self, serial, base, unitindex, tree=None):
         self.uidx = unitindex
-        #self.base = bytes.fromhex(base)
         self.sigs = {}
         self.entries = {}
         self.running = {}
@@ -360,13 +366,11 @@ class Ledger:
     def add_entry(self, entry, modify_tree=True):
         if not self.check_sigs(entry):
             raise ValueError('entry must have at least one valid signature')
-        self.running[entry.unit].apply_entry(entry)
         try:
             entries = self.entries[entry.serial]
         except KeyError:
             self.entries[entry.serial] = []
-            entries = self.entries[entry.serial]
-        #self.state.base = entry.sum()
+            #entries = self.entries[entry.serial]
         self.state.poke(entry.serial, entry.sum())
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
@@ -382,28 +386,28 @@ class Ledger:
    
     @staticmethod
     def from_tree(tree, unitindex):
-        part = tree.find('incoming')
+        part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
-        o = part.find('digest').text # verify that is sha512
+        o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
         r = Ledger(serial, bytes.fromhex(o), unitindex, tree=tree)
 
-        for sig in part.iter('sig'):
+        for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')
             digest = sig.text
             r.add_signature(digest, keyid)
 
-        o = part.find('real')
-        asset = int(o.find('asset').text)
-        liability = int(o.find('liability').text)
+        o = part.find('real', namespaces=nsmap())
+        asset = int(o.find('asset', namespaces=nsmap()).text)
+        liability = int(o.find('liability', namespaces=nsmap()).text)
         r.real = RunningTotal('.', unitindex, asset=asset, liability=liability)
         logg.debug(r.real)
 
-        for v in part.iter('virt'):
-            income = int(v.find('income').text)
-            expense = int(v.find('expense').text)
-            asset = int(v.find('asset').text)
-            liability = int(v.find('liability').text)
-            sym = v.get('symbol')
+        for v in part.iter(NSPREFIX + 'virt'):
+            income = int(v.find('income', namespaces=nsmap()).text)
+            expense = int(v.find('expense', namespaces=nsmap()).text)
+            asset = int(v.find('asset', namespaces=nsmap()).text)
+            liability = int(v.find('liability', namespaces=nsmap()).text)
+            sym = v.get('unit')
             r.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
             logg.debug(r.running[sym])
 
@@ -412,7 +416,7 @@ class Ledger:
 
 
     def apply_tree(self, tree):
-        for v in tree.iter('entry'):
+        for v in tree.iter(NSPREFIX + 'entry'):
             logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx)
             self.add_entry(o, modify_tree=False)
@@ -435,7 +439,7 @@ def init_ledger(tree, units):
     
 
 def get_units(tree):
-    o = tree.find('units')
+    o = tree.find('units', namespaces=nsmap())
     return UnitIndex.from_tree(o)
 
 
