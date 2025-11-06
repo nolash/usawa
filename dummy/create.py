@@ -9,7 +9,6 @@ from svcontas import Ledger, Entry, DemoWallet, get_units, init_ledger
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
-#pubk = pk.verify_key
 
 state_serial = 0
 state_digest = b'00' * 64

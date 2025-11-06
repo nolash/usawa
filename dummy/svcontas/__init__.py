@@ -38,19 +38,13 @@ class DemoWallet:
         r = self.pk.sign(v)
         return r.signature
 
+
     def pubkey(self):
         return self.pubk.encode()
 
 
     def verify(self, v, sig):
         return self.pubk.verify(v, sig)
-
-
-class NoopSigVerifier:
-
-    def verify(self, msg, key, sig):
-        logg.warning('using noop verifier')
-        return True 
 
 
 class UnitIndex:
@@ -306,13 +300,10 @@ class RunningTotal:
 
 class Ledger:
 
-    def __init__(self, base, unitindex, verifier=None, tree=None):
+    def __init__(self, base, unitindex, tree=None):
         self.uidx = unitindex
         self.base = bytes.fromhex(base)
         self.sigs = {}
-        if verifier == None:
-            verifier = NoopSigVerifier()
-        self.verifier = verifier
         self.entries = {}
         self.running = {}
         self.tree = tree
@@ -351,16 +342,15 @@ class Ledger:
 
 
     def add_signature(self, sigdata, identity):
-        self.verifier.verify(self.base, identity, sigdata)
         self.sigs[identity] = sigdata 
         logg.debug('add sig from key{}: {}'.format(identity, sigdata))
 
    
     @staticmethod
-    def from_tree(tree, unitindex, verifier=None):
+    def from_tree(tree, unitindex):
         part = tree.find('incoming')
         o = part.find('digest').text # verify that is sha512
-        r = Ledger(o, unitindex, verifier=verifier, tree=tree)
+        r = Ledger(o, unitindex, tree=tree)
         for sig in part.iter('sig'):
             keyid = sig.get('keyid')
             digest = sig.text
