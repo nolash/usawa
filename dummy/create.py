@@ -69,9 +69,12 @@ if __name__ == '__main__':
     state_serial += 1
     entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date)
     wallet = DemoWallet()
+    entry.sign(wallet)
     ledger.add_entry(entry)
-    entry.package(wallet)
-    r = lxml.etree.tostring(entry.to_tree())
+    #r = lxml.etree.tostring(entry.to_tree())
+    #print(r.decode('utf-8'))
+    tree = ledger.to_tree()
+    r = lxml.etree.tostring(tree, method='c14n2', strip_text=True)
     print(r.decode('utf-8'))
 
     save_state()

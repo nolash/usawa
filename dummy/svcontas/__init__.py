@@ -146,7 +146,7 @@ class Entry:
         return rencode.dumps(d)
 
 
-    def package(self, wallet):
+    def sign(self, wallet):
         b = self.serialize()
         h = hashlib.new('sha512')
         h.update(b)
@@ -274,7 +274,14 @@ class Ledger:
         o = tree.find('data/parent')
 
 
+    # TODO: add allowed pubkey and actually verify sig
+    def check_sigs(self, entry):
+        return len(entry.sigs) > 0
+
+
     def add_entry(self, entry):
+        if not self.check_sigs(entry):
+            raise ValueError('entry must have at least one valid signature')
         self.running[entry.unit].apply_entry(entry)
         try:
             entries = self.entries[entry.serial]
@@ -282,6 +289,8 @@ class Ledger:
             self.entries[entry.serial] = []
             entries = self.entries[entry.serial]
         self.entries[entry.serial].append(entry)
+        if self.tree != None:
+            self.tree.append(entry.to_tree())
 
 
     def add_signature(self, sigdata, identity):
@@ -292,20 +301,21 @@ class Ledger:
    
     @staticmethod
     def from_tree(tree, unitindex, verifier=None):
-        o = tree.find('digest').text # verify that is sha512
+        part = tree.find('incoming')
+        o = part.find('digest').text # verify that is sha512
         r = Ledger(o, unitindex, verifier=verifier, tree=tree)
-        for sig in tree.iter('sig'):
+        for sig in part.iter('sig'):
             keyid = sig.get('keyid')
             digest = sig.text
             r.add_signature(digest, keyid)
 
-        o = tree.find('real')
+        o = part.find('real')
         asset = int(o.find('asset').text)
         liability = int(o.find('liability').text)
         r.real = RunningTotal('.', unitindex, asset=asset, liability=liability)
         logg.debug(r.real)
 
-        for v in tree.iter('virt'):
+        for v in part.iter('virt'):
             income = int(v.find('income').text)
             expense = int(v.find('expense').text)
             asset = int(v.find('asset').text)
@@ -323,6 +333,9 @@ class Ledger:
             self.entries[o.serial] = o
             self.running[o.unit].apply_entry(o)
 
+    def to_tree(self):
+        return self.tree
+
 
     def check(self):
         return self
@@ -333,8 +346,9 @@ class Ledger:
 
 
 def init_ledger(tree, units):
-    o = tree.find('incoming')
-    return Ledger.from_tree(o, units)
+    return Ledger.from_tree(tree, units)
+    #o = tree.find('incoming')
+    #return Ledger.from_tree(o, units)
     
 
 def get_units(tree):
