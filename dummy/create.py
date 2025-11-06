@@ -16,6 +16,16 @@ state_serial = 0
 state_digest = b'00' * 64
 
 
+class DemoWallet:
+   
+    def sign(self, v):
+        r = pk.sign(v)
+        return r.signature
+
+    def pubkey(self):
+        return pubk.encode()
+
+
 def save_state():
     f = open('.state', 'wb')
     b = state_serial.to_bytes(8, byteorder='big')
@@ -58,6 +68,10 @@ if __name__ == '__main__':
 
     state_serial += 1
     entry = Entry(arg.t, amount, arg.u, state_serial, arg.a, arg.date)
+    wallet = DemoWallet()
     ledger.add_entry(entry)
+    entry.package(wallet)
+    r = lxml.etree.tostring(entry.to_tree())
+    print(r.decode('utf-8'))
 
     save_state()
