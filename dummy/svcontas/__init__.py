@@ -16,8 +16,11 @@ NS = 'http://svcontas.defalsify.org'
 NAMESPACES = {None: NS}
 NSPREFIX = '{' + NS + '}'
 
+AXX_ALL = 0xffffffff
+
 def nsmap():
     return NAMESPACES
+
 
 class State:
 
@@ -72,7 +75,8 @@ class DemoWallet:
         else:
             publickey = nacl.signing.VerifyKey(publickey)
         self.pubk = publickey
-   
+  
+
     def sign(self, v):
         r = self.pk.sign(v)
         return r.signature
@@ -339,9 +343,40 @@ class RunningTotal:
         return 'running total {}: income {} expense {} asset {} liability {}'.format(self.sym, self.income, self.expense, self.asset, self.liability)
 
 
+class ACL:
+
+    def __init__(self):
+        self.axx = {}
+
+
+    def add(self, who, what=None, label=None):
+        if label == None:
+            label = who
+        if what == None:
+            what = AXX_ALL
+        self.axx[label] = (who, what,)
+
+
+    def may(self, who, what):
+        label = who
+        if isinstance(label, bytes):
+            label = who.hex()
+        return (self.axx[label][1] & what) == what
+
+
+    def pubkeys(self, binary=True):
+        r = []
+        for k in self.axx.values():
+            v = k[0]
+            if not binary:
+                v = v.hex()
+            r.append(v)
+        return r
+
+
 class Ledger:
 
-    def __init__(self, serial, base, unitindex, tree=None):
+    def __init__(self, serial, base, unitindex, tree=None, acl=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -349,18 +384,30 @@ class Ledger:
         self.tree = tree
         self.state = State()
         self.state.poke(serial, base)
+        self.acl = acl
    
 
     # TODO: add check against trusted pubkey list
     def check_sigs(self, entry):
-        for k in entry.sigs.keys():
+        have = False
+        valid_keys = None
+        if self.acl == None:
+            valid_keys = list(entry.sigs.keys())
+        else:
+            valid_keys = list(self.acl.pubkeys(binary=False))
+        #for k in entry.sigs.keys():
+        for k in valid_keys:
             b = bytes.fromhex(k)
-            sig = entry.sigs[k]
+            try:
+                sig = entry.sigs[k]
+            except KeyError:
+                continue
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
             r = wallet.verify(v, sig)
+            have = True
             logg.debug('having sig {}'.format(r.hex()))
-        return True
+        return have
 
 
     def add_entry(self, entry, modify_tree=True):
@@ -385,11 +432,11 @@ class Ledger:
 
    
     @staticmethod
-    def from_tree(tree, unitindex):
+    def from_tree(tree, unitindex, acl=None):
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
         o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
-        r = Ledger(serial, bytes.fromhex(o), unitindex, tree=tree)
+        r = Ledger(serial, bytes.fromhex(o), unitindex, tree=tree, acl=acl)
 
         for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')
@@ -434,8 +481,8 @@ class Ledger:
         return "state: " + self.state.base.hex()
 
 
-def init_ledger(tree, units):
-    return Ledger.from_tree(tree, units)
+def init_ledger(tree, units, acl=None):
+    return Ledger.from_tree(tree, units, acl=acl)
     
 
 def get_units(tree):

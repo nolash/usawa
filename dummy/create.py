@@ -5,7 +5,7 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Ledger, Entry, DemoWallet, State, get_units, init_ledger, nsmap
+from svcontas import Ledger, Entry, DemoWallet, ACL, State, get_units, init_ledger, nsmap
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
@@ -26,12 +26,15 @@ if __name__ == '__main__':
     tree = lxml.etree.parse(arg.xml_file)
     root = tree.getroot()
     units = get_units(root)
-    ledger = init_ledger(root, units)
+    acl = ACL()
+    wallet = DemoWallet(privatekey=seed)
+    fakepub = bytes.fromhex('7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730')
+    acl.add(wallet.pubkey(), 1, label='foo')
+    ledger = init_ledger(root, units, acl=acl)
     
     amount = units.from_floatstring(arg.u, arg.amount, allow_negative=False)
 
     entry = Entry(arg.t, amount, arg.u, ledger.state.serial + 1, arg.a, arg.date, parent=ledger.state.base)
-    wallet = DemoWallet(privatekey=seed)
     entry.sign(wallet)
     ledger.add_entry(entry)
     tree = ledger.to_tree()
