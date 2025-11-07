@@ -5,7 +5,7 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Ledger, Entry, DemoWallet, ACL, State, get_units, init_ledger, nsmap
+from svcontas import Ledger, Entry, DemoWallet, ACL, get_units, init_ledger
 
 
 seed = bytes.fromhex('2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae')
