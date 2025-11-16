@@ -75,6 +75,8 @@ class Ledger:
 
 
     def reset(self, src='defalsify.org'):
+        self.entries[self.uidx.base] = []
+        self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
         self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/"></ledger>')
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
