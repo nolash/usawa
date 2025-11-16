@@ -5,7 +5,7 @@ import lxml
 
 from .crypto import DemoWallet
 from .xml import nsmap, XML_FORMAT_VERSION
-from .state import State
+#from .state import State
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
 
@@ -81,8 +81,10 @@ class Ledger:
         self.tree = tree
         if self.tree == None:
             self.reset()
-        self.state = State()
-        self.state.poke(serial, base)
+        #self.state = State()
+        #self.state.poke(serial, base)
+        self.serial = serial
+        self.base = base
         self.acl = acl
         self.last = 0
 
@@ -189,7 +191,9 @@ class Ledger:
         except KeyError:
             self.entries[entry.serial] = []
             #entries = self.entries[entry.serial]
-        self.state.poke(entry.serial, entry.sum())
+        #self.state.poke(entry.serial, entry.sum())
+        self.state = entry.serial
+        self.base = entry.sum()
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
@@ -234,7 +238,8 @@ class Ledger:
 
 
     def apply_tree(self, tree):
-        start = self.state.serial
+        #start = self.state.serial
+        start = self.serial
         self.last = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             logg.debug('processing entry {}'.format(v))
@@ -257,4 +262,5 @@ class Ledger:
 
 
     def __str__(self):
-        return "state: " + self.state.base.hex()
+        #return "state: " + self.state.base.hex()
+        return "state: " + self.base.hex()
