@@ -83,7 +83,11 @@ class Ledger:
         self.serial = serial
         self.base = base
         self.acl = acl
-        self.last = 0
+
+
+    def next_serial(self):
+        self.serial += 1
+        return self.serial
 
 
     def reset(self, src='defalsify.org'):
@@ -188,7 +192,9 @@ class Ledger:
             self.entries[entry.serial] = []
             #entries = self.entries[entry.serial]
         self.serial = entry.serial
+        oldbase = self.base
         self.base = entry.sum()
+        entry.parent = oldbase
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
@@ -233,19 +239,21 @@ class Ledger:
             r.running[unit] = RunningTotal(unit, unitindex)
 
         r.apply_tree(tree)
-        logg.debug('loaded ledger tree last serial {}'.format(r.last))
+        logg.debug('loaded ledger tree last serial {}'.format(r.serial))
         return r.check()
 
 
     def apply_tree(self, tree):
         start = self.serial
-        self.last = 0
+        last = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx)
             self.add_entry(o, modify_tree=False)
-            self.last = o.serial
-        logg.info('last entry from tree serial ' + str(self.last))
+            if o.serial > last:
+                last = o.serial
+        self.serial = last
+        logg.info('last entry from tree serial ' + str(self.serial))
 
 
     def to_tree(self):
