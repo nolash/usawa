@@ -1,9 +1,12 @@
+import datetime
 import logging
+
+import lxml
 
 from .crypto import DemoWallet
 from .xml import nsmap
 from .state import State
-from .constant import NSPREFIX
+from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
 
 logg = logging.getLogger('svcontas.ledger')
@@ -64,10 +67,81 @@ class Ledger:
         self.entries = {}
         self.running = {}
         self.tree = tree
+        if self.tree == None:
+            self.reset()
         self.state = State()
         self.state.poke(serial, base)
         self.acl = acl
+
+
+    def reset(self, src='defalsify.org'):
+        self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/"></ledger>')
+        #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
+        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
+        o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
+        #self.tree.append(o)
+        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'src', nsmap=nsmap())
+        o.text = src
+
+        units = lxml.etree.SubElement(self.tree, NSPREFIX + 'units', nsmap=nsmap())
+        units.attrib['base'] = self.uidx.base
+        for v in self.uidx.syms():
+            unit = lxml.etree.SubElement(units, NSPREFIX + 'unit', nsmap=nsmap())
+            unit.attrib['sym'] = v
+            o = lxml.etree.SubElement(unit, NSPREFIX + 'precision', nsmap=nsmap())
+            o.text = str(self.uidx.get(v))
+            #unit.append(o)
+            o = lxml.etree.SubElement(unit, NSPREFIX + 'exchange', nsmap=nsmap())
+            o.text = str(self.uidx.ex(v))
+            #unit.append(o)
+            #units.append(unit)
+        #self.tree.append(units)
+
+        incoming = lxml.etree.SubElement(self.tree, NSPREFIX + 'incoming', nsmap=nsmap())
+        incoming.attrib['serial'] = '0'
+
+        real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
+        real.attrib['unit'] = self.uidx.base
+        o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
+        o.text = '0'
+        #real.append(o)
+        o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
+        o.text = '0'
+        #real.append(o)
+        #incoming.append(real)
+
+        o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
+        o.attrib['algo'] = 'sha512'
+        o.text = DEFAULTPARENT.hex()
+        #incoming.append(o)
+        #self.tree.append(incoming)
+
+
+    # TODO: should append after last
+    def add_identity(self, keyid, did, typ='web'):
+        root = self.tree
+        tree = root.find('resolver', namespaces=nsmap())
+        if tree == None:
+            tree = root.find('units', namespaces=nsmap())
+            if tree == None:
+                logg.debug('exception tree {}'.format(lxml.etree.tostring(self.tree)))
+                raise Exception('cannot find units node')
+        o = lxml.etree.Element(NSPREFIX + 'identity', nsmap=nsmap())
+        o.attrib['keyid'] = keyid
+        o.attrib['didtype'] = typ
+        o.text = did
+        tree.addnext(o)
    
+
+    # TODO: should append after last
+    def add_resolver(self, uri, algo='sha256', proto='https'):
+        tree = self.tree.find('units', namespaces=nsmap())
+        o = lxml.etree.Element(NSPREFIX + 'resolver', nsmap=nsmap())
+        o.attrib['algo'] = algo
+        o.attrib['proto'] = proto
+        o.text = uri
+        tree.addnext(o)
+
 
     # TODO: add check against trusted pubkey list
     def check_sigs(self, entry):
@@ -157,6 +231,10 @@ class Ledger:
 
     def check(self):
         return self
+
+
+    def to_string(self):
+        return lxml.etree.tostring(self.tree)
 
 
     def __str__(self):

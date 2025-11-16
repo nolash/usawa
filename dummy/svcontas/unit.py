@@ -10,8 +10,13 @@ class UnitIndex:
 
     def __init__(self, base):
         self.base = base
-        self.detail = {}
-        self.exchange = {}
+        self.detail = {base: 0}
+        self.exchange = {base: 1}
+
+
+    def add(self, sym, precision=2, ex=1):
+        self.detail[sym] = precision
+        self.exchange[sym] = ex
 
 
     @staticmethod
@@ -32,8 +37,15 @@ class UnitIndex:
 
 
     def get(self, k):
-        self.detail[k]
-        return k
+        return self.detail[k]
+
+
+    def ex(self, k):
+        return self.exchange[k]
+
+
+    def syms(self):
+        return list(self.detail.keys())
 
 
     def to_floatstring(self, sym, v, allow_negative=True):
