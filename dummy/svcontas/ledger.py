@@ -5,7 +5,6 @@ import lxml
 
 from .crypto import DemoWallet
 from .xml import nsmap, XML_FORMAT_VERSION
-#from .state import State
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
 
@@ -81,8 +80,6 @@ class Ledger:
         self.tree = tree
         if self.tree == None:
             self.reset()
-        #self.state = State()
-        #self.state.poke(serial, base)
         self.serial = serial
         self.base = base
         self.acl = acl
@@ -168,7 +165,6 @@ class Ledger:
             valid_keys = list(entry.sigs.keys())
         else:
             valid_keys = list(self.acl.pubkeys(binary=False))
-        #for k in entry.sigs.keys():
         for k in valid_keys:
             b = bytes.fromhex(k)
             try:
@@ -191,14 +187,13 @@ class Ledger:
         except KeyError:
             self.entries[entry.serial] = []
             #entries = self.entries[entry.serial]
-        #self.state.poke(entry.serial, entry.sum())
-        self.state = entry.serial
+        self.serial = entry.serial
         self.base = entry.sum()
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
             self.tree.append(entry.to_tree())
-        logg.debug(self.running[entry.unit])
+        logg.debug('entryunit {} {}'.format(entry.unit, self.running[entry.unit]))
 
 
     def add_signature(self, sigdata, identity):
@@ -208,6 +203,8 @@ class Ledger:
    
     @staticmethod
     def from_tree(tree, unitindex, acl=None):
+        units = tree.find('units', namespaces=nsmap())
+        unit = units.get('base')
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
         o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
@@ -221,8 +218,7 @@ class Ledger:
         o = part.find('real', namespaces=nsmap())
         asset = int(o.find('asset', namespaces=nsmap()).text)
         liability = int(o.find('liability', namespaces=nsmap()).text)
-        r.real = RunningTotal('.', unitindex, asset=asset, liability=liability)
-        logg.debug(r.real)
+        r.real = RunningTotal(unit, unitindex, asset=asset, liability=liability)
 
         for v in part.iter(NSPREFIX + 'virt'):
             income = int(v.find('income', namespaces=nsmap()).text)
@@ -233,12 +229,15 @@ class Ledger:
             r.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
             logg.debug(r.running[sym])
 
+        if r.running.get(unit) == None:
+            r.running[unit] = RunningTotal(unit, unitindex)
+
         r.apply_tree(tree)
+        logg.debug('loaded ledger tree last serial {}'.format(r.last))
         return r.check()
 
 
     def apply_tree(self, tree):
-        #start = self.state.serial
         start = self.serial
         self.last = 0
         for v in tree.iter(NSPREFIX + 'entry'):
@@ -262,5 +261,4 @@ class Ledger:
 
 
     def __str__(self):
-        #return "state: " + self.state.base.hex()
         return "state: " + self.base.hex()

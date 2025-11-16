@@ -91,7 +91,8 @@ class Entry:
     @staticmethod
     def from_tree(tree, unitindex):
         o = tree.find('data', namespaces=nsmap())
-        unit = unitindex.get(o.find('unit', namespaces=nsmap()).text)
+        unit = o.find('unit', namespaces=nsmap()).text
+        unitindex.sym(unit)
         serial = int(o.find('serial', namespaces=nsmap()).text)
         ref = o.find('ref', namespaces=nsmap()).text
         parent = o.find('parent', namespaces=nsmap()).text
@@ -100,18 +101,16 @@ class Entry:
             description = description.text
         dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
         dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
-        src = EntryPart.from_tree(o.find('src', namespaces=nsmap()))
-        dst = EntryPart.from_tree(o.find('dst', namespaces=nsmap()), credit=True)
+        src = EntryPart.from_tree(tree.find('src', namespaces=nsmap()), src=True)
+        dst = EntryPart.from_tree(tree.find('dst', namespaces=nsmap()))
 
-        r = Entry(tree.get('type'), amount, unit, serial, account, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
+        r = Entry(src, dst, unit, serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
         for sig in tree.iter(NSPREFIX + 'sig'):
             r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
         return r
 
 
     def serialize(self):
-        #src = self.src.serialize()
-        #dst = self.dst.serialize()
         src = [self.src.typ, self.src.account, self.src.amount]
         dst = [self.dst.typ, self.dst.account, self.dst.amount]
         d = [

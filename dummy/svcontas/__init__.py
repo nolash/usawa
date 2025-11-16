@@ -3,7 +3,6 @@ from lxml import etree
 from .ledger import Ledger
 from .entry import Entry, EntryPart
 from .crypto import DemoWallet, ACL
-#from .state import State
 from .xml import nsmap
 from .unit import UnitIndex
 

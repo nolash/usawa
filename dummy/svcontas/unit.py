@@ -40,6 +40,11 @@ class UnitIndex:
         return self.detail[k]
 
 
+    def sym(self, k):
+        _ = self.get(k)
+        return k
+
+
     def ex(self, k):
         return self.exchange[k]
 
