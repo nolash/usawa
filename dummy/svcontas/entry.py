@@ -12,11 +12,51 @@ from .xml import nsmap
 logg = logging.getLogger('svcontas.entry')
 
 
+class EntryPart:
+
+    def __init__(self, typ, account, amount, src=False):
+        self.typ = typ
+        self.account = account
+        self.amount = amount
+        self.issrc = src
+
+
+    @staticmethod
+    def from_tree(tree, src=False):
+        typ = tree.get('type')
+        amount = int(tree.find('amount', namespaces=nsmap()).text)
+        account = tree.find('account', namespaces=nsmap()).text
+        return EntryPart(typ, account, amount, src=src)
+
+    
+    def apply_tree(self, tree):
+        tag = 'dst'
+        if self.issrc:
+            tag = 'src'
+        part = etree.Element(tag, type=self.typ)
+        o = etree.Element('account')
+        o.text = self.account
+        part.append(o)
+
+        o = etree.Element('amount')
+        o.text = str(self.amount)
+        part.append(o)
+
+        tree.append(part)
+        return part
+
+
+    def __str__(self):
+        pfx = 'dst'
+        if self.issrc:
+            pfx = 'src'
+        return '[{}] {}:{} {}'.format(pfx, self.typ, self.account, self.amount)
+
+
 class Entry:
 
     # TODO: parent only 0 if serial 0  
-    def __init__(self, typ, amount, unit, serial, account, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
-        self.typ = typ
+    def __init__(self, src, dst, unit, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
         elif parent == None:
@@ -27,10 +67,8 @@ class Entry:
             ref = str(uuid.uuid4())
         self.ref = ref
         self.parent = parent
-        self.amount = amount
         self.unit = unit
         self.serial = serial
-        self.account = account
         self.dt = tx_date
         if tx_datereg == None:
             tx_datereg = datetime.datetime.now()
@@ -38,6 +76,8 @@ class Entry:
         self.attachment = []
         self.sigs = {}
         self.description = description
+        self.src = src
+        self.dst = dst
 
 
     def attach(self, mime, algo, digest, description=None, slug=None):
@@ -51,10 +91,8 @@ class Entry:
     @staticmethod
     def from_tree(tree, unitindex):
         o = tree.find('data', namespaces=nsmap())
-        amount = int(o.find('amount', namespaces=nsmap()).text)
         unit = unitindex.get(o.find('unit', namespaces=nsmap()).text)
         serial = int(o.find('serial', namespaces=nsmap()).text)
-        account = o.find('account', namespaces=nsmap()).text
         ref = o.find('ref', namespaces=nsmap()).text
         parent = o.find('parent', namespaces=nsmap()).text
         description = o.find('description', namespaces=nsmap())
@@ -62,6 +100,9 @@ class Entry:
             description = description.text
         dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
         dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
+        src = EntryPart.from_tree(o.find('src', namespaces=nsmap()))
+        dst = EntryPart.from_tree(o.find('dst', namespaces=nsmap()), credit=True)
+
         r = Entry(tree.get('type'), amount, unit, serial, account, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
         for sig in tree.iter(NSPREFIX + 'sig'):
             r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
@@ -69,6 +110,10 @@ class Entry:
 
 
     def serialize(self):
+        #src = self.src.serialize()
+        #dst = self.dst.serialize()
+        src = [self.src.typ, self.src.account, self.src.amount]
+        dst = [self.dst.typ, self.dst.account, self.dst.amount]
         d = [
                 self.parent,
                 self.serial,
@@ -76,7 +121,8 @@ class Entry:
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
                 self.unit,
-                self.amount,
+                src,
+                dst,
                 ]
         logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
@@ -99,7 +145,8 @@ class Entry:
 
 
     def to_tree(self):
-        tree = etree.Element('entry', type=self.typ)
+        #tree = etree.Element('entry', type=self.typ)
+        tree = etree.Element('entry')
         data = etree.Element('data')
 
         o = etree.Element('parent')
@@ -126,19 +173,14 @@ class Entry:
         o.text = self.dtreg.strftime('%Y-%m-%dT%H:%M:%SZ')
         data.append(o)
         
-        o = etree.Element('account')
-        o.text = self.account
-        data.append(o)
-
         if self.description:
             o = etree.Element('description')
-            o.text = self.account
+            o.text = self.description
             data.append(o)
 
-        o = etree.Element('amount')
-        o.text = str(self.amount)
-        data.append(o)
-
+        self.src.apply_tree(tree)
+        self.dst.apply_tree(tree)
+        
         tree.append(data)
 
         for k in self.sigs.keys():
@@ -147,6 +189,3 @@ class Entry:
             tree.append(o)
 
         return tree
-
-
-

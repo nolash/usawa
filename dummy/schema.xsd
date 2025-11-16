@@ -95,7 +95,6 @@
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
 		<!-- TODO: attribute enum -->
-		<xs:attribute name="type" type="xs:string" />
 	</xs:complexType>
 
 	<xs:complexType name="EntryData">
@@ -106,8 +105,22 @@
 			<xs:element name="unit" type="xs:string" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
-			<xs:element name="account" type="xs:string" />
-			<xs:element name="amount" type="xs:positiveInteger" />
+			<xs:element name="src" type="EntryPart"/>
+			<xs:element name="dst" type="EntryPart"/>
+			<xs:element name="attachment" type="Attachment" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="EntryPart">
+		<xs:attribute name="type" type="xs:string" />
+		<xs:element name="account" type="xs:string" />
+		<xs:element name="amount" type="xs:positiveInteger" />
+	</xs:complexType>
+
+	<xs:complexType name="Attachment">
+		<xs:attribute name="mime" type="xs:string" />
+		<xs:element name="slug" type="xs:string" />
+		<xs:element name="description" type="xs:string" />
+		<xs:element name="digest" type="Digest" />
 	</xs:complexType>
 </xs:schema>

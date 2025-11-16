@@ -4,7 +4,7 @@ import logging
 import lxml
 
 from .crypto import DemoWallet
-from .xml import nsmap
+from .xml import nsmap, XML_FORMAT_VERSION
 from .state import State
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
@@ -33,12 +33,10 @@ class RunningTotal:
 
     def income_delta(self, v):
         self.income += v
-        self.asset += v
 
 
     def expense_delta(self, v):
         self.expense += v
-        self.asset -= v
 
 
     def asset_delta(self, v):
@@ -50,9 +48,23 @@ class RunningTotal:
 
 
     def apply_entry(self, entry):
-        fn = getattr(self, entry.typ + '_delta')
-        fn(entry.amount)
-        logg.debug('applied entry {} typ {} amount {} total {} balance {}'.format(entry.serial, entry.typ, entry.amount, getattr(self, entry.typ), self.unitindex.to_floatstring(self.sym, self.get_balance())))
+        src = entry.src.typ
+        dst = entry.dst.typ
+        src_isbalance = src in ['liability', 'asset']
+        dst_isbalance = dst in ['liability', 'asset']
+        
+        src_amount = entry.src.amount
+        dst_amount = entry.dst.amount
+        if src_isbalance and dst_isbalance:
+            if dst == 'liability':
+                src_amount *= -1
+                dst_amount *= -1
+        fn = getattr(self, entry.src.typ + '_delta')
+        fn(src_amount)
+        fn = getattr(self, entry.dst.typ + '_delta')
+        fn(dst_amount)
+
+        logg.debug('applied entry {} src {} dst {} balance {}'.format(entry.serial, entry.src, entry.dst, self.unitindex.to_floatstring(self.sym, self.get_balance())))
 
 
     def __str__(self):
@@ -61,7 +73,7 @@ class RunningTotal:
 
 class Ledger:
 
-    def __init__(self, serial, base, unitindex, tree=None, acl=None):
+    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -72,12 +84,13 @@ class Ledger:
         self.state = State()
         self.state.poke(serial, base)
         self.acl = acl
+        self.last = 0
 
 
     def reset(self, src='defalsify.org'):
         self.entries[self.uidx.base] = []
         self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
-        self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/"></ledger>')
+        self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
         o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
@@ -194,7 +207,7 @@ class Ledger:
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
         o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
-        r = Ledger(serial, bytes.fromhex(o), unitindex, tree=tree, acl=acl)
+        r = Ledger(unitindex, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
 
         for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')
@@ -221,10 +234,14 @@ class Ledger:
 
 
     def apply_tree(self, tree):
+        start = self.state.serial
+        self.last = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx)
             self.add_entry(o, modify_tree=False)
+            self.last = o.serial
+        logg.info('last entry from tree serial ' + str(self.last))
 
 
     def to_tree(self):
