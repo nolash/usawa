@@ -33,6 +33,15 @@ class TestEntry(unittest.TestCase):
         self.assertEqual(s, ss)
 
 
+    def test_wallet_create(self):
+        pk = bytes.fromhex('b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c')
+        o = DemoWallet()
+        o = DemoWallet(privatekey=pk)
+        pubk = o.pubkey()
+        oo = DemoWallet(publickey=pubk)
+        self.assertEqual(o.pubkey(), oo.pubkey())
+
+
     def test_entry_sign_verify(self):
         dst = EntryPart('asset', 'foo', 1337)
         src = EntryPart('income', 'foo', 1337, src=True)

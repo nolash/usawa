@@ -11,8 +11,9 @@ class DemoWallet:
         if privatekey == None:
             if publickey == None:
                 self.pk = nacl.signing.SigningKey.generate()
-            else:
-                self.pk = nacl.signing.SigningKey(privatekey)
+                publickey_chk = self.pk.verify_key
+        else:
+            self.pk = nacl.signing.SigningKey(privatekey)
             publickey_chk = self.pk.verify_key
 
         if publickey == None:

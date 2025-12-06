@@ -1,3 +1,4 @@
+import enum
 import logging
 import datetime
 import uuid
@@ -7,9 +8,15 @@ from lxml import etree
 import rencode
 
 from .constant import DEFAULTPARENT, NSPREFIX
+from .crypto import DemoWallet
 from .xml import nsmap
 
 logg = logging.getLogger('svcontas.entry')
+
+
+class KeyStoreFormat(enum.IntEnum):
+    LITERAL = 0
+    INDEXED = 1
 
 
 class EntryPart:
@@ -163,7 +170,12 @@ class Entry:
 
     def wrap(self, wallet):
         (digest, sig, data) = self.sign(wallet)
+        pubkey = wallet.pubkey()
         d = [
+                [
+                    KeyStoreFormat.LITERAL.value,
+                    pubkey,
+                    ],
                 sig,
                 data,
             ]
@@ -171,13 +183,13 @@ class Entry:
 
 
     @staticmethod
-    def unwrap(data, wallet):
+    def unwrap(data, acl=None):
         v = rencode.loads(data)
-        sig = v[0]
-        entry = Entry.deserialize(v[1])
+        pubkey_bytes = v[0][1]
+        wallet = DemoWallet(publickey=pubkey_bytes)
+        sig = v[1]
+        entry = Entry.deserialize(v[2])
         (z, b) = entry.sum()
-        #wallet.verify(z, sig)
-        #sig = bytes.fromhex('cc06808cbbee0510331aa97974132e8dc296aeb795be229d064bae784b0a87a5cf4281d82e8c99271b75db2148f08a026c1a60ed9cabdb8cac6d24242dac4063')
         wallet.verify(z, sig)
         return entry
 
