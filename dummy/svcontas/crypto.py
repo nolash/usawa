@@ -85,6 +85,9 @@ class ACL:
         for k in self.axx.values():
             v = k[0]
             if not binary:
-                v = v.hex()
+                try:
+                    v = v.hex()
+                except AttributeError:
+                    v = self.axx[self.rev[v]][0]
             r.append(v)
         return r

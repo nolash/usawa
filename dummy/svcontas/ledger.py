@@ -186,6 +186,7 @@ class Ledger:
             valid_keys = list(entry.sigs.keys())
         else:
             valid_keys = list(self.acl.pubkeys(binary=False))
+        logg.debug('testing valid keys {}'.format(valid_keys))
         for k in valid_keys:
             b = bytes.fromhex(k)
             try:
