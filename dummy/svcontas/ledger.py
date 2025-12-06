@@ -102,11 +102,16 @@ class Ledger:
         return self.serial
 
 
-    def reset(self, src='defalsify.org'):
+    def reset(self, src='defalsify.org', topic=None):
         self.entries[self.uidx.base] = []
         self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
         self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
+        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'topic', nsmap=nsmap())
+        if topic == None:
+            topic = os.urandom(64)
+            topic = topic.hex()
+        o.text = topic
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
         o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
         #self.tree.append(o)
@@ -189,7 +194,7 @@ class Ledger:
                 continue
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
-            r = wallet.verify(v, sig)
+            r = wallet.verify(v[0], sig)
             have = True
             logg.debug('having sig {}'.format(r.hex()))
         return have
@@ -221,12 +226,15 @@ class Ledger:
    
     @staticmethod
     def from_tree(tree, unitindex, acl=None):
+        topic_node = tree.find('topic', namespaces=nsmap())
+        topic = bytes.fromhex(topic_node.text)
+
         units = tree.find('units', namespaces=nsmap())
         unit = units.get('base')
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
         o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
-        r = Ledger(unitindex, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
+        r = Ledger(unitindex, topic=topic, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
 
         for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')

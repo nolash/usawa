@@ -4,6 +4,7 @@ import unittest
 import os
 import copy
 
+import lxml.etree
 from whee.mem import MemStore
 
 from svcontas import Ledger, UnitIndex
@@ -26,6 +27,16 @@ class TestLedger(unittest.TestCase):
         o = Ledger(uidx)
         store = LedgerStore(self.store, ledger=o)
         store.start()
+        print(o.to_string())
+
+
+    def test_ledger_xml(self):
+        uidx = UnitIndex('USD')
+    
+        xml_file = os.path.join(testdir, 'test.xml')
+        tree = lxml.etree.parse(xml_file)
+        ledger = Ledger.from_tree(tree, uidx)
+
 
 
 if __name__ == '__main__':
