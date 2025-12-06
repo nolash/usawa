@@ -9,6 +9,7 @@ import rencode
 
 from .constant import DEFAULTPARENT, NSPREFIX
 from .crypto import DemoWallet
+from .error import ACLError
 from .xml import nsmap
 
 logg = logging.getLogger('svcontas.entry')
@@ -186,6 +187,14 @@ class Entry:
     def unwrap(data, acl=None):
         v = rencode.loads(data)
         pubkey_bytes = v[0][1]
+        if acl != None:
+            label = None
+            try:
+                label = acl.have(pubkey_bytes)
+            except KeyError:
+                raise ACLError()
+            if not acl.may(label, 0x01):
+                raise ACLError()
         wallet = DemoWallet(publickey=pubkey_bytes)
         sig = v[1]
         entry = Entry.deserialize(v[2])

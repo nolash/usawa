@@ -4,7 +4,8 @@ import unittest
 import os
 import copy
 
-from svcontas import EntryPart, Entry, DemoWallet
+from svcontas import EntryPart, Entry, DemoWallet, ACL
+from svcontas.error import ACLError
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -48,8 +49,25 @@ class TestEntry(unittest.TestCase):
         o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         wallet = DemoWallet()
         data = o.wrap(wallet)
-        r = Entry.unwrap(data, wallet)
-        
+        r = Entry.unwrap(data)
+
+
+    def test_entry_acl_verify(self):
+        dst = EntryPart('asset', 'foo', 1337)
+        src = EntryPart('income', 'foo', 1337, src=True)
+        o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        wallet = DemoWallet()
+        data = o.wrap(wallet)
+        pubk_wrong = bytes.fromhex('72f25d90ef4cfecda8fa2c47561af5af0a10a92bfd15986b1f916358bf6ac8a37858a14d27329506a3766bad0f34d2e04caf397c1607b4380eb33c97d37dfc37')
+        acl = ACL()
+        with self.assertRaises(ACLError):
+            Entry.unwrap(data, acl=acl)
+        acl.add(pubk_wrong, label='wrong')
+        with self.assertRaises(ACLError):
+            Entry.unwrap(data, acl=acl)
+        acl.add(wallet.pubkey(), label='right')
+        Entry.unwrap(data, acl=acl)
+
 
 if __name__ == '__main__':
     unittest.main()

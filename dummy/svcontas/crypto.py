@@ -1,6 +1,11 @@
+import logging
+
 import nacl.signing
 
 AXX_ALL = 0xffffffff
+AXX_ANY = 0x01
+
+logg = logging.getLogger('crypto')
 
 
 class DemoWallet:
@@ -44,21 +49,35 @@ class ACL:
 
     def __init__(self):
         self.axx = {}
+        self.rev = {}
 
 
     def add(self, who, what=None, label=None):
+        if isinstance(who, bytes):
+            who = who.hex()
         if label == None:
             label = who
         if what == None:
             what = AXX_ALL
+        logg.info('add acl line "{}" ({}): {}'.format(label, who, what))
         self.axx[label] = (who, what,)
+        self.rev[who] = label
+
+
+    def have(self, who):
+        if isinstance(who, bytes):
+            who = who.hex()
+        return self.rev[who]
 
 
     def may(self, who, what):
         label = who
         if isinstance(label, bytes):
             label = who.hex()
-        return (self.axx[label][1] & what) == what
+        try:
+            return (self.axx[label][1] & what) == what
+        except KeyError:
+            return 0
 
 
     def pubkeys(self, binary=True):
