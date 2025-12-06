@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <ledger>
+	<topic>fca5eb40383af54fb270283251683f97f8804f35036264bb657e72f1d53b6bcf6afc532b02d2216dff01a2df69f5515c887833b98ed15a8bc6433fb28c5b4834</topic>
 	<retrieved>2025-11-02T13:09:55Z</retrieved>
 	<src>playalastunas.org</src>
 	<units base="BTC">

@@ -1,7 +1,10 @@
+import os
 import datetime
 import logging
+import hashlib
 
 import lxml
+import rencode
 
 from .crypto import DemoWallet
 from .xml import nsmap, XML_FORMAT_VERSION
@@ -72,7 +75,7 @@ class RunningTotal:
 
 class Ledger:
 
-    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT):
+    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=None, topic=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -81,8 +84,17 @@ class Ledger:
         if self.tree == None:
             self.reset()
         self.serial = serial
+        if topic == None:
+            topic = os.urandom(64)
+        if base == None:
+            h = hashlib.sha512()
+            h.update(topic)
+            h.update(DEFAULTPARENT)
+            base = h.digest()
         self.base = base
+        self.topic = topic
         self.acl = acl
+        logg.debug('ledger base {} from topic {}'.format(self.base.hex(), self.topic.hex()))
 
 
     def next_serial(self):

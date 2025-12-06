@@ -8,6 +8,7 @@
 	<xs:element name="ledger">
 		<xs:complexType>
 			<xs:sequence>
+				<xs:element name="topic" type="xs:string" />
 				<xs:element name="retrieved" type="xs:dateTime" />
 				<xs:element name="src" type="xs:string" minOccurs="1" maxOccurs="1" />
 				<xs:element name="units" type="Units" minOccurs="1" maxOccurs="1" />

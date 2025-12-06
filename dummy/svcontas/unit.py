@@ -5,6 +5,8 @@ from .xml import nsmap
 
 logg = logging.getLogger('svcontas.unit')
 
+BASE_UNIT = 'BTC'
+
 
 class UnitIndex:
 

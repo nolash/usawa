@@ -1,0 +1,2 @@
+class ACLError(Exception):
+    pass
