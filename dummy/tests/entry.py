@@ -4,7 +4,7 @@ import unittest
 import os
 import copy
 
-from svcontas import EntryPart, Entry
+from svcontas import EntryPart, Entry, DemoWallet
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -31,6 +31,15 @@ class TestEntry(unittest.TestCase):
         ss = o.serialize()
 
         self.assertEqual(s, ss)
+
+
+    def test_entry_sign_verify(self):
+        dst = EntryPart('asset', 'foo', 1337)
+        src = EntryPart('income', 'foo', 1337, src=True)
+        o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        wallet = DemoWallet()
+        data = o.wrap(wallet)
+        r = Entry.unwrap(data, wallet)
         
 
 if __name__ == '__main__':

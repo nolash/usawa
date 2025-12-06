@@ -127,7 +127,7 @@ class Entry:
         logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
 
-
+    
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
@@ -149,16 +149,38 @@ class Entry:
         b = self.serialize()
         h = hashlib.new('sha512')
         h.update(b)
-        return h.digest()
+        return (h.digest(), b)
 
 
     def sign(self, wallet):
-        b = self.sum()
-        r = wallet.sign(b)
+        (z, b) = self.sum()
+        r = wallet.sign(z)
         pubk_hx = wallet.pubkey().hex()
         self.sigs[pubk_hx] = r
         logg.debug('added signature from key {}'.format(pubk_hx))
-        return (b, r,)
+        return (z, r, b,)
+
+
+    def wrap(self, wallet):
+        (digest, sig, data) = self.sign(wallet)
+        d = [
+                sig,
+                data,
+            ]
+        return rencode.dumps(d)
+
+
+    @staticmethod
+    def unwrap(data, wallet):
+        v = rencode.loads(data)
+        sig = v[0]
+        entry = Entry.deserialize(v[1])
+        (z, b) = entry.sum()
+        #wallet.verify(z, sig)
+        #sig = bytes.fromhex('cc06808cbbee0510331aa97974132e8dc296aeb795be229d064bae784b0a87a5cf4281d82e8c99271b75db2148f08a026c1a60ed9cabdb8cac6d24242dac4063')
+        wallet.verify(z, sig)
+        return entry
+
 
 
     def to_tree(self):

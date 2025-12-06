@@ -6,13 +6,15 @@ AXX_ALL = 0xffffffff
 class DemoWallet:
 
     def __init__(self, privatekey=None, publickey=None):
+        self.pk = None
         publickey_chk = None
         if privatekey == None:
             if publickey == None:
-                privatekey = nacl.signing.SigningKey.generate()
-        if privatekey != None:
-            self.pk = nacl.signing.SigningKey(privatekey)
+                self.pk = nacl.signing.SigningKey.generate()
+            else:
+                self.pk = nacl.signing.SigningKey(privatekey)
             publickey_chk = self.pk.verify_key
+
         if publickey == None:
             if publickey_chk == None:
                 raise AttributeError('wallet must be created with either public or private key')
