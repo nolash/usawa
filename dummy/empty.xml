@@ -17,7 +17,7 @@
 	<resolver algo="sha256" proto="https">g33k.holbrook.no</resolver>
 	<identity keyid="f1d2d2f924e986ac86fdf7b36c94bcdf32beec15" didtype="web">nondominium.org/lash/</identity>
 	<identity keyid="f1d2d2f924e986ac86fdf7b36c94bcdf32beec15" didtype="web">holbrook.no</identity>
-	<incoming serial="231">
+	<incoming serial="0">
 		<real unit="BTC">
 			<asset>6323141</asset>
 			<liability>0</liability>

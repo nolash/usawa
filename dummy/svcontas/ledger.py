@@ -269,7 +269,7 @@ class Ledger:
         last = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             logg.debug('processing entry {}'.format(v))
-            o = Entry.from_tree(v, self.uidx)
+            o = Entry.from_tree(v, self.uidx, min=self.serial)
             self.add_entry(o, modify_tree=False)
             if o.serial > last:
                 last = o.serial

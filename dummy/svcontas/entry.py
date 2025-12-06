@@ -97,11 +97,14 @@ class Entry:
 
 
     @staticmethod
-    def from_tree(tree, unitindex):
+    def from_tree(tree, unitindex, min=0):
         o = tree.find('data', namespaces=nsmap())
+        serial = int(o.find('serial', namespaces=nsmap()).text)
+        if min > serial:
+            raise ValueError('entry serial preceeds ledger')
         unit = o.find('unit', namespaces=nsmap()).text
         unitindex.sym(unit)
-        serial = int(o.find('serial', namespaces=nsmap()).text)
+
         ref = o.find('ref', namespaces=nsmap()).text
         parent = o.find('parent', namespaces=nsmap()).text
         description = o.find('description', namespaces=nsmap())
