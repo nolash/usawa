@@ -93,8 +93,13 @@ class Ledger:
             base = h.digest()
         self.base = base
         self.topic = topic
+        self.cur = base
         self.acl = acl
         logg.debug('ledger base {} from topic {}'.format(self.base.hex(), self.topic.hex()))
+
+
+    def peek(self):
+        return self.serial + 1
 
 
     def next_serial(self):
@@ -211,7 +216,7 @@ class Ledger:
             #entries = self.entries[entry.serial]
         self.serial = entry.serial
         oldbase = self.base
-        self.base = entry.sum()
+        self.cur = entry.sum()[0]
         entry.parent = oldbase
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
@@ -287,6 +292,10 @@ class Ledger:
 
     def to_string(self):
         return lxml.etree.tostring(self.tree)
+
+
+    def current(self):
+        return self.cur
 
 
     def __str__(self):

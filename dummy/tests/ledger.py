@@ -7,7 +7,7 @@ import copy
 import lxml.etree
 from whee.mem import MemStore
 
-from svcontas import Ledger, UnitIndex
+from svcontas import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
 from svcontas.store import LedgerStore
 
 logging.basicConfig(level=logging.DEBUG)
@@ -37,6 +37,29 @@ class TestLedger(unittest.TestCase):
         tree = lxml.etree.parse(xml_file)
         ledger = Ledger.from_tree(tree, uidx)
 
+
+    def test_ledger_firstfew(self):
+        s = 'FOO'
+        uidx = UnitIndex(s)
+        o = Ledger(uidx)
+        store = LedgerStore(self.store, ledger=o)
+        store.start()
+        print(o.to_string())
+
+        wallet = DemoWallet()
+        x = EntryPart('income', 'foo', 1337, src=True)
+        y = EntryPart('asset', 'foo', 1337)
+        v = Entry(x, y, s, o.peek(), datetime.datetime.now(), parent=o.current())
+        v.sign(wallet)
+        o.add_entry(v)
+
+        x = EntryPart('expense', 'bar̈́', 42, src=True)
+        y = EntryPart('liability', 'bar', 42)
+        v = Entry(x, y, s, o.peek(), datetime.datetime.now(), parent=o.current())
+        v.sign(wallet)
+        o.add_entry(v)
+
+        print(o.to_string())
 
 
 if __name__ == '__main__':
