@@ -120,12 +120,30 @@ class Entry:
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
                 self.unit,
+                self.description,
                 src,
                 dst,
                 ]
         logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
 
+
+    @staticmethod
+    def deserialize(data):
+        v = rencode.loads(data)
+        parent = v[0]
+        serial = v[1]
+        ref = v[2]
+        date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
+        date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
+        unit = v[5]
+        description = v[6]
+        src_data = v[7]
+        dst_data = v[8]
+        src = EntryPart(src_data[0], src_data[1], src_data[2], src=True)
+        dst = EntryPart(dst_data[0], dst_data[1], dst_data[2])
+        return Entry(src, dst, unit, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        
 
     def sum(self):
         b = self.serialize()

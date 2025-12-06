@@ -12,7 +12,7 @@
 	</xsl:template>
 
 	<xsl:template match="/ledger">
-		<p>Document retrieved: <xsl:value-of select="retrieved" /> from <xsl:value-of select="src" /></p>
+		<p>Documento recuperado: <xsl:value-of select="retrieved" /> from <xsl:value-of select="src" /></p>
 		<xsl:for-each select="entry">
 			<p><xsl:value-of select="data/serial" />:<xsl:value-of select="data/date" />:<xsl:value-of select="data/ref" /></p>
 		</xsl:for-each>
