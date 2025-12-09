@@ -48,7 +48,7 @@ class TestEntry(unittest.TestCase):
         src = EntryPart('income', 'foo', 1337, src=True)
         o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         wallet = DemoWallet()
-        data = o.wrap(wallet)
+        data = o.wrap(wallet=wallet)
         r = Entry.unwrap(data)
 
 

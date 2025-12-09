@@ -9,7 +9,7 @@ import rencode
 
 from .constant import DEFAULTPARENT, NSPREFIX
 from .crypto import DemoWallet
-from .error import ACLError
+from .error import ACLError, VerifyError
 from .xml import nsmap
 
 logg = logging.getLogger('svcontas.entry')
@@ -172,15 +172,27 @@ class Entry:
         return (z, r, b,)
 
 
-    def wrap(self, wallet):
-        (digest, sig, data) = self.sign(wallet)
-        pubkey = wallet.pubkey()
+    def wrap(self, wallet=None):
+        digest = None
+        sig = None
+        data = None
+        if wallet != None:
+            (digest, sig, data) = self.sign(wallet)
+        hdr = []
+        sigs = []
+        for k in self.sigs:
+            hdr.append([
+                KeyStoreFormat.LITERAL.value,
+                bytes.fromhex(k)
+                ])
+            sigs.append(self.sigs[k])
+        
+        if len(sigs) == 0:
+            raise VerifyError()
+
         d = [
-                [
-                    KeyStoreFormat.LITERAL.value,
-                    pubkey,
-                    ],
-                sig,
+                hdr,
+                sigs,
                 data,
             ]
         return rencode.dumps(d)
@@ -189,7 +201,8 @@ class Entry:
     @staticmethod
     def unwrap(data, acl=None):
         v = rencode.loads(data)
-        pubkey_bytes = v[0][1]
+        # TODO: demo only takes into account single signature
+        pubkey_bytes = v[0][0][1]
         if acl != None:
             label = None
             try:
@@ -199,7 +212,8 @@ class Entry:
             if not acl.may(label, 0x01):
                 raise ACLError()
         wallet = DemoWallet(publickey=pubkey_bytes)
-        sig = v[1]
+        # TODO: demo only takes into account single signature
+        sig = v[1][0]
         entry = Entry.deserialize(v[2])
         (z, b) = entry.sum()
         wallet.verify(z, sig)

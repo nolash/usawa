@@ -8,25 +8,31 @@ from .entry import Entry
 
 
 PFX_LEDGER = b'\x01'
-PFX_ENTRY = b'\x02'
+PFX_LEDGER_LOCK = b'\x02'
+PFX_ENTRY = b'\x04'
 
 
 def pfx_ledger_topic(topic):
     r = PFX_LEDGER + topic
     return r
 
+def pfx_ledger_lock(topic):
+    r = PFX_LEDGER_LOCK + topic
+    return r
+
 
 def pfx_ledger(ledger):
-    if not isintance(ledger, Ledger):
+    if not isinstance(ledger, Ledger):
         raise ValueError('invalid ledger')
     return pfx_ledger_topic(topic)
 
 
 def pfx_entry(ledger, entry):
-    if not isintance(entry, Entry):
+    if not isinstance(entry, Entry):
         raise ValueError('invalid entry')
-    if not isintance(ledger, Ledger):
+    if not isinstance(ledger, Ledger):
         raise ValueError('invalid ledger')
+    return PFX_LEDGER + ledger.topic + entry.serial.to_bytes(8, byteorder='big')
 
 
 class LedgerStore(Interface):
@@ -52,5 +58,24 @@ class LedgerStore(Interface):
         self.ledger.serial = serial
 
 
-    def put(self):
-        pass 
+    def lock(self):
+        k = pfx_ledger_lock(self.ledger.topic)
+        v = None
+        # TODO: needs to be an atomic routine
+        try:
+            v = self.__o.get(k)
+        except KeyError:
+            raise PermissionError()
+        self.__o.put(k, 0x01, exist_ok)
+        # atomic until here
+
+
+    def unlock(self):
+        k = pfx_ledger_lock(self.ledger.topic)
+        v = self.__o.delete(k)
+
+
+    def add_entry(self, entry):
+        k = pfx_entry(self.ledger, entry)
+        v = entry.wrap()
+        self.__o.put(k, v)

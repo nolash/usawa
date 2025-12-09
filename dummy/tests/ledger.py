@@ -59,8 +59,6 @@ class TestLedger(unittest.TestCase):
         v.sign(wallet)
         o.add_entry(v)
 
-        print(o.to_string())
-
 
 if __name__ == '__main__':
     unittest.main()
