@@ -4,8 +4,8 @@ import unittest
 import os
 import copy
 
-from svcontas import EntryPart, Entry, DemoWallet, ACL
-from svcontas.error import ACLError
+from usawa import EntryPart, Entry, DemoWallet, ACL
+from usawa.error import ACLError
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()

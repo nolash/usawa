@@ -3,7 +3,7 @@ import logging
 from .constant import NSPREFIX
 from .xml import nsmap
 
-logg = logging.getLogger('svcontas.unit')
+logg = logging.getLogger('usawa.unit')
 
 BASE_UNIT = 'BTC'
 

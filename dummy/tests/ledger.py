@@ -7,8 +7,8 @@ import copy
 import lxml.etree
 from whee.mem import MemStore
 
-from svcontas import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
-from svcontas.store import LedgerStore
+from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
+from usawa.store import LedgerStore
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()

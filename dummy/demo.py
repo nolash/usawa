@@ -4,7 +4,7 @@ import datetime
 
 from lxml import etree
 
-from svcontas import load, get_units, init_ledger
+from usawa import load, get_units, init_ledger
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()

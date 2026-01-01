@@ -6,7 +6,7 @@ import lxml.etree
 import confini
 import nacl.signing
 
-from svcontas import Entry, EntryPart, DemoWallet, ACL, get_units, init_ledger
+from usawa import Entry, EntryPart, DemoWallet, ACL, get_units, init_ledger
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()

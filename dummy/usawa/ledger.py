@@ -11,7 +11,7 @@ from .xml import nsmap, XML_FORMAT_VERSION
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
 
-logg = logging.getLogger('svcontas.ledger')
+logg = logging.getLogger('usawa.ledger')
 
 
 class RunningTotal:
@@ -74,6 +74,28 @@ class RunningTotal:
 
 
 class Ledger:
+    """Ledger represents a signed and verified chain of transaction entries.
+
+    Apart from the entries chain, it also holds metadata required to expand underlying assets referenced by the entries, aswell as resolution and verification of identities of signatories.
+
+    If populated by an XML tree, all unit definitions encountered will be added to the provided UnitIndex. All other parameters will be ignored.
+
+    If the serial number parameter is non-zero, the base must be a non-zero digest value.
+
+    :param unitindex: The unit index to resolve transaction values used in the entries.
+    :type unitindex: usawa.UnitIndex
+    :param tree: A verified XML tree to use to populate the ledger.
+    :type tree: lxml.etree.ElementTree
+    :param acl: A collection of public keys to use to verify signatures. Will override existing public key lists.
+    :type acl: usawa.ACL
+    :param serial: Serial number to start the current state of the ledger on.
+    :type serial: int
+    :param base: Hexadecimal digest value defining the state of the ledger at the corresponding serial number. The digest type is defined in usawa.Entry.digest_algo
+    :type base: str
+    :param topic: Hexadecimal userdata providing context of the ledger.
+    :type topic: str
+    :todo: Add warnings for ignored parameters
+    """
 
     def __init__(self, unitindex, tree=None, acl=None, serial=0, base=None, topic=None):
         self.uidx = unitindex
@@ -98,19 +120,34 @@ class Ledger:
         logg.debug('ledger base {} from topic {}'.format(self.base.hex(), self.topic.hex()))
 
 
+    """Retrieve the serial that will be assigned to the next entry.
+
+    :rtype: int
+    :return: Serial
+    """
     def peek(self):
         return self.serial + 1
 
+    """Increment the serial and return the incremented serial, to be used for the next entry.
 
+    :rtype: int
+    :return: Serial
+    """
     def next_serial(self):
         self.serial += 1
         return self.serial
 
 
+    """Remove all entries from the ledger, and reset all metadata to defaults.
+
+    :param src: URI to the source of ledger information.
+    :type src: str
+    :rtype: None
+    """
     def reset(self, src='defalsify.org', topic=None):
         self.entries[self.uidx.base] = []
         self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
-        self.tree = lxml.etree.XML('<ledger xmlns="http://svcontas.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
+        self.tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'topic', nsmap=nsmap())
         if topic == None:
@@ -157,7 +194,16 @@ class Ledger:
         #self.tree.append(incoming)
 
 
-    # TODO: should append after last
+    """Add a decentralized identity definition for signers of the ledger.
+
+    :param keyid: Hexadecimal representation of the key identifier.
+    :type keyid: str
+    :param did: Did provider.
+    :type did: str
+    :param typ: Type of did provider, default 'web'.
+    :type did: str
+    :todo: should append after last
+    """
     def add_identity(self, keyid, did, typ='web'):
         root = self.tree
         tree = root.find('resolver', namespaces=nsmap())
@@ -173,17 +219,29 @@ class Ledger:
         tree.addnext(o)
    
 
-    # TODO: should append after last
-    def add_resolver(self, uri, algo='sha256', proto='https'):
+    """Add an endpoint to resolve content by digest.
+
+    :param location: The endpoint location, host and path or only path, depending on the scheme.
+    :type path: str
+    :param algo: Digest algorithm to use to retrieve and verify content, default 'sha256'.
+    :type path: str
+    :param proto: URI scheme used to connect to the endpoint.
+    :param algo: str
+    :todo: should append after last
+    """
+    def add_resolver(self, location, algo='sha256', scheme='https'):
         tree = self.tree.find('units', namespaces=nsmap())
         o = lxml.etree.Element(NSPREFIX + 'resolver', nsmap=nsmap())
         o.attrib['algo'] = algo
         o.attrib['proto'] = proto
-        o.text = uri
+        o.text = path
         tree.addnext(o)
 
+    """Check signature on individual ledger entry.
 
-    # TODO: add check against trusted pubkey list
+    :param entry: The individual entry to verify.
+    :type entry: usawa.Entry
+    """
     def check_sigs(self, entry):
         have = False
         valid_keys = None
@@ -206,6 +264,14 @@ class Ledger:
         return have
 
 
+    """Append entry to ledger. The entry must have a valid signature from a trusted public key.
+
+    :param entry: The entry to append.
+    :type entry: usawa.Entry
+    :param modify_tree: If True, also append the entry to the XML export.
+    :type modify_tree: boolean
+    :todo: modify_tree is too low-level for this API
+    """
     def add_entry(self, entry, modify_tree=True):
         if not self.check_sigs(entry):
             raise ValueError('entry must have at least one valid signature')
@@ -225,11 +291,28 @@ class Ledger:
         logg.debug('entryunit {} {}'.format(entry.unit, self.running[entry.unit]))
 
 
+    """Add a signature on the ledger.
+    
+    :todo: not an appropriate API function?
+    :todo: implement validity checks for signature.
+    """
     def add_signature(self, sigdata, identity):
         self.sigs[identity] = sigdata 
         logg.debug('add sig from key{}: {}'.format(identity, sigdata))
 
-   
+  
+    """Create a new ledger from a parsed XML document.
+
+    Does not check validity of tree against schema.
+
+    :param tree: A parsed and validated XML tree.
+    :type tree: lxml.etree.ElementTree
+    :param unitindex: Definition of all units used in the XML tree.
+    :type unitindex: usawa.UnitIndex
+    :param acl: List of public keys to validate signatures against. Overrides the keys in the entry object.
+    :type acl: usawa.ACL
+    :todo: Specify in docs which exception raised if unit not found in index.
+    """
     @staticmethod
     def from_tree(tree, unitindex, acl=None):
         topic_node = tree.find('topic', namespaces=nsmap())
@@ -269,6 +352,11 @@ class Ledger:
         return r.check()
 
 
+    """Append all entries from XML tree to ledger.
+
+    :param tree: A parsed XML tree.
+    :todo: Not an API method.
+    """
     def apply_tree(self, tree):
         start = self.serial
         last = 0
@@ -282,18 +370,41 @@ class Ledger:
         logg.info('last entry from tree serial ' + str(self.serial))
 
 
+    """Return XML tree representation of the state of the ledger object.
+
+    :returns: XML tree.
+    :rtype: lxml.etree.ElementTree
+    """
     def to_tree(self):
         return self.tree
 
 
+    """Verify digest chain and signatures in ledger.
+
+    :todo: implement, currently a no-op
+    """
     def check(self):
         return self
 
 
+    """Return a string representation of the XML tree.
+
+    :returns: XML document in UTF-8 format.
+    :rtype: str
+    """
     def to_string(self):
         return lxml.etree.tostring(self.tree)
 
 
+    """Returns the digest of the current state of the ledger.
+
+    The digest is calculated on the full chain of entries currently in the ledger.
+
+    The digest type is defined in the usawa.Entry.digest_algo.
+
+    :returns: Digest.
+    :rtype: bytes 
+    """
     def current(self):
         return self.cur
 

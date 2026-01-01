@@ -12,7 +12,7 @@ from .crypto import DemoWallet
 from .error import ACLError, VerifyError
 from .xml import nsmap
 
-logg = logging.getLogger('svcontas.entry')
+logg = logging.getLogger('usawa.entry')
 
 
 class KeyStoreFormat(enum.IntEnum):
@@ -62,6 +62,8 @@ class EntryPart:
 
 
 class Entry:
+
+    digest_algo = 'sha512'
 
     # TODO: parent only 0 if serial 0  
     def __init__(self, src, dst, unit, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
@@ -158,7 +160,7 @@ class Entry:
 
     def sum(self):
         b = self.serialize()
-        h = hashlib.new('sha512')
+        h = hashlib.new(self.digest_algo)
         h.update(b)
         return (h.digest(), b)
 
