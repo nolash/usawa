@@ -15,6 +15,26 @@ logg = logging.getLogger('usawa.ledger')
 
 
 class RunningTotal:
+    """RunningTotal is used by the Ledger object to keep track of running totals in all asset and transaction categories of a given unit symbol.
+
+    The symbol must exist in the unit index provided.
+
+    All values used in methods of this object must be integer values representing the decimals corresponding to the precision of the symbol, as defined by the unit index.
+
+    :param sym: Unit symbol tracked by this object.
+    :type sym: str
+    :param unitindex: Unit index to resolve symbol against.
+    :type unitindex: usawa.UnitIndex
+    :param asset: Initial asset total.
+    :type asset: int
+    :param liability: Initial liability total.
+    :type liability: int
+    :param income: Initial income total.
+    :type income: int
+    :param expense: Initial expense total.
+    :type expense: int
+    :todo: Specify raises when sym not found in unitindex.
+    """
 
     def __init__(self, sym, unitindex, asset=0, liability=0, income=0, expense=0):
         self.sym = sym
@@ -25,30 +45,63 @@ class RunningTotal:
         self.unitindex = unitindex
 
 
+    """Return the current asset/liability balance.
+
+    :returns: Balance
+    :rtype: int
+    """
     def get_balance(self):
         return self.asset - self.liability 
 
+    """Return the current income/expense result.
 
+    :returns: Result. 
+    :rtype: int
+    """
     def get_result(self):
         return self.income - self.expense
 
 
+    """Increment the income total by the provided value.
+
+    :param v: Value
+    :type v: int
+    """
     def income_delta(self, v):
         self.income += v
 
+    """Increment the expense total by the provided value.
 
+    :param v: Value
+    :type v: int
+    """
     def expense_delta(self, v):
         self.expense += v
 
+    """Increment the asset total by the provided value.
 
+    :param v: Value
+    :type v: int
+    """
     def asset_delta(self, v):
         self.asset += v
 
+    """Increment the liability total by the provided value.
 
+    :param v: Value
+    :type v: int
+    """
     def liability_delta(self, v):
         self.liability += v
 
 
+    """Apply all deltas from an entry to the running total.
+
+    The running total does not keep track of which entries have been applied.
+
+    :param entry: Entry to apply changes for.
+    :type entry: usawa.Entry
+    """
     def apply_entry(self, entry):
         src = entry.src.typ
         dst = entry.dst.typ
