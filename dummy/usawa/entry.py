@@ -16,11 +16,26 @@ logg = logging.getLogger('usawa.entry')
 
 
 class KeyStoreFormat(enum.IntEnum):
+    """
+    :todo: Unclear what purpose this serves, only literal in use now.
+    """
     LITERAL = 0
     INDEXED = 1
 
 
 class EntryPart:
+    """EntryPart is one of the two parts of a transaction, representing either side of a double-accounting ledger.
+    
+    :param typ: One of 'asset', 'liability', 'income', 'expense'
+    :type typ: str
+    :param account: A path-like account name.
+    :type account: str
+    :param amount: Amount as integer, including decimals according to unit precision.
+    :type amount: int
+    :param src: False is credit side of transaction, True if debit side.
+    :type src: boolean
+    :todo: Make typ enum
+    """
 
     def __init__(self, typ, account, amount, src=False):
         self.typ = typ
@@ -29,6 +44,13 @@ class EntryPart:
         self.issrc = src
 
 
+    """Create object from an entry part defined as an XML tree.
+
+    :param tree: The entry as XML tree.
+    :type tree: lxml.etree.ElementTree
+    :param src: If True, will create the debit side of the transaction. Otherwise, will create the credit side.
+    :type src: boolean
+    """
     @staticmethod
     def from_tree(tree, src=False):
         typ = tree.get('type')
@@ -36,7 +58,13 @@ class EntryPart:
         account = tree.find('account', namespaces=nsmap()).text
         return EntryPart(typ, account, amount, src=src)
 
-    
+   
+    """Commit the object state to XML.
+
+    :returns: Same object.
+    :rtype: usawa.EntryPart
+    :todo: Not an API function?
+    """
     def apply_tree(self, tree):
         tag = 'dst'
         if self.issrc:
