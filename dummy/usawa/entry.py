@@ -90,10 +90,36 @@ class EntryPart:
 
 
 class Entry:
+    """Entry represents a single pair of accounts, credit and debit, for a transaction.
 
-    digest_algo = 'sha512'
+    If parent is not specified, the entry will be expected to be the first entry in the ledger, and the serial number must be zero.
 
-    # TODO: parent only 0 if serial 0  
+    :param src: The account debited, as a path-like string.
+    :type src: str
+    :param dst: The account credited, as a path-like string.
+    :type dst: str
+    :param unit: The symbol of the unit of account for the transation.
+    :type dst: str 
+    :param serial: The entry's serial number in the ledger.
+    :type serial: int
+    :param tx_date: The date of the transaction.
+    :type tx_date: datetime.date
+    :param ref: A unique reference UUID for the transation. If not specified, one will be automatically generated.
+    :type ref: uuid.UUID
+    :param description: An optional textual description of the transaction.
+    :type description: str
+    :param parent: Digest of the preceding ledger state, in hexadecimal format.
+    :type parent: str
+    :param tx_datereg: Date and time entry was added to the ledger. If not set, the current date and time will be used.
+    :type tx_datereg: datetime.datetime
+    :todo: Add an optional time part to the entry, e.g. for POS items.
+    :todo: Implement throw error if non-zero serial has zero-value digest.
+    :todo: Check hashlen of parent against actual digest length defined in digest_algo.
+    :todo: Prevent changes after the first signature calculation.
+    """
+
+    digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type.
+
     def __init__(self, src, dst, unit, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
@@ -118,14 +144,46 @@ class Entry:
         self.dst = dst
 
 
+    """Append a single media asset to the attachment list for the entry.
+
+    :param mime: MIME type of asset.
+    :type mime: str
+    :param algo: Algorithm used to generate digest of attachment. Must be a valid algorithm identifier for hashlib (standard library).
+    :type algo: str
+    :param digest: The digest of the asset.
+    :type digest: bytes
+    :param description: Optional description string for the asset.
+    :type digest: str
+    :param slug: Optional machine-friendly name, e.g. used as filename stem.
+    :type slug: str
+    """
     def attach(self, mime, algo, digest, description=None, slug=None):
         self.attachment.append((mime, algo, digest, description, slug,))
 
 
+    """Add a signature over the ledger state of the entry.
+
+    :param keyid: Key identifier, e.g. as used in a DID.
+    :type keyid: str
+    :param sigdata: Key identifier, e.g. as used in a DID.
+    :type keyid: bytes
+    """
     def add_signature(self, keyid, sigdata):
         self.sigs[keyid] = sigdata
 
 
+    """Create an entry object from an XML representation.
+
+    :param tree: A parsed XML tree containing the entry.
+    :type tree: lxml.etree.ElementTree
+    :param unitindex: A unitindex containing the necessary definitions for the unit symbol used in the entry.
+    :type unitindex: usawa.UnitIndex
+    :param min: Minimal valid serial entry.
+    :type min: int
+    :raises ValueError: serial is less than min
+    :returns: Entry object.
+    :rtype: usawa.Entry
+    """
     @staticmethod
     def from_tree(tree, unitindex, min=0):
         o = tree.find('data', namespaces=nsmap())
@@ -151,6 +209,11 @@ class Entry:
         return r
 
 
+    """Generate the serialization format used to calculate the digest for the entry.
+
+    :returns: String representation of the entry, in rencode format.
+    :rtype: str
+    """
     def serialize(self):
         src = [self.src.typ, self.src.account, self.src.amount]
         dst = [self.dst.typ, self.dst.account, self.dst.amount]
@@ -168,7 +231,13 @@ class Entry:
         logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
 
-    
+    """Create an entry object from serialized data.
+
+    :param data: rencoded entry object, as produced by the serialize() method.
+    :type data: str
+    :returns: Entry object.
+    :rtype: usawa.Entry
+    """
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
@@ -186,6 +255,11 @@ class Entry:
         return Entry(src, dst, unit, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         
 
+    """Calculate and return the digest of the entry.
+
+    :returns: Tuple with two members, containing the digest of entry and the serialized data, respectively.
+    :rtype: tuple
+    """
     def sum(self):
         b = self.serialize()
         h = hashlib.new(self.digest_algo)
@@ -193,6 +267,15 @@ class Entry:
         return (h.digest(), b)
 
 
+    """Add a signature to the entry.
+
+    The digest of the entry is automatically generated from the current state of the entry.
+
+    :param wallet: Wallet containing private key used to sign the entry.
+    :type wallet: usawa.Wallet
+    :returns: Tuple with three members, containing the digest of entry, the signature, and the serialized data, respectively.
+    :rtype: tuple
+    """
     def sign(self, wallet):
         (z, b) = self.sum()
         r = wallet.sign(z)
@@ -202,6 +285,12 @@ class Entry:
         return (z, r, b,)
 
 
+    """Bundle signed, serialized entry data with public keys used to sign the entry.
+
+    :param wallet: If defined, add a signature from the given wallet to the entry.
+    :type wallet: usawa.Wallet
+    :todo: Current specifying wallet has no effect.
+    """
     def wrap(self, wallet=None):
         digest = None
         sig = None
@@ -227,7 +316,16 @@ class Entry:
             ]
         return rencode.dumps(d)
 
+    """Create an entry object from serialized data containing valid public keys for signing, generated by the wrap() method.
 
+    If ACL is defined, the public keys defined therein will override the public keys ocontained in the wrapped, serialized data.
+
+    :param data: Serialized, wrapped data.
+    :type data: bytes
+    :param acl: Optional list of public keys to validate signatures against.
+    :type acl: usawa.ACL
+    :todo: Currently expects one signature, only operates that first signature.
+    """
     @staticmethod
     def unwrap(data, acl=None):
         v = rencode.loads(data)
@@ -250,7 +348,11 @@ class Entry:
         return entry
 
 
+    """Generate and return an XML representation of the entry.
 
+    :returns: XML tree representing the entry.
+    :rtype: lxml.etree.ElementTree
+    """
     def to_tree(self):
         #tree = etree.Element('entry', type=self.typ)
         tree = etree.Element('entry')
