@@ -325,6 +325,9 @@ class Entry:
     :param acl: Optional list of public keys to validate signatures against.
     :type acl: usawa.ACL
     :todo: Currently expects one signature, only operates that first signature.
+    :raises: usawa.VerifyError if entry data could not be verified with any available public key.
+    :returns: The entry object.
+    :rtype: usawa.Entry
     """
     @staticmethod
     def unwrap(data, acl=None):
@@ -344,7 +347,8 @@ class Entry:
         sig = v[1][0]
         entry = Entry.deserialize(v[2])
         (z, b) = entry.sum()
-        wallet.verify(z, sig)
+        if not wallet.verify(z, sig):
+            raise VerifyError()
         return entry
 
 

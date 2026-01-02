@@ -8,7 +8,42 @@ AXX_ANY = 0x01
 logg = logging.getLogger('crypto')
 
 
-class DemoWallet:
+class Wallet:
+    """Wallet is an unimplemented class defining the interface for wallet operations.
+    """
+
+    def sign(self, v):
+        """Sign data with the wallet's private key.
+
+        :returns: Signature data.
+        :rtype: bytes
+        :todo: Raise local error if sign fail
+        """
+        raise NotImplementedError
+
+
+    def pubkey(self):
+        """Return the public key data in the wallet.
+
+        :returns: Public key data.
+        :rtype: bytes
+        :todo: Raise local error if sign fail
+        """
+        raise NotImplementedError
+
+
+    def verify(self, v, sig):
+        """Verify signature data against the given message.
+
+        :returns: True if signature is valid.
+        :rtype: boolean
+        """
+        raise NotImplementedError
+
+
+class DemoWallet(Wallet):
+    """DemoWallet is an unsafe wallet implementation used during development. It implements the Wallet interface class.
+    """
 
     def __init__(self, privatekey=None, publickey=None):
         self.pk = None
@@ -33,19 +68,31 @@ class DemoWallet:
   
 
     def sign(self, v):
+        """Implements usawa.Wallet.sign
+        """
         r = self.pk.sign(v)
         return r.signature
 
 
     def pubkey(self):
+        """Implements usawa.Wallet.pubkey
+        """
         return self.pubk.encode()
 
 
     def verify(self, v, sig):
-        return self.pubk.verify(v, sig)
+        """Implements usawa.Wallet.verify
+        """
+        #return self.pubk.verify(v, sig)
+        self.pubk.verify(v, sig)
+        return True
 
 
 class ACL:
+    """ACL defines public keys to accept signatures from, and for which purpose.
+
+    :todo: Implement signing purpose distinction.
+    """
 
     def __init__(self):
         self.axx = {}
@@ -53,6 +100,15 @@ class ACL:
 
 
     def add(self, who, what=None, label=None):
+        """Add a public key to the trusted list of keys.
+
+        :param who: Binary or hexadecimal public key data.
+        :type who: str or bytes
+        :param what: A bit-field representing what purpose key may be used.
+        :type what: bytes
+        :param label: A human-readable string describing the public key identity.
+        :type label: str
+        """
         if isinstance(who, bytes):
             who = who.hex()
         if label == None:
@@ -65,12 +121,26 @@ class ACL:
 
 
     def have(self, who):
+        """Check whether the given public key identity is in the trusted key list.
+
+        :param who: Binary or hexadecimal public key data.
+        :type who: str or bytes
+        :returns: True if found.
+        :rtype: boolean
+        """
         if isinstance(who, bytes):
             who = who.hex()
         return self.rev[who]
 
 
     def may(self, who, what):
+        """Check if key is valid for the given purpose.
+
+        :param who: Binary or hexadecimal public key data.
+        :type who: str or bytes
+        :returns: 0 if key not found. Otherwise True key is valid for purpose.
+        :rtype: bool or int
+        """
         label = who
         if isinstance(label, bytes):
             label = who.hex()
@@ -81,6 +151,14 @@ class ACL:
 
 
     def pubkeys(self, binary=True):
+        """Return all public keys currently in list.
+
+        :param binary: If True, return in binary format. Return in hex otherwise.
+        :type binary: boolean
+        :returns: A list of public keys.
+        :rtype: list of str or bytes
+        :todo: Filter by purpose.
+        """
         r = []
         for k in self.axx.values():
             v = k[0]

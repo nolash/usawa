@@ -311,10 +311,8 @@ class Ledger:
                 continue
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
-            r = wallet.verify(v[0], sig)
-            have = True
-            logg.debug('having sig {}'.format(r.hex()))
-        return have
+            return wallet.verify(v[0], sig)
+        #return have
 
 
     """Append entry to ledger. The entry must have a valid signature from a trusted public key.
