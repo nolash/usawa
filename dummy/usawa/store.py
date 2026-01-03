@@ -13,21 +13,44 @@ PFX_ENTRY = b'\x04'
 
 
 def pfx_ledger_topic(topic):
+    """Return ledger store prefix for topic.
+
+    :params topic: Topic to generate prefix for.
+    :type topic: bytes
+    :returns: Prefix.
+    :rtype: bytes
+    """
     r = PFX_LEDGER + topic
     return r
 
 def pfx_ledger_lock(topic):
+    """Return ledger store locking prefix for topic.
+
+    :params topic: Topic to generate prefix for.
+    :type topic: bytes
+    :returns: Prefix.
+    :rtype: bytes
+    """
     r = PFX_LEDGER_LOCK + topic
     return r
 
 
-def pfx_ledger(ledger):
-    if not isinstance(ledger, Ledger):
-        raise ValueError('invalid ledger')
-    return pfx_ledger_topic(topic)
+#def pfx_ledger(ledger):
+#    if not isinstance(ledger, Ledger):
+#        raise ValueError('invalid ledger')
+#    return pfx_ledger_topic(topic)
 
 
 def pfx_entry(ledger, entry):
+    """Return ledger store prefix for an entry.
+
+    :param ledger: Ledger context for the entry.
+    :type ledger: usawa.Ledger
+    :param entry: Entry to create prefix for.
+    :type entry: usawa.Entry
+    :returns: Prefix.
+    :rtype: bytes
+    """
     if not isinstance(entry, Entry):
         raise ValueError('invalid entry')
     if not isinstance(ledger, Ledger):
@@ -36,7 +59,13 @@ def pfx_entry(ledger, entry):
 
 
 class LedgerStore(Interface):
+    """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 
+    :param implementation: Store implementation.
+    :type implementation: whee.Interface (implementation)
+    :param ledger: The ledger for which to execute store operations.
+    :type ledger: usawa.Ledger
+    """
     def __init__(self, implementation, ledger):
         if not isinstance(implementation, Interface):
             raise ValueError('store must be whee interface instance')
@@ -46,6 +75,7 @@ class LedgerStore(Interface):
         self.__o = implementation
 
 
+    # WIP implementation of couchdb?
     def start(self):
         serial = 0
         k = pfx_ledger_topic(self.ledger.topic)
@@ -58,6 +88,7 @@ class LedgerStore(Interface):
         self.ledger.serial = serial
 
 
+    # WIP implementation of couchdb?
     def lock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = None
@@ -70,11 +101,18 @@ class LedgerStore(Interface):
         # atomic until here
 
 
+    # WIP implementation of couchdb?
     def unlock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = self.__o.delete(k)
 
 
+    """Add an entry to the store.
+
+    :param entry: Entry to add.
+    :type entry: usawa.Entry
+    :raises: FileExistsError if entry is already in store.
+    """
     def add_entry(self, entry):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap()
