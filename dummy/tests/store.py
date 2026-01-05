@@ -34,9 +34,17 @@ class TestStore(unittest.TestCase):
         src = EntryPart('income', 'foo', 1337, src=True)
         o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         wallet = DemoWallet()
-        #data = o.wrap(wallet)
         o.sign(wallet)
         store.add_entry(o)
+        r = store.get_entry(o.serial)
+        self.assertEqual(r.ref, o.ref)
+        self.assertEqual(r.description, o.description)
+
+
+    def test_store_ledger(self):
+        uidx = UnitIndex('FOO')
+        ledger = Ledger(uidx)
+        store = LedgerStore(self.store, ledger)
 
 
 if __name__ == '__main__':

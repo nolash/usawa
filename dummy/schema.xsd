@@ -8,6 +8,7 @@
 	<xs:element name="ledger">
 		<xs:complexType>
 			<xs:sequence>
+				<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 				<xs:element name="topic" type="xs:string" />
 				<xs:element name="retrieved" type="xs:dateTime" />
 				<xs:element name="src" type="xs:string" minOccurs="1" maxOccurs="1" />
@@ -101,6 +102,7 @@
 	<xs:complexType name="EntryData">
 		<xs:sequence>
 			<xs:element name="parent" type="xs:string" />
+			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="ref" type="xs:string" />
 			<xs:element name="serial" type="xs:positiveInteger" />
 			<xs:element name="unit" type="xs:string" />
@@ -119,6 +121,7 @@
 	</xs:complexType>
 
 	<xs:complexType name="Attachment">
+		<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 		<xs:attribute name="mime" type="xs:string" />
 		<xs:element name="slug" type="xs:string" />
 		<xs:element name="description" type="xs:string" />

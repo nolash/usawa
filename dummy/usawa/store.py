@@ -46,16 +46,21 @@ def pfx_entry(ledger, entry):
 
     :param ledger: Ledger context for the entry.
     :type ledger: usawa.Ledger
-    :param entry: Entry to create prefix for.
-    :type entry: usawa.Entry
+    :param entry: Entry or serial to create prefix for.
+    :type entry: usawa.Entry or int
     :returns: Prefix.
     :rtype: bytes
     """
-    if not isinstance(entry, Entry):
+    serial = -1
+    if isinstance(entry, Entry):
+        serial = entry.serial
+    elif isinstance(entry, int):
+        serial = entry
+    else:
         raise ValueError('invalid entry')
     if not isinstance(ledger, Ledger):
         raise ValueError('invalid ledger')
-    return PFX_LEDGER + ledger.topic + entry.serial.to_bytes(8, byteorder='big')
+    return PFX_LEDGER + ledger.topic + serial.to_bytes(8, byteorder='big')
 
 
 class LedgerStore(Interface):
@@ -117,3 +122,9 @@ class LedgerStore(Interface):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap()
         self.__o.put(k, v)
+
+
+    def get_entry(self, entry, acl=None):
+        k = pfx_entry(self.ledger, entry)
+        v = self.__o.get(k)
+        return Entry.unwrap(v, acl=acl)

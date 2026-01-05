@@ -36,7 +36,6 @@ class EntryPart:
     :type src: boolean
     :todo: Make typ enum
     """
-
     def __init__(self, typ, account, amount, src=False):
         self.typ = typ
         self.account = account
@@ -90,6 +89,9 @@ class EntryPart:
 
 
 class Entry:
+
+    digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type.
+
     """Entry represents a single pair of accounts, credit and debit, for a transaction.
 
     If parent is not specified, the entry will be expected to be the first entry in the ledger, and the serial number must be zero.
@@ -117,9 +119,6 @@ class Entry:
     :todo: Check hashlen of parent against actual digest length defined in digest_algo.
     :todo: Prevent changes after the first signature calculation.
     """
-
-    digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type.
-
     def __init__(self, src, dst, unit, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
@@ -243,11 +242,11 @@ class Entry:
         v = rencode.loads(data)
         parent = v[0]
         serial = v[1]
-        ref = v[2]
+        ref = v[2].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
         unit = v[5]
-        description = v[6]
+        description = v[6].decode('utf-8')
         src_data = v[7]
         dst_data = v[8]
         src = EntryPart(src_data[0], src_data[1], src_data[2], src=True)
@@ -293,10 +292,14 @@ class Entry:
     """
     def wrap(self, wallet=None):
         digest = None
-        sig = None
         data = None
         if wallet != None:
-            (digest, sig, data) = self.sign(wallet)
+            (digest, _sig, data) = self.sign(wallet)
+        elif len(self.sigs) == 0:
+            raise PermissionError('at least one signature required')
+        else:
+            (digest, data) = self.sum()
+
         hdr = []
         sigs = []
         for k in self.sigs:
