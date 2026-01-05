@@ -153,7 +153,7 @@ class Ledger:
     :todo: Add warnings for ignored parameters
     """
 
-    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT, topic=None):
+    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -161,7 +161,7 @@ class Ledger:
         self.tree = tree
         self.base = base
         self.base_serial = serial
-        self.src = None
+        self.src = src
         self.topic = topic
         self.acl = acl
         if self.topic == None:

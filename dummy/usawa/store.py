@@ -8,11 +8,16 @@ from .ledger import Ledger
 from .entry import Entry
 
 
+PFX_KEY = b'\x00'
 PFX_LEDGER = b'\x01'
 PFX_LEDGER_LOCK = b'\x02'
 PFX_ENTRY = b'\x04'
 
 logg = logging.getLogger('usawa.store')
+
+
+def pfx_key():
+    return PFX_KEY
 
 
 def pfx_ledger_topic(topic):
