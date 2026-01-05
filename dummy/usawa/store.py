@@ -1,5 +1,6 @@
 import enum
 import os
+import logging
 
 from whee import Interface
 
@@ -10,6 +11,8 @@ from .entry import Entry
 PFX_LEDGER = b'\x01'
 PFX_LEDGER_LOCK = b'\x02'
 PFX_ENTRY = b'\x04'
+
+logg = logging.getLogger('usawa.store')
 
 
 def pfx_ledger_topic(topic):
@@ -115,7 +118,8 @@ class LedgerStore(Interface):
     """Add an entry to the store.
 
     :param entry: Entry to add.
-    :type entry: usawa.Entry
+    :type entry: usawa.Entry or int
+    :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
     def add_entry(self, entry):
@@ -123,8 +127,32 @@ class LedgerStore(Interface):
         v = entry.wrap()
         self.__o.put(k, v)
 
+    """Restore an entry from data from the store.
 
+    The entry is referenced by its serial number within the store's ledger. It can either be specified as an integer, or an entry object with the serial number property set accordingly.
+
+    :param entry: Entry of entry serial to restore.
+    :type entry: usawa.Entry or int
+    :param acl: Optional list of public keys to validate signatures against.
+    :type acl: usawa.ACL
+    :raises: PermissionError if the entry does not have a valid signature.
+    :raises: ValueError if the serial number cannot be retrieved from the entry argument.
+    :raises: FileExistsError if entry is already in store.
+    """
     def get_entry(self, entry, acl=None):
         k = pfx_entry(self.ledger, entry)
         v = self.__o.get(k)
         return Entry.unwrap(v, acl=acl)
+
+
+    def load(self):
+        logg.debug('load ledger {}'.format(self.ledger.acl))
+        while True:
+            o = None
+            try:
+                o = self.get_entry(self.ledger.serial)
+            except FileNotFoundError:
+                break
+            logg.debug('entry {}'.format(o))
+            self.ledger.add_entry(o, modify_tree=True)
+            self.ledger.next_serial()

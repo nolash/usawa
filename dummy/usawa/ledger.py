@@ -127,6 +127,9 @@ class RunningTotal:
 
 
 class Ledger:
+
+    default_src = 'defalsify.org'
+
     """Ledger represents a signed and verified chain of transaction entries.
 
     Apart from the entries chain, it also holds metadata required to expand underlying assets referenced by the entries, aswell as resolution and verification of identities of signatories.
@@ -150,26 +153,28 @@ class Ledger:
     :todo: Add warnings for ignored parameters
     """
 
-    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=None, topic=None):
+    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT, topic=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
         self.running = {}
         self.tree = tree
-        if self.tree == None:
-            self.reset()
-        self.serial = serial
-        if topic == None:
-            topic = os.urandom(64)
+        self.base = base
+        self.base_serial = serial
+        self.src = None
+        self.topic = topic
+        self.acl = acl
+        if self.topic == None:
+            self.topic = os.urandom(64)
         if base == None:
             h = hashlib.sha512()
             h.update(topic)
             h.update(DEFAULTPARENT)
             base = h.digest()
-        self.base = base
-        self.topic = topic
+        if self.tree == None:
+            self.reset()
+        self.serial = self.base_serial
         self.cur = base
-        self.acl = acl
         logg.debug('ledger base {} from topic {}'.format(self.base.hex(), self.topic.hex()))
 
 
@@ -193,24 +198,38 @@ class Ledger:
 
     """Remove all entries from the ledger, and reset all metadata to defaults.
 
+    If either src or topic is not defined, the existing src or topic value on the existing ledger will be preserved. If none is set, they will be set to default values.
+
     :param src: URI to the source of ledger information.
     :type src: str
+    :param topic: Topic to set for new ledger.
+    :type topic: bytes
     :rtype: None
     """
-    def reset(self, src='defalsify.org', topic=None):
+    def reset(self, src=None, topic=None):
+        self.serial = self.base_serial
+        self.cur = self.base
         self.entries[self.uidx.base] = []
         self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
         self.tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'topic', nsmap=nsmap())
         if topic == None:
-            topic = os.urandom(64)
-            topic = topic.hex()
+            if self.topic == None:
+                topic = os.urandom(64)
+                topic = topic.hex()
+            else:
+                topic = self.topic.hex()
         o.text = topic
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
         o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
         #self.tree.append(o)
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'src', nsmap=nsmap())
+        if src == None:
+            if self.src != None:
+                src = self.src
+            else:
+                src = self.default_src
         o.text = src
 
         units = lxml.etree.SubElement(self.tree, NSPREFIX + 'units', nsmap=nsmap())
@@ -228,7 +247,7 @@ class Ledger:
         #self.tree.append(units)
 
         incoming = lxml.etree.SubElement(self.tree, NSPREFIX + 'incoming', nsmap=nsmap())
-        incoming.attrib['serial'] = '0'
+        incoming.attrib['serial'] = str(self.serial)
 
         real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
         real.attrib['unit'] = self.uidx.base
@@ -242,7 +261,7 @@ class Ledger:
 
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'
-        o.text = DEFAULTPARENT.hex()
+        o.text = self.base.hex()
         #incoming.append(o)
         #self.tree.append(incoming)
 
@@ -299,15 +318,21 @@ class Ledger:
         have = False
         valid_keys = None
         if self.acl == None:
+            logg.debug('no acl in ledger')
             valid_keys = list(entry.sigs.keys())
         else:
             valid_keys = list(self.acl.pubkeys(binary=False))
         logg.debug('testing valid keys {}'.format(valid_keys))
         for k in valid_keys:
-            b = bytes.fromhex(k)
+            b = None
+            try:
+                b = bytes.fromhex(k)
+            except:
+                b = k
             try:
                 sig = entry.sigs[k]
             except KeyError:
+                logg.debug('no signature from {}'.format(k))
                 continue
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
@@ -458,6 +483,33 @@ class Ledger:
     """
     def current(self):
         return self.cur
+
+
+    """Generate the serialization format used to calculate the digest for the entry.
+
+    :returns: String representation of the entry, in rencode format.
+    :rtype: str
+    """
+    def serialize(self, ledger):
+        d = [
+                self.topic,
+                ]
+        logg.debug('serialize ledger {}'.format(d))
+        return rencode.dumps(d)
+
+
+    """Create a ledger object from serialized data.
+
+    :param data: rencoded ledger object, as produced by the serialize() method.
+    :type data: str
+    :returns: Ledger object.
+    :rtype: usawa.Ledger
+    """
+    @staticmethod
+    def deserialize(self, unitindex, serial=None, base=None, acl=None, src=None):
+        v = rencode.loads(data)
+        o = Ledger(base=base, serial=serial, acl=acl, src=src, topic=v[0])
+        return o
 
 
     def __str__(self):

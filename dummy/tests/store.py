@@ -3,12 +3,14 @@ import datetime
 import unittest
 import os
 import copy
+import uuid
 
 import lxml.etree
 from whee.mem import MemStore
 
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
 from usawa.store import LedgerStore
+from usawa.crypto import ACL
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -27,8 +29,8 @@ class TestStore(unittest.TestCase):
 
 
     def test_store_entry(self):
-        uidx = UnitIndex('FOO')
-        ledger = Ledger(uidx)
+        uidx = UnitIndex('USD')
+        ledger = Ledger(uidx, serial=42, base=self.parent)
         store = LedgerStore(self.store, ledger)
         dst = EntryPart('asset', 'foo', 1337)
         src = EntryPart('income', 'foo', 1337, src=True)
@@ -42,9 +44,31 @@ class TestStore(unittest.TestCase):
 
 
     def test_store_ledger(self):
-        uidx = UnitIndex('FOO')
-        ledger = Ledger(uidx)
+        uidx = UnitIndex('USD')
+        wallet = DemoWallet()
+        acl = ACL()
+        acl.add(wallet.pubkey())
+        ledger = Ledger(uidx, serial=42, base=self.parent)
         store = LedgerStore(self.store, ledger)
+
+        dst = EntryPart('asset', 'foo', 1337)
+        src = EntryPart('income', 'foo', 1337, src=True)
+        o = Entry(src, dst, 'USD', 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.sign(wallet)
+        store.add_entry(o)
+    
+        ref = str(uuid.uuid4())
+        parent = o.sum()[0]
+        description = 'barbarbar'
+        dtreg = datetime.datetime.now()
+        dst = EntryPart('expense', 'bar', 4200)
+        src = EntryPart('liability', 'bar', 4200, src=True)
+        o = Entry(src, dst, 'USD', 43, datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg)
+        o.sign(wallet)
+        store.add_entry(o)
+        
+        ledger = Ledger(uidx, serial=42, base=self.parent, acl=acl, topic=ledger.topic)
+        store.load()
 
 
 if __name__ == '__main__':

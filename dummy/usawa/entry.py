@@ -240,17 +240,17 @@ class Entry:
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
-        parent = v[0]
+        parent = v[0].hex()
         serial = v[1]
         ref = v[2].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
-        unit = v[5]
+        unit = v[5].decode('utf-8')
         description = v[6].decode('utf-8')
         src_data = v[7]
         dst_data = v[8]
-        src = EntryPart(src_data[0], src_data[1], src_data[2], src=True)
-        dst = EntryPart(dst_data[0], dst_data[1], dst_data[2])
+        src = EntryPart(src_data[0].decode('utf-8'), src_data[1].decode('utf-8'), src_data[2], src=True)
+        dst = EntryPart(dst_data[0].decode('utf-8'), dst_data[1].decode('utf-8'), dst_data[2])
         return Entry(src, dst, unit, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         
 
@@ -352,11 +352,14 @@ class Entry:
         (z, b) = entry.sum()
         if not wallet.verify(z, sig):
             raise VerifyError()
+        # TODO: demo only takes into account single signature
+        entry.add_signature(pubkey_bytes, sig)
         return entry
 
 
     """Generate and return an XML representation of the entry.
 
+    :todo: Make sure that sigs publickey lookup key is bytes type
     :returns: XML tree representing the entry.
     :rtype: lxml.etree.ElementTree
     """
@@ -400,7 +403,10 @@ class Entry:
         tree.append(data)
 
         for k in self.sigs.keys():
-            o = etree.Element('sig', type='ed25519', keyid=k)
+            v = k
+            if isinstance(v, bytes):
+                v = k.hex()
+            o = etree.Element('sig', type='ed25519', keyid=v)
             o.text = self.sigs[k].hex()
             tree.append(o)
 
