@@ -346,11 +346,15 @@ class Ledger:
     :type entry: usawa.Entry
     :param modify_tree: If True, also append the entry to the XML export.
     :type modify_tree: boolean
+    :raises ValueError: When entry parent does not match ledger state.
+    :raises PermissionError: When entry is missing valid signature.
     :todo: modify_tree is too low-level for this API
     """
     def add_entry(self, entry, modify_tree=True):
+        if self.cur != entry.parent:
+            raise ValueError('entry parent does not match ledger state')
         if not self.check_sigs(entry):
-            raise ValueError('entry must have at least one valid signature')
+            raise PermissionError('entry must have at least one valid signature')
         try:
             entries = self.entries[entry.serial]
         except KeyError:
