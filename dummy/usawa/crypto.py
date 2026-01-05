@@ -32,6 +32,16 @@ class Wallet:
         raise NotImplementedError
 
 
+    def privkey(self):
+        """Return the private key data in the wallet.
+        
+        :returns: Private key data.
+        :rtype: bytes
+        :todo: Raise local error if sign fail
+        """
+        raise NotImplementedError
+
+
     def verify(self, v, sig):
         """Verify signature data against the given message.
 
@@ -79,6 +89,11 @@ class DemoWallet(Wallet):
         """
         return self.pubk.encode()
 
+
+    def privkey(self, passphrase=None):
+        """Implements usawa.Wallet.privkey
+        """
+        return self.pk.encode()
 
     def verify(self, v, sig):
         """Implements usawa.Wallet.verify

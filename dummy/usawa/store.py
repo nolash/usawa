@@ -16,8 +16,11 @@ PFX_ENTRY = b'\x04'
 logg = logging.getLogger('usawa.store')
 
 
-def pfx_key():
-    return PFX_KEY
+def pfx_key(pubkey=None):
+    v = PFX_KEY
+    if pubkey == None:
+        return v
+    return v + pubkey
 
 
 def pfx_ledger_topic(topic):
@@ -88,7 +91,6 @@ class LedgerStore(Interface):
         self.__o = implementation
 
 
-    # WIP implementation of couchdb?
     def start(self):
         serial = 0
         k = pfx_ledger_topic(self.ledger.topic)
@@ -101,7 +103,6 @@ class LedgerStore(Interface):
         self.ledger.serial = serial
 
 
-    # WIP implementation of couchdb?
     def lock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = None
@@ -114,7 +115,6 @@ class LedgerStore(Interface):
         # atomic until here
 
 
-    # WIP implementation of couchdb?
     def unlock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = self.__o.delete(k)
@@ -150,14 +150,54 @@ class LedgerStore(Interface):
         return Entry.unwrap(v, acl=acl)
 
 
+    """Flush ledger and load all entries from store.
+
+    The existing state will always be lost.
+
+    If the load fails, the ledger will be reset before returning.
+
+    :raises FileNotFoundError: If an entry cannot be found.
+    """
     def load(self):
-        logg.debug('load ledger {}'.format(self.ledger.acl))
+        self.ledger.reset()
+        logg.debug('load ledger from store {}'.format(self.ledger))
         while True:
             o = None
             try:
                 o = self.get_entry(self.ledger.serial)
             except FileNotFoundError:
+                self.ledger.reset()
                 break
-            logg.debug('entry {}'.format(o))
             self.ledger.add_entry(o, modify_tree=True)
             self.ledger.next_serial()
+
+
+    """Add signing key to the store.
+
+    If this is the first key in the store, it will be set as default.
+
+    :param wallet: The wallet object to store keys for.
+    :type wallet: usawa.Wallet implementation
+    :param default: If True, this key will be set as default key.
+    :type default: bool
+    :todo: Currently the signing key is stored literally. It needs encryption!
+    """
+    def add_key(self, wallet, default=False):
+        k = pfx_key()
+        try:
+            self.__o.get(k)
+        except FileNotFoundError:
+            default = True
+        pubkey = wallet.pubkey()
+        if default:
+            self.__o.put(k, pubkey, exist_ok=True)
+        k = pfx_key(pubkey=pubkey)
+        self.__o.put(k, wallet.privkey())
+
+
+    def get_key(self, pubkey=None):
+        if pubkey == None:
+            k = pfx_key()
+            pubkey = self.__o.get(k)
+        k = pfx_key(pubkey=pubkey)
+        return self.__o.get(k)
