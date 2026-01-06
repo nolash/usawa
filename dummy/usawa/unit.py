@@ -9,6 +9,9 @@ BASE_UNIT = 'BTC'
 
 
 class UnitIndex:
+
+    default_precision = 2
+
     """UnitIndex holds metadata for units of account.
 
     Specifically, it defines an exchange rate aswell as decimal precision.
@@ -138,7 +141,13 @@ class UnitIndex:
         if l < c:
             ss = '0' * c
             s = '0' + ss[:c-l] + s
-        r = s[:i] + '.' + s[i:]
+
+        v = s[:i]
+        r = s[i:]
+        if self.detail[sym] > 0:
+            if len(v) == 0:
+                v = '0'
+            r = v + '.' + s[i:]
         if neg:
             r = '-' + r
         return r

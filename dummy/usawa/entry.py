@@ -75,6 +75,7 @@ class EntryPart:
 
         o = etree.Element('amount')
         o.text = str(self.amount)
+        logg.debug('tree amount {}'.format(o.text))
         part.append(o)
 
         tree.append(part)

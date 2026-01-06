@@ -20,8 +20,9 @@ class Context:
         self.uidx = None
         self.ref = None
         self.description = None
-        self.src = [None, None, None]
-        self.dst = [None, None, None]
+        self.src = [None, None]
+        self.dst = [None, None]
+        self.amount = None
         self.part = []
 
 
@@ -40,7 +41,10 @@ class Context:
         ctx.src[1] = args.src_account
         ctx.dst[0] = args.dst_type
         ctx.dst[1] = args.dst_account
+        if args.amount != None:
+            ctx.amount = args.amount
         return ctx
+
 
     def validate(self):
         for v in self.src:
@@ -88,6 +92,7 @@ argp.add_argument('-i', action='store_true', help='interactive edit')
 argp.add_argument('-r', type=str, help='external reference')
 argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
 argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
+argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
 argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
 argp.add_argument('-d', '--description', type=str, help='interactive edit')
@@ -127,13 +132,12 @@ def do_interactive(ctx):
         o[k][1] = parse_account(v)
       
         if amount != None:
-            amount *= -1.0
+            amount *= -1
         else:
-            v = input_or_default('Entry {} amount'.format(k))
+            v = input_or_default('Entry {} amount'.format(k), ctx.amount)
             amount = parse_amount(uidx, ctx.unit, v)
 
-        o[k][2] = amount
-        ctx.part.append(EntryPart(o[k][0], o[k][1], o[k][2]))
+        ctx.part.append(EntryPart(o[k][0], o[k][1], amount))
 
     ctx.ref = input_or_default('External ref', ctx.ref)
     return ctx
