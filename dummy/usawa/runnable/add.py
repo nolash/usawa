@@ -5,6 +5,7 @@ import uuid
 import datetime
 
 from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load
+from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
 
@@ -12,9 +13,51 @@ logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 
+class Context:
+
+    def __init__(self):
+        self.unit = None
+        self.uidx = None
+        self.ref = None
+        self.description = None
+        self.src = [None, None, None]
+        self.dst = [None, None, None]
+        self.part = []
+
+
+    @staticmethod
+    def from_args(args):
+        ctx = Context()
+        ctx.unit = args.unit
+        ctx.uidx = UnitIndex(ctx.unit)
+        if args.description != None:
+            ctx.description = args.description
+        if args.r != None:
+            ctx.ref = args.r
+        else:
+            ctx.ref = str(uuid.uuid4())
+        ctx.src[0] = args.src_type
+        ctx.src[1] = args.src_account
+        ctx.dst[0] = args.dst_type
+        ctx.dst[1] = args.dst_account
+        return ctx
+
+    def validate(self):
+        for v in self.src:
+            if v == None:
+                raise ValueError('invalid src')
+        for v in self.dst:
+            if v == None:
+                raise ValueError('invalid dst')
+        #if self.topic == None:
+        #    raise ValueError('invalid topic')
+        if self.ref == None:
+            raise ValueError('invalid ref')
+        
+
 def parse_type(v):
-    if v not in ['expense', 'income', 'liability', 'asset']:
-        raise ValueError('invalid type')
+    if v not in CATEGORIES:
+        raise ValueError('invalid type: ' + v)
     return v
 
 
@@ -27,19 +70,40 @@ def parse_amount(uidx, sym, v):
     return uidx.from_floatstring(sym, v)
 
 
+def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
+    if default != None:
+        postfix = ' [{}]'.format(default) + postfix
+    v = input(prompt + postfix)
+    if len(v) == 0:
+        if default == None:
+            raise ValueError('empty value and no default')
+        v = default
+    if validate_fn != None:
+        validate_fn(v)
+    return v
+
+
 argp = argparse.ArgumentParser()
-argp.add_argument('-f', type=str, help='load ledger metadata from XML file')
-argp.add_argument('--topic', type=str, help='hexadecimal topic to load')
+argp.add_argument('-i', action='store_true', help='interactive edit')
+argp.add_argument('-r', type=str, help='external reference')
+argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
+argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
+argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
+argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
+argp.add_argument('-d', '--description', type=str, help='interactive edit')
+argp.add_argument('-u', '--unit', type=str, default='BTC', help='Unit to use for transaction')
+argp.add_argument('--unit-precision', type=int, default=2, help='Unit precision')
+argp.add_argument('--unit-rate', type=float, default=1.0, help='Unit exchange rate')
+argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
 arg = argp.parse_args()
+ctx = Context.from_args(arg)
 
 ledger = None
-unit = 'BTC'
-uidx = UnitIndex(unit)
 logg.warning('hardcoding unit index default sym, need unitindex xml parser')
 logg.warning('using default sym for all entries for now')
-if arg.f:
-    ledger_tree = load(arg.f)
-    ledger = Ledger.from_tree(ledger_tree, uidx)
+ledger_tree = load(arg.ledger_xml_file)
+uidx = UnitIndex.from_tree(ledger_tree)
+ledger = Ledger.from_tree(ledger_tree, uidx)
 
 db = ValkeyStore('')
 store = LedgerStore(db, ledger)
@@ -47,29 +111,39 @@ pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)
 dt = datetime.datetime.now()
 
-v = input('Entry description: ')
-dsc = v
 
-pair = []
-amount = None
-for k in ['src', 'dst']:
-    v = input('Entry {} type: '.format(k))
-    typ = parse_type(v)
+def do_interactive(ctx):
+    v = input_or_default('Entry description', ctx.description)
+    dsc = v
 
-    v = input('Entry {} account: '.format(k))
-    account = parse_account(v)
-  
-    if amount != None:
-        amount *= -1.0
-    else:
-        v = input('Entry {} amount: '.format(k))
-        amount = parse_amount(uidx, unit, v)
+    amount = None
+    for k in ['src', 'dst']:
+        o = vars(ctx)
+        #v = input('Entry {} type: '.format(k))
+        v = input_or_default('Entry {} type'.format(k), o[k][0])
+        o[k][0] = parse_type(v)
 
-    pair.append(EntryPart(typ, account, amount))
+        v = input_or_default('Entry {} account'.format(k), o[k][1])
+        o[k][1] = parse_account(v)
+      
+        if amount != None:
+            amount *= -1.0
+        else:
+            v = input_or_default('Entry {} amount'.format(k))
+            amount = parse_amount(uidx, ctx.unit, v)
 
-ref = uuid.uuid4()
-logg.debug('generated ref {}'.format(ref))
+        o[k][2] = amount
+        ctx.part.append(EntryPart(o[k][0], o[k][1], o[k][2]))
 
-entry = Entry(pair[0], pair[1], unit, ledger.serial, dt, parent=ledger.current(), description=dsc, ref=str(ref))
+    ctx.ref = input_or_default('External ref', ctx.ref)
+    return ctx
+
+
+if arg.i:
+    ctx = do_interactive(ctx)
+
+ctx.validate()
+entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.serial, dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
 entry.sign(wallet)
 ledger.add_entry(entry)
+print(ledger.to_string())

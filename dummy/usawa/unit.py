@@ -54,7 +54,7 @@ class UnitIndex:
         for o in tree.iter(NSPREFIX + 'unit'):
             logg.debug('add unit ' + o.get('sym'))
             r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
-            r.exchange[o.get('sym')] = int(o.find('ex', namespaces=nsmap()).text)
+            r.exchange[o.get('sym')] = int(o.find('exchange', namespaces=nsmap()).text)
         r.check()
         return r
 
