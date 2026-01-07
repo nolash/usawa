@@ -226,14 +226,16 @@ class Ledger:
         #self.tree.append(o)
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'src', nsmap=nsmap())
         if src == None:
-            if self.src != None:
-                src = self.src
-            else:
+            if self.src == None:
                 src = self.default_src
+            else:
+                src = self.src
         o.text = src
 
         units = lxml.etree.SubElement(self.tree, NSPREFIX + 'units', nsmap=nsmap())
-        units.attrib['base'] = self.uidx.base
+        logg.debug('uidx {} units {} base {}'.format(self.uidx, units, self.uidx.base))
+        #units.attrib['base'] = self.uidx.base
+        units.set('base', self.uidx.base)
         for v in self.uidx.syms():
             unit = lxml.etree.SubElement(units, NSPREFIX + 'unit', nsmap=nsmap())
             unit.attrib['sym'] = v
@@ -457,6 +459,15 @@ class Ledger:
     """
     def to_tree(self):
         return self.tree
+
+
+    """
+    """
+    def truncate(self, modify_tree=True):
+        self.base = self.cur
+        self.serial_base = self.serial
+        if modify_tree:
+            self.reset()
 
 
     """Verify digest chain and signatures in ledger.

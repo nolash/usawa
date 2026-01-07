@@ -52,9 +52,10 @@ class UnitIndex:
     """
     @staticmethod
     def from_tree(tree):
-        r = UnitIndex(tree.get('base'))
-        logg.debug('base {}'.format(tree))
-        for o in tree.iter(NSPREFIX + 'unit'):
+        unit_tree = tree.find(NSPREFIX + 'units')
+        base = unit_tree.get('base')
+        r = UnitIndex(base)
+        for o in unit_tree.iter(NSPREFIX + 'unit'):
             logg.debug('add unit ' + o.get('sym'))
             r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
             r.exchange[o.get('sym')] = int(o.find('exchange', namespaces=nsmap()).text)

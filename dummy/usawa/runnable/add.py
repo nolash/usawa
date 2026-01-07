@@ -1,3 +1,5 @@
+import os
+import sys
 import logging
 import urllib.parse
 import argparse
@@ -24,6 +26,12 @@ class Context:
         self.dst = [None, None]
         self.amount = None
         self.part = []
+        self.f = None
+
+
+    def close(self):
+        if self.f and self.f != sys.stdout:
+            self.f.close()
 
 
     @staticmethod
@@ -43,6 +51,11 @@ class Context:
         ctx.dst[1] = args.dst_account
         if args.amount != None:
             ctx.amount = args.amount
+
+        if args.output != None:
+            ctx.output = os.path.realpath(args.output)
+        else:
+            ctx.output = '<stdout>'
         return ctx
 
 
@@ -93,6 +106,7 @@ argp.add_argument('-r', type=str, help='external reference')
 argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
 argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
 argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
+argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
 argp.add_argument('-d', '--description', type=str, help='interactive edit')
@@ -115,6 +129,8 @@ store = LedgerStore(db, ledger)
 pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)
 dt = datetime.datetime.now()
+close_fn = None
+f = None
 
 
 def do_interactive(ctx):
@@ -137,9 +153,17 @@ def do_interactive(ctx):
             v = input_or_default('Entry {} amount'.format(k), ctx.amount)
             amount = parse_amount(uidx, ctx.unit, v)
 
-        ctx.part.append(EntryPart(o[k][0], o[k][1], amount))
+        ctx.part.append(EntryPart(o[k][0], o[k][1], amount, src=k=='src'))
 
     ctx.ref = input_or_default('External ref', ctx.ref)
+
+    output = input_or_default('Output file', ctx.output)
+    logg.debug('output {}'.format(output))
+    if output == '<stdout>':
+        ctx.f = sys.stdout.buffer
+        logg.debug('output is stdout')
+    else:
+        ctx.f = open(output, 'wb')
     return ctx
 
 
@@ -149,5 +173,9 @@ if arg.i:
 ctx.validate()
 entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.serial, dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
 entry.sign(wallet)
-ledger.add_entry(entry)
-print(ledger.to_string())
+#store.add_entry(entry)
+ledger.add_entry(entry, modify_tree=True)
+if ctx.output != None:
+    ledger.truncate()
+    ctx.f.write(ledger.to_string())
+    ctx.close()
