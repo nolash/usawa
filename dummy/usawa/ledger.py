@@ -1,5 +1,6 @@
 import os
 import datetime
+
 import logging
 import hashlib
 
@@ -122,6 +123,15 @@ class RunningTotal:
         logg.debug('applied entry {} src {} dst {} balance {}'.format(entry.serial, entry.src, entry.dst, self.unitindex.to_floatstring(self.sym, self.get_balance())))
 
 
+    """
+    """
+    def from_tree(tree):
+        unit = self.tree.get('unit')
+        asset = int(self.tree.find('asset', namespaces=nsmap()).text)
+        liability = int(self.tree.find('liability', namespaces=nsmap()).text)
+        return RunningTotal(unit, asset=asset, liability=liability)
+
+
     def __str__(self):
         return 'running total {}: income {} expense {} asset {} liability {}'.format(self.sym, self.income, self.expense, self.asset, self.liability)
 
@@ -205,15 +215,14 @@ class Ledger:
     :param topic: Topic to set for new ledger.
     :type topic: bytes
     :rtype: None
+    :todo: swapping tree keeps two trees in memory, perhaps it can be more efficient
     """
     def reset(self, src=None, topic=None):
         self.serial = self.base_serial
         self.cur = self.base
         self.entries[self.uidx.base] = []
-#        self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
-        self.tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
-        #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
-        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'topic', nsmap=nsmap())
+        tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
+        o = lxml.etree.SubElement(tree, NSPREFIX + 'topic', nsmap=nsmap())
         if topic == None:
             if self.topic == None:
                 topic = os.urandom(64)
@@ -221,10 +230,10 @@ class Ledger:
             else:
                 topic = self.topic.hex()
         o.text = topic
-        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'retrieved', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, NSPREFIX + 'retrieved', nsmap=nsmap())
         o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
         #self.tree.append(o)
-        o = lxml.etree.SubElement(self.tree, NSPREFIX + 'src', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, NSPREFIX + 'src', nsmap=nsmap())
         if src == None:
             if self.src == None:
                 src = self.default_src
@@ -232,7 +241,7 @@ class Ledger:
                 src = self.src
         o.text = src
 
-        units = lxml.etree.SubElement(self.tree, NSPREFIX + 'units', nsmap=nsmap())
+        units = lxml.etree.SubElement(tree, NSPREFIX + 'units', nsmap=nsmap())
         logg.debug('uidx {} units {} base {}'.format(self.uidx, units, self.uidx.base))
         units.set('base', self.uidx.base)
         for v in self.uidx.syms():
@@ -247,23 +256,34 @@ class Ledger:
             #units.append(unit)
         #self.tree.append(units)
 
-        incoming = lxml.etree.SubElement(self.tree, NSPREFIX + 'incoming', nsmap=nsmap())
+        incoming = lxml.etree.SubElement(tree, NSPREFIX + 'incoming', nsmap=nsmap())
         incoming.set('serial', str(self.serial))
 
-        # xpath does not support empty namespace names
-        # turns out we didnt need xpath anyway, but leaving it here as reminder for later
-        #ns = {'ns': nsmap()[None]}
-        for k in self.running:
-            balance = lxml.etree.SubElement(incoming, NSPREFIX + 'incoming', nsmap=nsmap())
-            asset = lxml.etree.SubElement(balance, NSPREFIX + 'asset', nsmap=nsmap())
-            asset.text = str(self.running[k].asset)
-
-            liability = lxml.etree.SubElement(balance, NSPREFIX + 'liability', nsmap=nsmap())
-            liability.text = str(self.running[k].liability)
+        # swap running and apply all bases
+        ns = {'ns': nsmap()[None]}
+        self.running = {}
+        incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
+        logg.debug('inc {}'.format(lxml.etree.tostring(incoming_old)))
+        for tree_real in incoming_old.xpath('ns:real[@unit]', namespaces=ns):
+            unit = tree_real.get('unit')
+            v = tree_real.find('asset', namespaces=nsmap())
+            asset = int(v.text)
+            v = tree_real.find('liability', namespaces=nsmap())
+            liability = int(v.text)
+            self.running[unit] = RunningTotal(unit, self.uidx, asset=asset, liability=liability)
+            real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
+            real.attrib['unit'] = unit
+            o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
+            o.text = str(self.running[unit].asset)
+            o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
+            o.text = str(self.running[unit].liability)
 
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
+        self.tree = tree
+        #incoming.append(o)
+        #self.tree.append(incoming)
 
 
     """Add a decentralized identity definition for signers of the ledger.
@@ -468,9 +488,18 @@ class Ledger:
         if not modify_tree:
             return
 
-        self.reset()
+        inc_tree = self.tree.find('incoming', namespaces=nsmap())
+        # xpath does not support empty namespace names
+        ns = {'ns': nsmap()[None]}
+        for k in self.running:
+            o = inc_tree.xpath("ns:real[@unit='{}']".format(k), namespaces=ns)
+            v = o[0].find('asset', namespaces=nsmap())
+            logg.debug('setting asset {} for {}'.format(self.running[k].asset, k))
+            v.text = str(self.running[k].asset)
+            v = o[0].find('liability', namespaces=nsmap())
+            v.text = str(self.running[k].liability)
 
-        
+        self.reset()
 
     """Verify digest chain and signatures in ledger.
 
