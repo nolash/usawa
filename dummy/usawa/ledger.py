@@ -210,7 +210,7 @@ class Ledger:
         self.serial = self.base_serial
         self.cur = self.base
         self.entries[self.uidx.base] = []
-        self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
+#        self.running[self.uidx.base] = RunningTotal(self.uidx.base, self.uidx)
         self.tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         #self.tree = lxml.etree.Element('ledger', nsmap=nsmap())
         o = lxml.etree.SubElement(self.tree, NSPREFIX + 'topic', nsmap=nsmap())
@@ -234,7 +234,6 @@ class Ledger:
 
         units = lxml.etree.SubElement(self.tree, NSPREFIX + 'units', nsmap=nsmap())
         logg.debug('uidx {} units {} base {}'.format(self.uidx, units, self.uidx.base))
-        #units.attrib['base'] = self.uidx.base
         units.set('base', self.uidx.base)
         for v in self.uidx.syms():
             unit = lxml.etree.SubElement(units, NSPREFIX + 'unit', nsmap=nsmap())
@@ -249,23 +248,22 @@ class Ledger:
         #self.tree.append(units)
 
         incoming = lxml.etree.SubElement(self.tree, NSPREFIX + 'incoming', nsmap=nsmap())
-        incoming.attrib['serial'] = str(self.serial)
+        incoming.set('serial', str(self.serial))
 
-        real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
-        real.attrib['unit'] = self.uidx.base
-        o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
-        o.text = '0'
-        #real.append(o)
-        o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
-        o.text = '0'
-        #real.append(o)
-        #incoming.append(real)
+        # xpath does not support empty namespace names
+        # turns out we didnt need xpath anyway, but leaving it here as reminder for later
+        #ns = {'ns': nsmap()[None]}
+        for k in self.running:
+            balance = lxml.etree.SubElement(incoming, NSPREFIX + 'incoming', nsmap=nsmap())
+            asset = lxml.etree.SubElement(balance, NSPREFIX + 'asset', nsmap=nsmap())
+            asset.text = str(self.running[k].asset)
+
+            liability = lxml.etree.SubElement(balance, NSPREFIX + 'liability', nsmap=nsmap())
+            liability.text = str(self.running[k].liability)
 
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
-        #incoming.append(o)
-        #self.tree.append(incoming)
 
 
     """Add a decentralized identity definition for signers of the ledger.
@@ -466,9 +464,13 @@ class Ledger:
     def truncate(self, modify_tree=True):
         self.base = self.cur
         self.serial_base = self.serial
-        if modify_tree:
-            self.reset()
 
+        if not modify_tree:
+            return
+
+        self.reset()
+
+        
 
     """Verify digest chain and signatures in ledger.
 
