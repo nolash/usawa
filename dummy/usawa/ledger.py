@@ -185,7 +185,7 @@ class Ledger:
             self.reset()
         self.serial = self.base_serial
         self.cur = base
-        logg.debug('ledger base {} from topic {}'.format(self.base.hex(), self.topic.hex()))
+        logg.debug('ledger base {} serial {} from topic {}'.format(self.base.hex(), self.serial, self.topic.hex()))
 
 
     """Retrieve the serial that will be assigned to the next entry.
@@ -460,13 +460,16 @@ class Ledger:
     def apply_tree(self, tree):
         start = self.serial
         last = 0
+        i = 0
         for v in tree.iter(NSPREFIX + 'entry'):
+            i += 1
             logg.debug('processing entry {}'.format(v))
             o = Entry.from_tree(v, self.uidx, min=self.serial)
             self.add_entry(o, modify_tree=False)
             if o.serial > last:
                 last = o.serial
-        self.serial = last
+        if i > 0:
+            self.serial = last
         logg.info('last entry from tree serial ' + str(self.serial))
 
 
