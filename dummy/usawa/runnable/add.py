@@ -109,7 +109,7 @@ argp.add_argument('-a', type=str, dest='amount', help='source and destination am
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
-argp.add_argument('-d', '--description', type=str, help='interactive edit')
+argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
 argp.add_argument('-u', '--unit', type=str, default='BTC', help='Unit to use for transaction')
 argp.add_argument('--unit-precision', type=int, default=2, help='Unit precision')
 argp.add_argument('--unit-rate', type=float, default=1.0, help='Unit exchange rate')
@@ -135,7 +135,7 @@ f = None
 
 def do_interactive(ctx):
     v = input_or_default('Entry description', ctx.description)
-    dsc = v
+    ctx.description = v
 
     amount = None
     for k in ['src', 'dst']:
@@ -173,7 +173,7 @@ if arg.i:
 ctx.validate()
 entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.serial, dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
 entry.sign(wallet)
-#store.add_entry(entry)
+store.add_entry(entry)
 ledger.add_entry(entry, modify_tree=True)
 if ctx.output != None:
     ledger.truncate()
