@@ -166,7 +166,6 @@ class LedgerStore(Interface):
             try:
                 o = self.get_entry(self.ledger.serial)
             except FileNotFoundError:
-                self.ledger.reset()
                 break
             self.ledger.add_entry(o, modify_tree=True)
             self.ledger.next_serial()

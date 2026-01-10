@@ -387,7 +387,8 @@ class Ledger:
         self.entries[entry.serial].append(entry)
         self.running[entry.unit].apply_entry(entry)
         if self.tree != None and modify_tree:
-            self.tree.append(entry.to_tree())
+            entry_tree = entry.to_tree()
+            self.tree.append(entry_tree)
         logg.debug('entryunit {} {}'.format(entry.unit, self.running[entry.unit]))
 
 

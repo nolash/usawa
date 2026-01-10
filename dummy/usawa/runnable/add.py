@@ -26,12 +26,22 @@ class Context:
         self.dst = [None, None]
         self.amount = None
         self.part = []
+        self.output = None
         self.f = None
 
 
     def close(self):
         if self.f and self.f != sys.stdout:
             self.f.close()
+
+
+    def open(self, output):
+        if output == '<stdout>':
+            self.f = sys.stdout.buffer
+            logg.debug('output is stdout')
+        else:
+            self.f = open(output, 'wb')
+        return self
 
 
     @staticmethod
@@ -159,13 +169,8 @@ def do_interactive(ctx):
 
     output = input_or_default('Output file', ctx.output)
     logg.debug('output {}'.format(output))
-    if output == '<stdout>':
-        ctx.f = sys.stdout.buffer
-        logg.debug('output is stdout')
-    else:
-        ctx.f = open(output, 'wb')
-    return ctx
-
+    return ctx.open(output)
+    
 
 if arg.i:
     ctx = do_interactive(ctx)
@@ -175,7 +180,6 @@ entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.serial, dt, parent=ledg
 entry.sign(wallet)
 store.add_entry(entry)
 ledger.add_entry(entry, modify_tree=True)
-if ctx.output != None:
-    ledger.truncate()
-    ctx.f.write(ledger.to_string())
-    ctx.close()
+ledger.truncate()
+ctx.f.write(ledger.to_string())
+ctx.close()
