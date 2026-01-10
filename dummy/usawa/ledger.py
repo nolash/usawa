@@ -222,6 +222,8 @@ class Ledger:
         self.cur = self.base
         self.entries[self.uidx.base] = []
         tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
+        if self.tree == None:
+            self.tree = tree
         o = lxml.etree.SubElement(tree, NSPREFIX + 'topic', nsmap=nsmap())
         if topic == None:
             if self.topic == None:

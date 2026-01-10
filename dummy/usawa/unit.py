@@ -5,12 +5,11 @@ from .xml import nsmap
 
 logg = logging.getLogger('usawa.unit')
 
-BASE_UNIT = 'BTC'
-
 
 class UnitIndex:
 
     default_precision = 2
+    default_unit = 'BTC'
 
     """UnitIndex holds metadata for units of account.
 

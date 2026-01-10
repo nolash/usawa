@@ -48,7 +48,7 @@ class Context:
     def from_args(args):
         ctx = Context()
         ctx.unit = args.unit
-        ctx.uidx = UnitIndex(ctx.unit)
+        ctx.uidx = UnitIndex(ctx.unit, precision=args.unit_precision)
         if args.description != None:
             ctx.description = args.description
         if args.r != None:
@@ -76,8 +76,6 @@ class Context:
         for v in self.dst:
             if v == None:
                 raise ValueError('invalid dst')
-        #if self.topic == None:
-        #    raise ValueError('invalid topic')
         if self.ref == None:
             raise ValueError('invalid ref')
         
@@ -120,9 +118,10 @@ argp.add_argument('-o', type=str, dest='output', help='output file for updated X
 argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
 argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
-argp.add_argument('-u', '--unit', type=str, default='BTC', help='Unit to use for transaction')
-argp.add_argument('--unit-precision', type=int, default=2, help='Unit precision')
-argp.add_argument('--unit-rate', type=float, default=1.0, help='Unit exchange rate')
+# TODO: read default from xml if not defined
+argp.add_argument('-u', '--unit', type=str, default=UnixIndex.default_unit, help='Unit to use for transaction')
+argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnixIndex.default_precision, help='Unit precision')
+argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
 argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
@@ -139,8 +138,6 @@ store = LedgerStore(db, ledger)
 pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)
 dt = datetime.datetime.now()
-close_fn = None
-f = None
 
 
 def do_interactive(ctx):
