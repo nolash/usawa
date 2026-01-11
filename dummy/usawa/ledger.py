@@ -266,6 +266,8 @@ class Ledger:
         self.running = {}
         incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
         logg.debug('inc {}'.format(lxml.etree.tostring(incoming_old)))
+
+        i = 0
         for tree_real in incoming_old.xpath('ns:real[@unit]', namespaces=ns):
             unit = tree_real.get('unit')
             v = tree_real.find('asset', namespaces=nsmap())
@@ -279,6 +281,15 @@ class Ledger:
             o.text = str(self.running[unit].asset)
             o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
             o.text = str(self.running[unit].liability)
+            i += 1
+
+        if i == 0:
+            real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
+            real.set('unit', self.uidx.default_unit)
+            o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
+            o.text = '0'
+            o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
+            o.text = '0'
 
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'

@@ -119,8 +119,8 @@ argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, d
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
 argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
 # TODO: read default from xml if not defined
-argp.add_argument('-u', '--unit', type=str, default=UnixIndex.default_unit, help='Unit to use for transaction')
-argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnixIndex.default_precision, help='Unit precision')
+argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
+argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
 argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
 arg = argp.parse_args()
