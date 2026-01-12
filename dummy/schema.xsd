@@ -1,29 +1,28 @@
 <?xml version="1.0" ?>
 
 <xs:schema xmlns:xs = "http://www.w3.org/2001/XMLSchema"
-	targetNamespace = "http://svcontas.defalsify.org"
-	xmlns = "http://svcontas.defalsify.org"
+	targetNamespace = "http://usawa.defalsify.org/"
+	xmlns = "http://usawa.defalsify.org/"
 	elementFormDefault = "qualified">
 
 	<xs:element name="ledger">
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
-				<xs:element name="topic" type="xs:string" />
-				<xs:element name="retrieved" type="xs:dateTime" />
-				<xs:element name="src" type="xs:string" minOccurs="1" maxOccurs="1" />
+				<xs:element name="topic" type="xs:string" /> <xs:element name="retrieved" type="xs:dateTime" /> <xs:element name="src" type="xs:string" minOccurs="1" maxOccurs="1" />
 				<xs:element name="units" type="Units" minOccurs="1" maxOccurs="1" />
-				<xs:element name="resolver" type="Resolver" />
-				<xs:element name="identity" type="Identity" maxOccurs="unbounded" />
+				<xs:element name="resolver" type="Resolver" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="identity" type="Identity" minOccurs="1" maxOccurs="unbounded" />
 				<xs:element name="incoming" type="Incoming" minOccurs="0" maxOccurs="1" />
 				<xs:element name="entry" type="Entry" minOccurs="0" maxOccurs="unbounded" />
 			</xs:sequence>
+			<xs:attribute name="version" type="xs:integer" />
 		</xs:complexType>
 	</xs:element>
 
 	<xs:complexType name="Incoming">
 		<xs:sequence>
-			<xs:element name="real" type="Balance" />
+			<xs:element name="real" type="Balance" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="virt" type="Balance" minOccurs="0" maxOccurs="unbounded" />
 			<xs:element name="digest" type="Digest" minOccurs="1" maxOccurs="1"/>
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
@@ -68,9 +67,25 @@
 	<xs:complexType name="Unit">
 		<xs:sequence>
 			<xs:element name="precision" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-			<xs:element name="ex" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+			<xs:choice>
+				<xs:element name="exchange" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
+				<xs:sequence>
+					<xs:element name="rate" type="Rate" minOccurs="1" maxOccurs="unbounded" />
+				</xs:sequence>
+			</xs:choice>
 		</xs:sequence>
 		<xs:attribute name="sym" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="Rate">
+		<xs:sequence>
+			<xs:choice>
+				<xs:element name="at" type="xs:date" />
+				<xs:element name="at" type="xs:dateTime" />
+			</xs:choice>
+			<xs:element name="vs" type="xs:string" />
+			<xs:element name="value" type="xs:integer" />
+		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="Identity">
@@ -115,16 +130,20 @@
 	</xs:complexType>
 
 	<xs:complexType name="EntryPart">
+		<xs:sequence>
+			<xs:element name="account" type="xs:string" />
+			<xs:element name="amount" type="xs:positiveInteger" />
+		</xs:sequence>
 		<xs:attribute name="type" type="xs:string" />
-		<xs:element name="account" type="xs:string" />
-		<xs:element name="amount" type="xs:positiveInteger" />
 	</xs:complexType>
 
 	<xs:complexType name="Attachment">
-		<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
+		<xs:sequence>
+			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="slug" type="xs:string" />
+			<xs:element name="description" type="xs:string" />
+			<xs:element name="digest" type="Digest" />
+		</xs:sequence>
 		<xs:attribute name="mime" type="xs:string" />
-		<xs:element name="slug" type="xs:string" />
-		<xs:element name="description" type="xs:string" />
-		<xs:element name="digest" type="Digest" />
 	</xs:complexType>
 </xs:schema>
