@@ -163,7 +163,7 @@ class Ledger:
     :todo: Add warnings for ignored parameters
     """
 
-    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None):
+    def __init__(self, unitindex, tree=None, acl=None, serial=1, base=DEFAULTPARENT, topic=None, src=None, wallet=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -174,6 +174,7 @@ class Ledger:
         self.src = src
         self.topic = topic
         self.acl = acl
+        self.wallet = wallet
         if self.topic == None:
             self.topic = os.urandom(64)
         if base == None:
@@ -186,6 +187,25 @@ class Ledger:
         self.serial = self.base_serial
         self.cur = base
         logg.debug('ledger base {} serial {} from topic {}'.format(self.base.hex(), self.serial, self.topic.hex()))
+
+
+    """Wallet to add public key for in identities element in ledger XML.
+
+    :param v: Wallet to set
+    :type v: usawa.Wallet
+    """
+    def set_wallet(self, v):
+        self.wallet = v
+        self.apply_wallet()
+
+
+    def apply_wallet(self):
+        incoming = self.tree.find('incoming', namespaces=nsmap()) 
+        v = self.wallet.pubkey()
+        o = lxml.etree.Element(NSPREFIX + 'identity', nsmap=nsmap())
+        o.set('keyid', v.hex())
+        o.set('didtype', self.wallet.did())
+        incoming.addprevious(o)
 
 
     """Retrieve the serial that will be assigned to the next entry.
@@ -217,7 +237,9 @@ class Ledger:
     :rtype: None
     :todo: swapping tree keeps two trees in memory, perhaps it can be more efficient
     """
-    def reset(self, src=None, topic=None):
+    def reset(self, src=None, topic=None, wallet=None):
+        if wallet != None:
+            self.set_wallet(wallet)
         self.serial = self.base_serial
         self.cur = self.base
         self.entries[self.uidx.base] = []
@@ -258,42 +280,74 @@ class Ledger:
             #units.append(unit)
         #self.tree.append(units)
 
+        
+        ns = {'ns': nsmap()[None]}
+
+        # TODO: move identity tree generation to wallet object
+        identities = []
+        for tree_identity in self.tree.xpath('ns:identity', namespaces=ns):
+            v = tree_identity.text
+            identities.append(v)
+            identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+            identity.text = v
+            identity.set('keyid', tree_identity.get('keyid'))
+            identity.set('didtype', tree_identity.get('didtype'))
+
+        if wallet != None:
+            v = wallet.address()
+            if wallet.pubkey() not in identities:
+                identities.append(v)
+                identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+                identity.set('keyid', v.hex())
+                identity.set('didtype', wallet.did())
+
+        if len(identities) == 0:
+            logg.warning('no identities in xml, need at least one to validate against schema')
+
         incoming = lxml.etree.SubElement(tree, NSPREFIX + 'incoming', nsmap=nsmap())
         incoming.set('serial', str(self.serial))
-
+        
         # swap running and apply all bases
-        ns = {'ns': nsmap()[None]}
         self.running = {}
         incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
         logg.debug('inc {}'.format(lxml.etree.tostring(incoming_old)))
 
-        i = 0
-        for tree_real in incoming_old.xpath('ns:real[@unit]', namespaces=ns):
-            unit = tree_real.get('unit')
-            v = tree_real.find('asset', namespaces=nsmap())
-            asset = int(v.text)
-            v = tree_real.find('liability', namespaces=nsmap())
-            liability = int(v.text)
-            self.running[unit] = RunningTotal(unit, self.uidx, asset=asset, liability=liability)
-            real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
-            real.attrib['unit'] = unit
-            o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
-            o.text = str(self.running[unit].asset)
-            o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
-            o.text = str(self.running[unit].liability)
-            i += 1
+        if incoming_old != None:
+            i = 0
+            for tree_real in incoming_old.xpath('ns:real[@unit]', namespaces=ns):
+                unit = tree_real.get('unit')
+                v = tree_real.find('asset', namespaces=nsmap())
+                asset = int(v.text)
+                v = tree_real.find('liability', namespaces=nsmap())
+                liability = int(v.text)
+                self.running[unit] = RunningTotal(unit, self.uidx, asset=asset, liability=liability)
+                real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
+                real.attrib['unit'] = unit
+                o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
+                o.text = str(self.running[unit].asset)
+                o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
+                o.text = str(self.running[unit].liability)
+                i += 1
 
-        if i == 0:
-            real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
-            real.set('unit', self.uidx.default_unit)
-            o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
-            o.text = '0'
-            o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
-            o.text = '0'
+            if i == 0:
+                real = lxml.etree.SubElement(incoming, NSPREFIX + 'real', nsmap=nsmap())
+                real.set('unit', self.uidx.default_unit)
+                o = lxml.etree.SubElement(real, NSPREFIX + 'asset', nsmap=nsmap())
+                o.text = '0'
+                o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
+                o.text = '0'
 
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
+
+        if wallet != None:
+            logg.warning("the incoming state signature is not yet implemented and is currently just a zero-value string.")
+            o = lxml.etree.SubElement(incoming, NSPREFIX + 'sig', nsmap=nsmap())
+            o.set('keyid', self.wallet.address().hex())
+            o.set('type', 'ed25519')
+            o.text = '00' * 64
+
         self.tree = tree
         #incoming.append(o)
         #self.tree.append(incoming)
@@ -473,7 +527,7 @@ class Ledger:
     """
     def apply_tree(self, tree):
         start = self.serial
-        last = 0
+        last = 1
         i = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             i += 1

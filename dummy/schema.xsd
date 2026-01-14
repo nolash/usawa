@@ -132,7 +132,7 @@
 	<xs:complexType name="EntryPart">
 		<xs:sequence>
 			<xs:element name="account" type="xs:string" />
-			<xs:element name="amount" type="xs:positiveInteger" />
+			<xs:element name="amount" type="xs:nonNegativeInteger" />
 		</xs:sequence>
 		<xs:attribute name="type" type="xs:string" />
 	</xs:complexType>

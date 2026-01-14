@@ -12,6 +12,27 @@ class Wallet:
     """Wallet is an unimplemented class defining the interface for wallet operations.
     """
 
+    """Get the did URI for the wallet identity.
+
+    :returns: DID URI
+    :rtype: str
+    """
+    def __init__(self, did_type='usawalocal'):
+        self.did_type = did_type
+
+
+    def did(self):
+        return self.did_type
+
+
+    def did_uri(self):
+        return 'did:' + self.did_type + ':' + self.address()
+
+
+    def address(self):
+        return self.pubkey()
+
+
     def sign(self, v):
         """Sign data with the wallet's private key.
 
@@ -56,6 +77,7 @@ class DemoWallet(Wallet):
     """
 
     def __init__(self, privatekey=None, publickey=None):
+        super(DemoWallet, self).__init__()
         self.pk = None
         publickey_chk = None
         if privatekey == None:

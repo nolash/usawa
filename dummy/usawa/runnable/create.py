@@ -149,5 +149,6 @@ if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
 
+ledger.reset(topic=ctx.topic, src=ctx.uri, wallet=wallet)
 ctx.f.write(ledger.to_string())
 ctx.close()
