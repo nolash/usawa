@@ -7,7 +7,7 @@ import hashlib
 import lxml
 import rencode
 
-from .crypto import DemoWallet
+from .crypto import DemoWallet, ACL
 from .xml import nsmap, XML_FORMAT_VERSION
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
@@ -193,6 +193,7 @@ class Ledger:
         self.topic = topic
         self.acl = acl
         self.dt = None
+        self.wallet = wallet
         if self.topic == None:
             self.topic = os.urandom(64)
         if base == None:
@@ -204,7 +205,6 @@ class Ledger:
             self.reset()
         self.serial = self.base_serial
         self.cur = base
-        self.wallet = wallet
         logg.debug('ledger base {} serial {} from topic {}'.format(self.base.hex(), self.serial, self.topic.hex()))
 
 
@@ -215,6 +215,8 @@ class Ledger:
     """
     def set_wallet(self, v):
         self.wallet = v
+        if self.acl == None:
+            self.acl = ACL.from_wallet(self.wallet)
         self.apply_wallet()
 
 
@@ -223,7 +225,8 @@ class Ledger:
         v = self.wallet.pubkey()
         o = lxml.etree.Element(NSPREFIX + 'identity', nsmap=nsmap())
         o.set('keyid', v.hex())
-        o.set('didtype', self.wallet.did())
+        did = self.wallet.did()
+        o.set('didtype', did.method())
         incoming.addprevious(o)
 
 
@@ -369,12 +372,12 @@ class Ledger:
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
 
-        if wallet != None:
-            logg.warning("the incoming state signature is not yet implemented and is currently just a zero-value string.")
+        if self.wallet != None:
+            r = self.sign()
             o = lxml.etree.SubElement(incoming, NSPREFIX + 'sig', nsmap=nsmap())
             o.set('keyid', self.wallet.address().hex())
             o.set('type', 'ed25519')
-            o.text = '00' * 64
+            o.text = r.hex()
 
         self.tree = tree
         #incoming.append(o)
