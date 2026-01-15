@@ -6,6 +6,7 @@ import hashlib
 
 import lxml
 import rencode
+import varints.leb128s
 
 from .crypto import DemoWallet, ACL
 from .xml import nsmap, XML_FORMAT_VERSION
@@ -135,15 +136,14 @@ class RunningTotal:
 
 
     """
-    :todo: Use varint in serialization, consider leb128
     """
     def serialize(self):
         d = [
                 self.sym,
-                self.income.to_bytes(8, byteorder='big'),
-                self.expense.to_bytes(8, byteorder='big'),
-                self.asset.to_bytes(8, byteorder='big'),
-                self.liability.to_bytes(8, byteorder='big'),
+                varints.leb128s.encode(self.income),
+                varints.leb128s.encode(self.expense),
+                varints.leb128s.encode(self.asset),
+                varints.leb128s.encode(self.liability),
                 ]
         return rencode.dumps(d)
 

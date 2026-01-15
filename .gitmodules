@@ -1,0 +1,3 @@
+[submodule "dummy/aux/varints"]
+	path = dummy/aux/varints
+	url = https://github.com/bright-tools/varints

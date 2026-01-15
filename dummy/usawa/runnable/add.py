@@ -174,7 +174,7 @@ if arg.i:
     ctx = do_interactive(ctx)
 
 ctx.validate()
-entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.serial, dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
+entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
 entry.sign(wallet)
 store.add_entry(entry)
 ledger.add_entry(entry, modify_tree=True)
