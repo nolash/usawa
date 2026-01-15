@@ -4,6 +4,7 @@ import logging
 import urllib.parse
 import argparse
 import datetime
+import uuid
 
 from usawa import Ledger, DemoWallet, UnitIndex, ACL
 from usawa.store import LedgerStore
@@ -46,6 +47,8 @@ class Context:
         ctx.unit_precision = args.unit_precision
         ctx.uidx = UnitIndex(ctx.unit, precision=ctx.unit_precision)
         ctx.topic = args.topic
+        if ctx.topic == None:
+            ctx.topic = str(uuid.uuid4())
         ctx.uri = args.src_uri
         if args.output != None:
             ctx.output = os.path.realpath(args.output)
