@@ -1,5 +1,7 @@
 import logging
 
+import rencode
+
 from .constant import NSPREFIX
 from .xml import nsmap
 
@@ -25,20 +27,24 @@ class UnitIndex:
     def __init__(self, base, precision=2):
         self.base = base
         self.detail = {base: precision}
-        self.exchange = {base: 1}
+        self.exchange = {base: 1000000000}
 
 
     """Add a unit to the index.
+
+    The exchange rate is stored as an integer with nano precision. If a float is passed as value, it will be correspondingly converted to an integer.
 
     :param sym: The symbol name of the unit.
     :type sym: str
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
-    :param ex: The exchange rate of the unit, relative to the base unit. Default is 1.0.
-    :type ex: float
+    :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
+    :type ex: int or float
     """
-    def add(self, sym, precision=2, ex=1.0):
+    def add(self, sym, precision=2, ex=1000000000):
         self.detail[sym] = precision
+        if isinstance(ex, float):
+            ex = int(ex*1000000000) # nano resolution
         self.exchange[sym] = ex
 
 
@@ -98,9 +104,11 @@ class UnitIndex:
 
     """Retrieve the exchange rate for the unit.
 
+    The value represents a decimal number with nano precision. For example, a value of 4200000000 corresponds to a float value of 4.2.
+
     :raises: KeyError if symbol not found.
     :returns: Rate
-    :rtype: float
+    :rtype: int
     """
     def ex(self, k):
         return self.exchange[k]
@@ -187,3 +195,23 @@ class UnitIndex:
         if neg:
             r *= -1
         return int(r)
+
+
+    def serialize(self):
+        syms = list(self.base)
+        syms.sort()
+        units = []
+        for v in syms:
+            precision = self.detail[v].to_bytes(1)
+            exchange = self.exchange[v].to_bytes(8, byteorder='big')
+            units.append((v, precision, exchange,))
+        d = [
+            self.base,
+            units,
+                ]
+        return rencode.dumps(d)
+
+
+    @staticmethod
+    def deserialize(v):
+        pass

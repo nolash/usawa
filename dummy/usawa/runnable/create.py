@@ -5,7 +5,7 @@ import urllib.parse
 import argparse
 import datetime
 
-from usawa import Ledger, DemoWallet, UnitIndex
+from usawa import Ledger, DemoWallet, UnitIndex, ACL
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
 
@@ -149,6 +149,7 @@ if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
 
-ledger.reset(topic=ctx.topic, src=ctx.uri, wallet=wallet)
+acl = ACL.from_wallet(wallet)
+ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl)
 ctx.f.write(ledger.to_string())
 ctx.close()

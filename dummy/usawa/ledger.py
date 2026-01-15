@@ -11,8 +11,10 @@ from .crypto import DemoWallet
 from .xml import nsmap, XML_FORMAT_VERSION
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
+from .util import to_datestring
 
 logg = logging.getLogger('usawa.ledger')
+
 
 
 class RunningTotal:
@@ -174,7 +176,7 @@ class Ledger:
         self.src = src
         self.topic = topic
         self.acl = acl
-        self.wallet = wallet
+        self.dt = None
         if self.topic == None:
             self.topic = os.urandom(64)
         if base == None:
@@ -186,6 +188,7 @@ class Ledger:
             self.reset()
         self.serial = self.base_serial
         self.cur = base
+        self.wallet = wallet
         logg.debug('ledger base {} serial {} from topic {}'.format(self.base.hex(), self.serial, self.topic.hex()))
 
 
@@ -237,7 +240,7 @@ class Ledger:
     :rtype: None
     :todo: swapping tree keeps two trees in memory, perhaps it can be more efficient
     """
-    def reset(self, src=None, topic=None, wallet=None):
+    def reset(self, src=None, topic=None, acl=None, wallet=None):
         if wallet != None:
             self.set_wallet(wallet)
         self.serial = self.base_serial
@@ -255,7 +258,8 @@ class Ledger:
                 topic = self.topic.hex()
         o.text = topic
         o = lxml.etree.SubElement(tree, NSPREFIX + 'retrieved', nsmap=nsmap())
-        o.text = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%dT%H:%M:%SZ')
+        self.dt = datetime.datetime.now()
+        o.text = to_datestring(self.dt)
         #self.tree.append(o)
         o = lxml.etree.SubElement(tree, NSPREFIX + 'src', nsmap=nsmap())
         if src == None:
@@ -293,13 +297,14 @@ class Ledger:
             identity.set('keyid', tree_identity.get('keyid'))
             identity.set('didtype', tree_identity.get('didtype'))
 
-        if wallet != None:
-            v = wallet.address()
-            if wallet.pubkey() not in identities:
-                identities.append(v)
-                identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
-                identity.set('keyid', v.hex())
-                identity.set('didtype', wallet.did())
+        if acl != None:
+            for v in acl.pubkeys(binary=False):
+            #v = wallet.address()
+                if v not in identities:
+                    identities.append(v)
+                    identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+                    identity.set('keyid', v)
+                    identity.set('didtype', acl.did(v).method())
 
         if len(identities) == 0:
             logg.warning('no identities in xml, need at least one to validate against schema')
@@ -608,8 +613,13 @@ class Ledger:
     :rtype: str
     """
     def serialize(self, ledger):
+        ts = int(self.dt.timestamp())
+        ts_bytes = ts.to_bytes(4, byteorder='big')
+        units = self.uidx.serialize()
         d = [
                 self.topic,
+                ts_bytes,
+                units, 
                 ]
         logg.debug('serialize ledger {}'.format(d))
         return rencode.dumps(d)

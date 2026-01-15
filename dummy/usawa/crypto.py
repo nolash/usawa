@@ -5,7 +5,25 @@ import nacl.signing
 AXX_ALL = 0xffffffff
 AXX_ANY = 0x01
 
+DEFAULT_DID = 'usawa'
+
 logg = logging.getLogger('crypto')
+
+
+class DID:
+
+    def __init__(self, v='_', method=DEFAULT_DID):
+        self.v = v
+        self.m = method
+
+
+    def method(self):
+        return self.m
+
+
+    def __str__(self):
+        return 'did:' + self.m + ':' + self.v
+
 
 
 class Wallet:
@@ -17,16 +35,22 @@ class Wallet:
     :returns: DID URI
     :rtype: str
     """
-    def __init__(self, did_type='usawalocal'):
-        self.did_type = did_type
+    def __init__(self, did=None):
+        if did == None:
+            did = DID()
+        self.didval = did
 
 
     def did(self):
-        return self.did_type
+        return self.didval
+
+
+    def did_method(self):
+        return self.didval.method()
 
 
     def did_uri(self):
-        return 'did:' + self.did_type + ':' + self.address()
+        return str(self.didval)
 
 
     def address(self):
@@ -97,6 +121,7 @@ class DemoWallet(Wallet):
         else:
             publickey = nacl.signing.VerifyKey(publickey)
         self.pubk = publickey
+        self.didval = DID(v=self.pubkey().hex())
   
 
     def sign(self, v):
@@ -134,9 +159,21 @@ class ACL:
     def __init__(self):
         self.axx = {}
         self.rev = {}
+        self.dids = {}
 
 
-    def add(self, who, what=None, label=None):
+    @staticmethod
+    def from_wallet(wallet, what=None, label=None):
+        o = ACL()
+        o.add(wallet.pubkey(), what=what, label=label, did=wallet.did())
+        return o
+
+
+    def did(self, v):
+        return self.dids[v]
+
+
+    def add(self, who, what=None, label=None, did=DEFAULT_DID):
         """Add a public key to the trusted list of keys.
 
         :param who: Binary or hexadecimal public key data.
@@ -152,9 +189,10 @@ class ACL:
             label = who
         if what == None:
             what = AXX_ALL
-        logg.info('add acl line "{}" ({}): {}'.format(label, who, what))
+        logg.info('add acl line "{}" ({}): {} did {}'.format(label, who, what, did))
         self.axx[label] = (who, what,)
         self.rev[who] = label
+        self.dids[label] = did
 
 
     def have(self, who):
@@ -206,3 +244,4 @@ class ACL:
                     v = self.axx[self.rev[v]][0]
             r.append(v)
         return r
+
