@@ -134,6 +134,21 @@ class RunningTotal:
         return RunningTotal(unit, asset=asset, liability=liability)
 
 
+    """
+    :todo: Use varint in serialization, consider leb128
+    """
+    def serialize(self):
+        d = [
+                self.sym,
+                self.income.to_bytes(8, byteorder='big'),
+                self.expense.to_bytes(8, byteorder='big'),
+                self.asset.to_bytes(8, byteorder='big'),
+                self.liability.to_bytes(8, byteorder='big'),
+                ]
+        return rencode.dumps(d)
+
+
+
     def __str__(self):
         return 'running total {}: income {} expense {} asset {} liability {}'.format(self.sym, self.income, self.expense, self.asset, self.liability)
 
@@ -170,6 +185,7 @@ class Ledger:
         self.sigs = {}
         self.entries = {}
         self.running = {}
+        self.resolvers = {}
         self.tree = tree
         self.base = base
         self.base_serial = serial
@@ -239,6 +255,7 @@ class Ledger:
     :type topic: bytes
     :rtype: None
     :todo: swapping tree keeps two trees in memory, perhaps it can be more efficient
+    :todo: add permissions array to the identities elements
     """
     def reset(self, src=None, topic=None, acl=None, wallet=None):
         if wallet != None:
@@ -342,6 +359,12 @@ class Ledger:
                 o = lxml.etree.SubElement(real, NSPREFIX + 'liability', nsmap=nsmap())
                 o.text = '0'
 
+        for k in self.uidx.syms():
+            if self.running.get(k) != None:
+                continue
+            logg.debug('add new runningtotal for {}'.format(k))
+            self.running[k] = RunningTotal(k, self.uidx)
+
         o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
@@ -398,7 +421,12 @@ class Ledger:
         o = lxml.etree.Element(NSPREFIX + 'resolver', nsmap=nsmap())
         o.attrib['algo'] = algo
         o.attrib['proto'] = proto
-        o.text = path
+        o.text = location
+
+        if self.resolvers.get(algo) == None:
+            self.resolvers[algo] = []
+        self.resolvers[algo].append((proto, location,))
+
         tree.addnext(o)
 
     """Check signature on individual ledger entry.
@@ -471,7 +499,7 @@ class Ledger:
     """
     def add_signature(self, sigdata, identity):
         self.sigs[identity] = sigdata 
-        logg.debug('add sig from key{}: {}'.format(identity, sigdata))
+        logg.debug('add sig from key {}: {}'.format(identity.hex(), sigdata.hex()))
 
   
     """Create a new ledger from a parsed XML document.
@@ -501,7 +529,7 @@ class Ledger:
         for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')
             digest = sig.text
-            r.add_signature(digest, keyid)
+            r.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid))
 
         o = part.find('real', namespaces=nsmap())
         asset = int(o.find('asset', namespaces=nsmap()).text)
@@ -612,17 +640,45 @@ class Ledger:
     :returns: String representation of the entry, in rencode format.
     :rtype: str
     """
-    def serialize(self, ledger):
+    def serialize(self):
         ts = int(self.dt.timestamp())
         ts_bytes = ts.to_bytes(4, byteorder='big')
         units = self.uidx.serialize()
+        identities = self.acl.serialize()
+        totals = []
+        v = self.running[self.uidx.base].serialize()
+        totals.append(v)
+        for k in self.running.keys():
+            if k == self.uidx.base:
+                continue
+            v = self.running[k].serialize()
+            totals.append(v)
         d = [
                 self.topic,
+                self.serial.to_bytes(8, byteorder='big'),
+                self.cur,
                 ts_bytes,
                 units, 
+                identities,
+                totals,
                 ]
         logg.debug('serialize ledger {}'.format(d))
         return rencode.dumps(d)
+
+
+    """
+
+    :raises AttributeError: Ledger is missing wallet
+    """
+    def sign(self):
+        if self.wallet == None:
+            raise AttributeError()
+        v = self.serialize()
+        r = self.wallet.sign(v)
+        k = self.wallet.pubkey()
+        self.add_signature(r, k)
+        return r
+
 
 
     """Create a ledger object from serialized data.

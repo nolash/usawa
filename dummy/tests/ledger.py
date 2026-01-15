@@ -7,7 +7,7 @@ import copy
 import lxml.etree
 from whee.mem import MemStore
 
-from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
+from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, ACL
 from usawa.store import LedgerStore
 
 logging.basicConfig(level=logging.DEBUG)
@@ -41,6 +41,7 @@ class TestLedger(unittest.TestCase):
     def test_ledger_firstfew(self):
         s = 'FOO'
         uidx = UnitIndex(s)
+        uidx.add('USD')
         o = Ledger(uidx)
         store = LedgerStore(self.store, ledger=o)
         store.start()
@@ -58,6 +59,17 @@ class TestLedger(unittest.TestCase):
         v = Entry(x, y, s, o.peek(), datetime.datetime.now(), parent=o.current())
         v.sign(wallet)
         o.add_entry(v)
+
+
+    def test_serialize(self):
+        wallet = DemoWallet()
+        acl = ACL.from_wallet(wallet)
+
+        s = 'FOO'
+        uidx = UnitIndex(s)
+        o = Ledger(uidx, acl=acl, wallet=wallet)
+        #b = o.serialize()
+        r = o.sign()
 
 
 if __name__ == '__main__':

@@ -1,5 +1,7 @@
 import logging
 
+import rencode
+
 import nacl.signing
 
 AXX_ALL = 0xffffffff
@@ -245,3 +247,12 @@ class ACL:
             r.append(v)
         return r
 
+
+    def serialize(self):
+        keys = list(self.rev.keys())
+        keys.sort()
+        r = []
+        for k in keys:
+            v = self.axx[self.rev[k]][1]
+            r.append((k, v,))
+        return rencode.dumps(r)

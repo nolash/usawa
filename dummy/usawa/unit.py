@@ -198,7 +198,7 @@ class UnitIndex:
 
 
     def serialize(self):
-        syms = list(self.base)
+        syms = list(self.detail.keys())
         syms.sort()
         units = []
         for v in syms:
