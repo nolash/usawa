@@ -7,7 +7,7 @@ import copy
 import lxml.etree
 from whee.mem import MemStore
 
-from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, ACL
+from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, ACL, schema_path
 from usawa.store import LedgerStore
 
 logging.basicConfig(level=logging.DEBUG)
@@ -70,6 +70,42 @@ class TestLedger(unittest.TestCase):
         o = Ledger(uidx, acl=acl, wallet=wallet)
         #b = o.serialize()
         r = o.sign()
+
+
+    def test_validate(self):
+        s = 'FOO'
+        uidx = UnitIndex(s)
+        uidx.add('USD')
+        o = Ledger(uidx)
+        store = LedgerStore(self.store, ledger=o)
+        store.start()
+
+        wallet = DemoWallet()
+        o.set_wallet(wallet)
+        x = EntryPart('income', 'foo', 1337, src=True)
+        y = EntryPart('asset', 'foo', 1337)
+        v = Entry(x, y, s, o.peek(), datetime.datetime.now(), parent=o.current())
+        v.sign(wallet)
+        o.add_entry(v)
+
+        x = EntryPart('expense', 'bar̈́', 42, src=True)
+        y = EntryPart('liability', 'bar', 42)
+        v = Entry(x, y, s, o.peek(), datetime.datetime.now(), parent=o.current())
+        v.sign(wallet)
+        o.add_entry(v)
+
+        o.sign()
+        v = o.to_string()
+
+        logg.debug('schema checking xml string {}'.format(v))
+
+        f = open(schema_path, 'r')
+        b = f.read()
+        f.close()
+        o = lxml.etree.XML(b)
+        schema = lxml.etree.XMLSchema(o)
+        parser = lxml.etree.XMLParser(schema=schema)
+        lxml.etree.fromstring(v, parser)
 
 
 if __name__ == '__main__':

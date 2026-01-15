@@ -495,13 +495,24 @@ class Ledger:
         logg.debug('entryunit {} {}'.format(entry.unit, self.running[entry.unit]))
 
 
+    def apply_signature(self, identity):
+        sig = self.sigs[identity]
+        tree = self.tree.find('incoming', namespaces=nsmap())
+        o = lxml.etree.SubElement(tree, NSPREFIX + 'sig', nsmap=nsmap())
+        o.set('keyid', identity.hex())
+        o.set('type', 'ed25519')
+        o.text = sig.hex()
+        
+
     """Add a signature on the ledger.
     
     :todo: not an appropriate API function?
     :todo: implement validity checks for signature.
     """
-    def add_signature(self, sigdata, identity):
-        self.sigs[identity] = sigdata 
+    def add_signature(self, sigdata, identity, modify_tree=True):
+        self.sigs[identity] = sigdata
+        if modify_tree:
+            self.apply_signature(identity)
         logg.debug('add sig from key {}: {}'.format(identity.hex(), sigdata.hex()))
 
   
@@ -532,7 +543,7 @@ class Ledger:
         for sig in part.iter(NSPREFIX + 'sig'):
             keyid = sig.get('keyid')
             digest = sig.text
-            r.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid))
+            r.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid), modify_tree=False)
 
         o = part.find('real', namespaces=nsmap())
         asset = int(o.find('asset', namespaces=nsmap()).text)

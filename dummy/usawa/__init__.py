@@ -1,3 +1,5 @@
+import os
+
 from lxml import etree
 
 from .ledger import Ledger
@@ -6,6 +8,9 @@ from .crypto import DemoWallet, ACL
 from .xml import nsmap
 from .unit import UnitIndex
 
+
+data_dir = os.path.join(os.path.dirname(__file__), 'data')
+schema_path = os.path.join(data_dir, 'schema.xsd')
 
 def init_ledger(tree, units, acl=None):
     return Ledger.from_tree(tree, units, acl=acl)

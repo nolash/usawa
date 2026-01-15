@@ -398,8 +398,8 @@ class Entry:
             o.text = self.description
             data.append(o)
 
-        self.src.apply_tree(tree)
-        self.dst.apply_tree(tree)
+        self.src.apply_tree(data)
+        self.dst.apply_tree(data)
         
         tree.append(data)
 
