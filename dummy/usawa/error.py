@@ -4,3 +4,7 @@ class ACLError(Exception):
 
 class VerifyError(Exception):
     pass
+
+
+class ValidateError(Exception):
+    pass

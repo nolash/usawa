@@ -48,14 +48,15 @@ class TestStore(unittest.TestCase):
     def test_store_ledger(self):
         uidx = UnitIndex('FOO')
         wallet = DemoWallet()
-        acl = ACL()
-        acl.add(wallet.pubkey())
-        ledger = Ledger(uidx, serial=42, base=self.parent)
+        #acl = ACL()
+        #acl.add(wallet.pubkey())
+        acl = ACL.from_wallet(wallet)
+        ledger = Ledger(uidx, serial=41, base=self.parent, acl=acl, wallet=wallet)
         store = LedgerStore(self.store, ledger)
 
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
         src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
-        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
+        o = Entry(ledger.next_serial(), datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
         o.add_part(src, debit=True)
         o.add_part(dst)
         o.sign(wallet)
@@ -67,13 +68,14 @@ class TestStore(unittest.TestCase):
         dtreg = datetime.datetime.now()
         dst = EntryPart('FOO', 'expense', 'bar', 4200)
         src = EntryPart('FOO', 'liability', 'bar', 4200, debit=True)
-        o = Entry(43, datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg, unitindex=uidx)
+        o = Entry(ledger.next_serial(), datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg, unitindex=uidx)
         o.add_part(src, debit=True)
         o.add_part(dst)
         o.sign(wallet)
         store.add_entry(o)
-        
-        ledger = Ledger(uidx, serial=42, base=self.parent, acl=acl, topic=ledger.topic)
+
+        ledger.sign()
+        #ledger.reset()
         store.load()
 
 

@@ -155,13 +155,12 @@ def do_interactive(ctx):
         v = input_or_default('Entry {} account'.format(k), o[k][1])
         o[k][1] = parse_account(v)
       
-        if amount != None:
-            amount *= -1
-        else:
+        if amount == None:
             v = input_or_default('Entry {} amount'.format(k), ctx.amount)
             amount = parse_amount(uidx, ctx.unit, v)
+        amount *= -1
 
-        ctx.part.append(EntryPart(o[k][0], o[k][1], amount, src=k=='src'))
+        ctx.part.append(EntryPart(ctx.unit, o[k][0], o[k][1], amount, debit=k=='src'))
 
     ctx.ref = input_or_default('External ref', ctx.ref)
 
@@ -174,11 +173,14 @@ if arg.i:
     ctx = do_interactive(ctx)
 
 ctx.validate()
-entry = Entry(ctx.part[0], ctx.part[1], ctx.unit, ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref)
+entry = Entry(ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
+entry.add_part(ctx.part[0], debit=True)
+entry.add_part(ctx.part[1])
 entry.sign(wallet)
+logg.debug('storing entry {}'.format(entry))
 store.add_entry(entry)
 ledger.add_entry(entry, modify_tree=True)
-ledger.truncate()
+ledger.truncate(modify_tree=True)
 ledger.sign()
 ctx.f.write(ledger.to_string())
 ctx.close()

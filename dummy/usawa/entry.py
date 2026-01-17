@@ -107,12 +107,8 @@ class Entry:
 
     If parent is not specified, the entry will be expected to be the first entry in the ledger, and the serial number must be zero.
 
-    :param src: The account debited, as a path-like string.
-    :type src: str
-    :param dst: The account credited, as a path-like string.
-    :type dst: str
-    :param unit: The symbol of the unit of account for the transation.
-    :type dst: str 
+    If unitindex is not specified, unit symbols in entry parts will not be validated as they are added.
+
     :param serial: The entry's serial number in the ledger.
     :type serial: int
     :param tx_date: The date of the transaction.
@@ -125,6 +121,8 @@ class Entry:
     :type parent: str
     :param tx_datereg: Date and time entry was added to the ledger. If not set, the current date and time will be used.
     :type tx_datereg: datetime.datetime
+    :param unitindex: Unix index top validate unit symbols and exchange rates against.
+    :type unit: UnitIndex
     :todo: Add an optional time part to the entry, e.g. for POS items.
     :todo: Implement throw error if non-zero serial has zero-value digest.
     :todo: Check hashlen of parent against actual digest length defined in digest_algo.
@@ -154,6 +152,16 @@ class Entry:
         self.credit = []
 
 
+    """Add an entry part to the entry.
+
+    At least one debit and one credit item must be added to be valid.
+
+    :param part: Entry part to add
+    :type part: EntryPart
+    :param debit: If true, entry part will be added to debits. If false, credits.
+    :type debit: boolean
+    :raises KeyError: Symbol does not exist in unit index.
+    """
     def add_part(self, part, debit=False):
         if self.uidx != None:
             self.uidx.sym(part.unit)
@@ -183,11 +191,13 @@ class Entry:
     """Add a signature over the ledger state of the entry.
 
     :param keyid: Key identifier, e.g. as used in a DID.
-    :type keyid: str
+    :type keyid: str or bytes
     :param sigdata: Key identifier, e.g. as used in a DID.
     :type keyid: bytes
     """
     def add_signature(self, keyid, sigdata):
+        if isinstance(keyid, bytes):
+            keyid = keyid.hex()
         self.sigs[keyid] = sigdata
 
 
@@ -355,6 +365,7 @@ class Entry:
                 sigs,
                 data,
             ]
+
         return rencode.dumps(d)
 
 
@@ -387,6 +398,7 @@ class Entry:
         wallet = DemoWallet(publickey=pubkey_bytes)
         # TODO: demo only takes into account single signature
         sig = v[1][0]
+        logg.debug('our sig {} {}'.format(pubkey_bytes.hex(), sig.hex()))
         entry = Entry.deserialize(v[2])
         (z, b) = entry.sum()
         if not wallet.verify(z, sig):

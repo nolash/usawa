@@ -62,7 +62,7 @@ def pfx_entry(ledger, entry):
     :returns: Prefix.
     :rtype: bytes
     """
-    serial = -1
+    serial = 0
     if isinstance(entry, Entry):
         serial = entry.serial
     elif isinstance(entry, int):
@@ -164,11 +164,10 @@ class LedgerStore(Interface):
         while True:
             o = None
             try:
-                o = self.get_entry(self.ledger.serial)
+                o = self.get_entry(self.ledger.next_serial())
             except FileNotFoundError:
                 break
             self.ledger.add_entry(o, modify_tree=True)
-            self.ledger.next_serial()
 
 
     """Add signing key to the store.

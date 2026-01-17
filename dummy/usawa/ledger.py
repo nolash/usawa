@@ -166,7 +166,7 @@ class Ledger:
     :todo: Add warnings for ignored parameters
     """
 
-    def __init__(self, unitindex, tree=None, acl=None, serial=1, base=DEFAULTPARENT, topic=None, src=None, wallet=None):
+    def __init__(self, unitindex, tree=None, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None, wallet=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -618,12 +618,16 @@ class Ledger:
     """
     def truncate(self, modify_tree=True):
         self.base = self.cur
-        self.serial_base = self.serial
+        self.base_serial = self.serial
 
         if not modify_tree:
             return
 
         inc_tree = self.tree.find('incoming', namespaces=nsmap())
+        inc_tree.set('serial', str(self.base_serial))
+        o = inc_tree.find('digest', namespaces=nsmap())
+        o.text = self.base.hex()
+
         # xpath does not support empty namespace names
         ns = {'ns': nsmap()[None]}
         for k in self.running:
@@ -727,4 +731,4 @@ class Ledger:
 
 
     def __str__(self):
-        return "state: " + self.base.hex()
+        return "state: " + self.base.hex() + " serial " + str(self.serial)
