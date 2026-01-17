@@ -36,7 +36,8 @@ class EntryPart:
     :type src: boolean
     :todo: Make typ enum
     """
-    def __init__(self, typ, account, amount, src=False):
+    def __init__(self, unit, typ, account, amount, src=False):
+        self.unit = unit
         self.typ = typ
         self.account = account
         self.amount = amount
@@ -53,9 +54,10 @@ class EntryPart:
     @staticmethod
     def from_tree(tree, src=False):
         typ = tree.get('type')
+        unit = tree.find('unit', namespaces=nsmap()).text
         amount = int(tree.find('amount', namespaces=nsmap()).text)
         account = tree.find('account', namespaces=nsmap()).text
-        return EntryPart(typ, account, amount, src=src)
+        return EntryPart(unit, typ, account, amount, src=src)
 
    
     """Commit the object state to XML.
@@ -68,14 +70,20 @@ class EntryPart:
         tag = 'dst'
         if self.issrc:
             tag = 'src'
+
         part = etree.Element(tag, type=self.typ)
+
+        o = etree.Element('unit')
+        o.text = self.unit
+        part.append(o)
+
         o = etree.Element('account')
         o.text = self.account
         part.append(o)
 
         o = etree.Element('amount')
         o.text = str(self.amount)
-        logg.debug('tree amount {}'.format(o.text))
+        logg.debug('tree amount {} {}'.format(self.unit, o.text))
         part.append(o)
 
         tree.append(part)
@@ -120,7 +128,7 @@ class Entry:
     :todo: Check hashlen of parent against actual digest length defined in digest_algo.
     :todo: Prevent changes after the first signature calculation.
     """
-    def __init__(self, src, dst, unit, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
+    def __init__(self, src, dst, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
         elif parent == None:
@@ -131,7 +139,6 @@ class Entry:
             ref = str(uuid.uuid4())
         self.ref = ref
         self.parent = parent
-        self.unit = unit
         self.serial = serial
         self.dt = tx_date
         if tx_datereg == None:
@@ -190,8 +197,8 @@ class Entry:
         serial = int(o.find('serial', namespaces=nsmap()).text)
         if min > serial:
             raise ValueError('entry serial preceeds ledger')
-        unit = o.find('unit', namespaces=nsmap()).text
-        unitindex.sym(unit)
+        #unit = o.find('unit', namespaces=nsmap()).text
+        #unitindex.sym(unit)
 
         ref = o.find('ref', namespaces=nsmap()).text
         parent = o.find('parent', namespaces=nsmap()).text
@@ -203,7 +210,7 @@ class Entry:
         src = EntryPart.from_tree(tree.find('src', namespaces=nsmap()), src=True)
         dst = EntryPart.from_tree(tree.find('dst', namespaces=nsmap()))
 
-        r = Entry(src, dst, unit, serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
+        r = Entry(src, dst, serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
         for sig in tree.iter(NSPREFIX + 'sig'):
             r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
         return r
@@ -215,15 +222,14 @@ class Entry:
     :rtype: str
     """
     def serialize(self):
-        src = [self.src.typ, self.src.account, self.src.amount]
-        dst = [self.dst.typ, self.dst.account, self.dst.amount]
+        src = [self.src.unit, self.src.typ, self.src.account, self.src.amount]
+        dst = [self.dst.unit, self.dst.typ, self.dst.account, self.dst.amount]
         d = [
                 self.parent,
                 self.serial,
                 self.ref,
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
-                self.unit,
                 self.description,
                 src,
                 dst,
@@ -246,13 +252,13 @@ class Entry:
         ref = v[2].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
-        unit = v[5].decode('utf-8')
-        description = v[6].decode('utf-8')
-        src_data = v[7]
-        dst_data = v[8]
-        src = EntryPart(src_data[0].decode('utf-8'), src_data[1].decode('utf-8'), src_data[2], src=True)
-        dst = EntryPart(dst_data[0].decode('utf-8'), dst_data[1].decode('utf-8'), dst_data[2])
-        return Entry(src, dst, unit, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        #unit = v[5].decode('utf-8')
+        description = v[5].decode('utf-8')
+        src_data = v[6]
+        dst_data = v[7]
+        src = EntryPart(src_data[0].decode('utf-8'), src_data[1].decode('utf-8'), src_data[2].decode('utf-8'), src_data[3], src=True)
+        dst = EntryPart(dst_data[0].decode('utf-8'), dst_data[1].decode('utf-8'), dst_data[2].decode('utf-8'), dst_data[3])
+        return Entry(src, dst, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         
 
     """Calculate and return the digest of the entry.
@@ -381,9 +387,9 @@ class Entry:
         o.text = str(self.serial)
         data.append(o)
 
-        o = etree.Element('unit')
-        o.text = self.unit 
-        data.append(o)
+#        o = etree.Element('unit')
+#        o.text = self.unit 
+#        data.append(o)
 
         o = etree.Element('date')
         o.text = self.dt.strftime('%Y-%m-%d')

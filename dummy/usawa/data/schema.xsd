@@ -120,7 +120,6 @@
 			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="ref" type="xs:string" />
 			<xs:element name="serial" type="xs:positiveInteger" />
-			<xs:element name="unit" type="xs:string" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
 			<xs:element name="src" type="EntryPart"/>
@@ -131,6 +130,7 @@
 
 	<xs:complexType name="EntryPart">
 		<xs:sequence>
+			<xs:element name="unit" type="xs:string" />
 			<xs:element name="account" type="xs:string" />
 			<xs:element name="amount" type="xs:nonNegativeInteger" />
 		</xs:sequence>

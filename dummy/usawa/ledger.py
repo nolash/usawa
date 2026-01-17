@@ -106,24 +106,10 @@ class RunningTotal:
     :param entry: Entry to apply changes for.
     :type entry: usawa.Entry
     """
-    def apply_entry(self, entry):
-        src = entry.src.typ
-        dst = entry.dst.typ
-        src_isbalance = src in ['liability', 'asset']
-        dst_isbalance = dst in ['liability', 'asset']
-        
-        src_amount = entry.src.amount
-        dst_amount = entry.dst.amount
-        if src_isbalance and dst_isbalance:
-            if dst == 'liability':
-                src_amount *= -1
-                dst_amount *= -1
-        fn = getattr(self, entry.src.typ + '_delta')
-        fn(src_amount)
-        fn = getattr(self, entry.dst.typ + '_delta')
-        fn(dst_amount)
+    def apply(self, typ, amount):
+        fn = getattr(self, typ + '_delta')
+        fn(amount)
 
-        logg.debug('applied entry {} src {} dst {} balance {}'.format(entry.serial, entry.src, entry.dst, self.unitindex.to_floatstring(self.sym, self.get_balance())))
 
 
     """
@@ -488,11 +474,31 @@ class Ledger:
         self.cur = entry.sum()[0]
         entry.parent = oldbase
         self.entries[entry.serial].append(entry)
-        self.running[entry.unit].apply_entry(entry)
+        #self.running[entry.unit].apply_entry(entry)
+        self.apply_entryparts(entry)
         if self.tree != None and modify_tree:
             entry_tree = entry.to_tree()
             self.tree.append(entry_tree)
-        logg.debug('entryunit {} {}'.format(entry.unit, self.running[entry.unit]))
+
+
+    def apply_entryparts(self, entry):
+        src = entry.src.typ
+        dst = entry.dst.typ
+        src_isbalance = src in ['liability', 'asset']
+        dst_isbalance = dst in ['liability', 'asset']
+        src_unit = entry.src.unit
+        dst_unit = entry.dst.unit
+        
+        src_amount = entry.src.amount
+        dst_amount = entry.dst.amount
+        if src_isbalance and dst_isbalance:
+            if dst == 'liability':
+                src_amount *= -1
+                dst_amount *= -1
+        self.running[src_unit].apply(src, src_amount)
+        self.running[dst_unit].apply(dst, dst_amount)
+
+        logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.src, entry.dst))
 
 
     def apply_signature(self, identity):
