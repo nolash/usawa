@@ -277,7 +277,7 @@ class Ledger:
             else:
                 topic = self.topic.hex()
         o.text = topic
-        o = lxml.etree.SubElement(tree, NSPREFIX + 'retrieved', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, NSPREFIX + 'generated', nsmap=nsmap())
         self.dt = datetime.datetime.now()
         o.text = to_datestring(self.dt)
         #self.tree.append(o)
@@ -669,7 +669,7 @@ class Ledger:
             totals.append(v)
         d = [
                 self.topic,
-                self.serial.to_bytes(8, byteorder='big'),
+                varints.leb128s.encode(self.serial),
                 self.cur,
                 ts_bytes,
                 units, 

@@ -1,0 +1,25 @@
+@chapter Data format
+
+The canonical ledger data format is XML.
+
+The XML schema is designed to allow embedding of all data necessary to verify integrity signatures, including exchange rates between units of account.
+
+Order of elements are important in the XML document. The schema is cited in @xref{xml_schema, appendix A}.
+
+
+@section Ledger header
+
+The responsibility of the ledger header is to give the consumer the necessary resources to validate the entries in the ledger.
+
+It includes:
+
+@itemize
+@item The document version, indicating which version of schema to use.
+@item Topic, which uniquely identifies the legder instance.
+@item Generation date and time of the XML document.
+@item Index of units of account used in the following entries. @ref{unit_index,Unix Index}
+@item The public key identities whose signatures appear in the document. @ref{identity,Public Key Identities}.
+@item Details on resolver services that can be used to expand assets references by digests. See @xref{resolver, Resolvers} and @xref{assets, Referencing assets}.
+@item Ledger state, under the element @code{incoming}, defining the digest of the position of the entry chain the ledger document starts at. @ref{incoming, Ledger State}.
+@item Signatures that may authenticate the ledger state.
+@end itemize

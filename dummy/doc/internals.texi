@@ -1,0 +1,77 @@
+@chapter Internals
+
+
+@section Serializations
+
+@subsection Ledger
+
+The serialization of ledger is used to generate signature material used in the XML state header.
+
+Serialization uses the rencode format, and all individual elements are elements in a list.
+
+The list elements are generated as follows:
+
+@enumerate
+@item @strong{topic}, literal bytes.
+@item The current state @strong{serial}, LEB128s encoded.
+@item The current state @strong{digest}, 64 bytes (sha512).
+@item @strong{timestamp} as big endian 32-bit value.
+@item Serialization of the @strong{Unit Index}.
+@item Serialization of the @strong{Access Control List}.
+@item Serialization of the @strong{Running Total}.
+@end enumerate
+
+
+@subsection Unit Index
+
+A collection of units of account, defining their value precision level aswell as exchange rates.
+
+Serialization uses the rencode format, and all individual elements are elements in a list.
+
+The list elements are generated as follows:
+
+@enumerate
+@item The base unit symbol, UTF-8 byte value.
+@item List of unit definitions, see below
+@end enumerate
+
+
+@subsubsection Serialization of unit definitions
+
+The list elements are generated as follows:
+
+@enumerate
+@item The unit symbol to define.
+@item The unit precision level, as an 8-bit unsigned integer value.
+@item Exchange rate, as a 64 bit unsigned integer value.
+@end enumerate
+
+
+@subsection Access Control List
+
+(TODO: rename)
+
+Defines known public keys and what each key can be trusted to sign for.
+
+The list elements are themselves lists, the latter generated as follows:
+
+@enumerate
+@item Public key, literal, hex-encoded.
+@item The persmissions bitflag array, currently 4 bytes. literal.
+@end enumerate
+
+
+
+@subsection Running Total
+
+Keeps the state of accounts for each used unit.
+
+The list elements are generated as follows:
+
+@enumerate
+@item The unit symbol the running totla is kept for.
+@item The income account balance, positive or negative, LEB128s encoded.
+@item The expense account balance, positive or negative, LEB128s encoded.
+@item The asset account balance, positive or negative, LEB128s encoded.
+@item The liability account balance, positive or negative, LEB128s encoded.
+@end enumerate

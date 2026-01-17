@@ -1,0 +1,24 @@
+\input texinfo
+@settitle usawa
+
+@copying
+Documentation released 2026 under CC-BY-SA
+@end copying
+
+@titlepage
+@title usawa
+@author Louis Holbrook
+@end titlepage
+
+@c
+@contents
+
+@ifnottex
+@node Top
+@top Introduction
+@end ifnottex
+
+@include intro.texi
+@include xml.texi
+@include internals.texi
+@include appendix.texi
