@@ -123,7 +123,7 @@ class RunningTotal:
 
     """
     """
-    def serialize(self):
+    def to_list(self):
         d = [
                 self.sym,
                 varints.leb128s.encode(self.income),
@@ -131,8 +131,12 @@ class RunningTotal:
                 varints.leb128s.encode(self.asset),
                 varints.leb128s.encode(self.liability),
                 ]
-        return rencode.dumps(d)
+        return d
 
+
+    def serialize(self):
+        d = self.to_list()
+        return rencode.dumps(d)
 
 
     def __str__(self):
@@ -677,10 +681,13 @@ class Ledger:
     def serialize(self):
         ts = int(self.dt.timestamp())
         ts_bytes = ts.to_bytes(4, byteorder='big')
-        units = self.uidx.serialize()
-        identities = self.acl.serialize()
+        #units = self.uidx.serialize()
+        units = self.uidx.to_list()
+        #identities = self.acl.serialize()
+        identities = self.acl.to_list()
         totals = []
-        v = self.running[self.uidx.base].serialize()
+        #v = self.running[self.uidx.base].serialize()
+        v = self.running[self.uidx.base].to_list()
         totals.append(v)
         for k in self.running.keys():
             if k == self.uidx.base:

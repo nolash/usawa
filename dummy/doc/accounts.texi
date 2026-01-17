@@ -1,4 +1,17 @@
 @chapter Accounts
 
+Accounts are made up of two parts, @emph{type} and @emph{path}.
+
 @anchor{account_type}
-@anchor{account_path}
+There are four account types:
+
+@itemize
+@item @strong{income}, representing funds moving into the ledger.
+@item @strong{expense}, representing funds moving out of the ledger.
+@item @strong{asset}, representing value stored in the ledger.
+@item @strong{liability}, representing value owed in the ledger.
+@end itemize
+
+Under each type, a path-like identifier may be freely chosen to subdivide the context under each type. This context can in turn be used to obtain granular balances and totals.
+
+For example, @code{rents/Apartment A} could subdivide an @code{income} account type to separate it from @code{rents/Apartment B}

@@ -196,8 +196,7 @@ class UnitIndex:
             r *= -1
         return int(r)
 
-
-    def serialize(self):
+    def to_list(self):
         syms = list(self.detail.keys())
         syms.sort()
         units = []
@@ -209,6 +208,11 @@ class UnitIndex:
             self.base,
             units,
                 ]
+        return d
+
+
+    def serialize(self):
+        d = self.to_list() 
         return rencode.dumps(d)
 
 

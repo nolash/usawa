@@ -61,7 +61,7 @@ class EntryPart:
         account = tree.find('account', namespaces=nsmap()).text
         return EntryPart(unit, typ, account, amount, debit=debit)
 
-   
+
     """Commit the object state to XML.
 
     :returns: Same object.

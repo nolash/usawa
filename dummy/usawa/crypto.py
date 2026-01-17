@@ -248,11 +248,16 @@ class ACL:
         return r
 
 
-    def serialize(self):
+    def to_list(self):
         keys = list(self.rev.keys())
         keys.sort()
         r = []
         for k in keys:
             v = self.axx[self.rev[k]][1]
             r.append((k, v,))
+        return r
+
+
+    def serialize(self):
+        r = self.to_list()
         return rencode.dumps(r)
