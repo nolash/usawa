@@ -33,8 +33,10 @@ class TestStore(unittest.TestCase):
         ledger = Ledger(uidx, serial=42, base=self.parent)
         store = LedgerStore(self.store, ledger)
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, src=True)
-        o = Entry(src, dst, 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         wallet = DemoWallet()
         o.sign(wallet)
         store.add_entry(o)
@@ -52,8 +54,10 @@ class TestStore(unittest.TestCase):
         store = LedgerStore(self.store, ledger)
 
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, src=True)
-        o = Entry(src, dst, 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         o.sign(wallet)
         store.add_entry(o)
     
@@ -62,8 +66,10 @@ class TestStore(unittest.TestCase):
         description = 'barbarbar'
         dtreg = datetime.datetime.now()
         dst = EntryPart('FOO', 'expense', 'bar', 4200)
-        src = EntryPart('FOO', 'liability', 'bar', 4200, src=True)
-        o = Entry(src, dst, 43, datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg)
+        src = EntryPart('FOO', 'liability', 'bar', 4200, debit=True)
+        o = Entry(43, datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         o.sign(wallet)
         store.add_entry(o)
         

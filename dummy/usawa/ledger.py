@@ -482,23 +482,34 @@ class Ledger:
 
 
     def apply_entryparts(self, entry):
-        src = entry.src.typ
-        dst = entry.dst.typ
-        src_isbalance = src in ['liability', 'asset']
-        dst_isbalance = dst in ['liability', 'asset']
-        src_unit = entry.src.unit
-        dst_unit = entry.dst.unit
-        
-        src_amount = entry.src.amount
-        dst_amount = entry.dst.amount
-        if src_isbalance and dst_isbalance:
-            if dst == 'liability':
-                src_amount *= -1
-                dst_amount *= -1
-        self.running[src_unit].apply(src, src_amount)
-        self.running[dst_unit].apply(dst, dst_amount)
+        for v in entry.debit:
+#        src = entry.src.typ
+#        dst = entry.dst.typ
+#        src_isbalance = src in ['liability', 'asset']
+#        dst_isbalance = dst in ['liability', 'asset']
+#        src_unit = entry.src.unit
+#        dst_unit = entry.dst.unit
+            amount = v.amount
+            if v.isdebit:
+                amount *= -1
+            self.running[v.unit].apply(v.typ, amount)
 
-        logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.src, entry.dst))
+        for v in entry.credit:
+            amount = v.amount
+            if v.isdebit:
+                amount *= -1
+            self.running[v.unit].apply(v.typ, amount)
+        
+#        src_amount = entry.src.amount
+#        dst_amount = entry.dst.amount
+#        if src_isbalance and dst_isbalance:
+#            if dst == 'liability':
+#                src_amount *= -1
+#                dst_amount *= -1
+#        self.running[src_unit].apply(src, src_amount)
+#        self.running[dst_unit].apply(dst, dst_amount)
+
+        logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.debit, entry.credit))
 
 
     def apply_signature(self, identity):

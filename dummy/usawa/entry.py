@@ -24,8 +24,10 @@ class KeyStoreFormat(enum.IntEnum):
 
 
 class EntryPart:
-    """EntryPart is one of the two parts of a transaction, representing either side of a double-accounting ledger.
-    
+    """EntryPart is a single part of transaction, representing either side of a double-accounting ledger.
+
+    Each side of the transaction may have several parts.
+
     :param typ: One of 'asset', 'liability', 'income', 'expense'
     :type typ: str
     :param account: A path-like account name.
@@ -36,12 +38,12 @@ class EntryPart:
     :type src: boolean
     :todo: Make typ enum
     """
-    def __init__(self, unit, typ, account, amount, src=False):
+    def __init__(self, unit, typ, account, amount, debit=False):
         self.unit = unit
         self.typ = typ
         self.account = account
         self.amount = amount
-        self.issrc = src
+        self.isdebit = debit
 
 
     """Create object from an entry part defined as an XML tree.
@@ -52,12 +54,12 @@ class EntryPart:
     :type src: boolean
     """
     @staticmethod
-    def from_tree(tree, src=False):
+    def from_tree(tree, debit=False):
         typ = tree.get('type')
         unit = tree.find('unit', namespaces=nsmap()).text
         amount = int(tree.find('amount', namespaces=nsmap()).text)
         account = tree.find('account', namespaces=nsmap()).text
-        return EntryPart(unit, typ, account, amount, src=src)
+        return EntryPart(unit, typ, account, amount, debit=debit)
 
    
     """Commit the object state to XML.
@@ -67,9 +69,9 @@ class EntryPart:
     :todo: Not an API function?
     """
     def apply_tree(self, tree):
-        tag = 'dst'
-        if self.issrc:
-            tag = 'src'
+        tag = 'credit'
+        if self.isdebit:
+            tag = 'debit'
 
         part = etree.Element(tag, type=self.typ)
 
@@ -91,9 +93,9 @@ class EntryPart:
 
 
     def __str__(self):
-        pfx = 'dst'
-        if self.issrc:
-            pfx = 'src'
+        pfx = 'credit'
+        if self.isdebit:
+            pfx = 'debit'
         return '[{}] {}:{} {}'.format(pfx, self.typ, self.account, self.amount)
 
 
@@ -128,7 +130,7 @@ class Entry:
     :todo: Check hashlen of parent against actual digest length defined in digest_algo.
     :todo: Prevent changes after the first signature calculation.
     """
-    def __init__(self, src, dst, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None):
+    def __init__(self, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
         elif parent == None:
@@ -141,14 +143,24 @@ class Entry:
         self.parent = parent
         self.serial = serial
         self.dt = tx_date
+        self.uidx = unitindex
         if tx_datereg == None:
             tx_datereg = datetime.datetime.now()
         self.dtreg = tx_datereg
         self.attachment = []
         self.sigs = {}
         self.description = description
-        self.src = src
-        self.dst = dst
+        self.debit = []
+        self.credit = []
+
+
+    def add_part(self, part, debit=False):
+        if self.uidx != None:
+            self.uidx.sym(part.unit)
+        if debit:
+            self.debit.append(part)
+        else:
+            self.credit.append(part)
 
 
     """Append a single media asset to the attachment list for the entry.
@@ -207,12 +219,17 @@ class Entry:
             description = description.text
         dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
         dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
-        src = EntryPart.from_tree(tree.find('src', namespaces=nsmap()), src=True)
-        dst = EntryPart.from_tree(tree.find('dst', namespaces=nsmap()))
 
-        r = Entry(src, dst, serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description)
+        o = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
+
+        src = EntryPart.from_tree(tree.find('src', namespaces=nsmap()), debit=True)
+        dst = EntryPart.from_tree(tree.find('dst', namespaces=nsmap()))
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+
         for sig in tree.iter(NSPREFIX + 'sig'):
             r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
+
         return r
 
 
@@ -222,8 +239,15 @@ class Entry:
     :rtype: str
     """
     def serialize(self):
-        src = [self.src.unit, self.src.typ, self.src.account, self.src.amount]
-        dst = [self.dst.unit, self.dst.typ, self.dst.account, self.dst.amount]
+
+        debit = []
+        credit = []
+        for v in self.debit:
+            debit.append((v.unit, v.typ, v.account, v.amount,))
+
+        for v in self.credit:
+            credit.append((v.unit, v.typ, v.account, v.amount,))
+
         d = [
                 self.parent,
                 self.serial,
@@ -231,8 +255,8 @@ class Entry:
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
                 self.description,
-                src,
-                dst,
+                debit,
+                credit,
                 ]
         logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
@@ -256,10 +280,17 @@ class Entry:
         description = v[5].decode('utf-8')
         src_data = v[6]
         dst_data = v[7]
-        src = EntryPart(src_data[0].decode('utf-8'), src_data[1].decode('utf-8'), src_data[2].decode('utf-8'), src_data[3], src=True)
-        dst = EntryPart(dst_data[0].decode('utf-8'), dst_data[1].decode('utf-8'), dst_data[2].decode('utf-8'), dst_data[3])
-        return Entry(src, dst, serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        for v in src_data:
+            src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
+            o.add_part(src, debit=True)
+
+        for v in dst_data:
+            dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
+            o.add_part(dst)
         
+        return o
+
 
     """Calculate and return the digest of the entry.
 
@@ -325,6 +356,7 @@ class Entry:
                 data,
             ]
         return rencode.dumps(d)
+
 
     """Create an entry object from serialized data containing valid public keys for signing, generated by the wrap() method.
 
@@ -404,8 +436,11 @@ class Entry:
             o.text = self.description
             data.append(o)
 
-        self.src.apply_tree(data)
-        self.dst.apply_tree(data)
+        for v in self.debit:
+            v.apply_tree(data)
+
+        for v in self.credit:
+            v.apply_tree(data)
         
         tree.append(data)
 

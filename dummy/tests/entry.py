@@ -23,8 +23,10 @@ class TestEntry(unittest.TestCase):
 
     def test_entry_serialize(self):
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, src=True)
-        o = Entry(src, dst, 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         oo = copy.deepcopy(o)
 
         s = o.serialize()
@@ -45,8 +47,10 @@ class TestEntry(unittest.TestCase):
 
     def test_entry_sign_verify(self):
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, src=True)
-        o = Entry(src, dst, 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         wallet = DemoWallet()
         data = o.wrap(wallet=wallet)
         r = Entry.unwrap(data)
@@ -54,8 +58,10 @@ class TestEntry(unittest.TestCase):
 
     def test_entry_acl_verify(self):
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, src=True)
-        o = Entry(src, dst, 42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
         wallet = DemoWallet()
         data = o.wrap(wallet)
         pubk_wrong = bytes.fromhex('72f25d90ef4cfecda8fa2c47561af5af0a10a92bfd15986b1f916358bf6ac8a37858a14d27329506a3766bad0f34d2e04caf397c1607b4380eb33c97d37dfc37')

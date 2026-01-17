@@ -122,8 +122,8 @@
 			<xs:element name="serial" type="xs:positiveInteger" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
-			<xs:element name="src" type="EntryPart"/>
-			<xs:element name="dst" type="EntryPart"/>
+			<xs:element name="debit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
+			<xs:element name="credit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="attachment" type="Attachment" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
