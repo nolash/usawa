@@ -296,7 +296,7 @@ class Entry:
             o.add_part(src, debit=True)
 
         for v in dst_data:
-            dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
+            dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
             o.add_part(dst)
         
         return o

@@ -305,7 +305,6 @@ class Ledger:
 
         if acl != None:
             for v in acl.pubkeys(binary=False):
-            #v = wallet.address()
                 if v not in identities:
                     identities.append(v)
                     identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())

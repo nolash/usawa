@@ -1,4 +1,4 @@
-@anchor xml_schema
+@anchor{xml_schema}
 @appendix XML schema
 
 @example

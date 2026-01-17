@@ -20,5 +20,12 @@ Documentation released 2026 under CC-BY-SA
 
 @include intro.texi
 @include xml.texi
+@include ledger.texi
+@include accounts.texi
+@include unit.texi
+@include identity.texi
+@include time.texi
+@include resolver.texi
+@include assets.texi
 @include internals.texi
 @include appendix.texi

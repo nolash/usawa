@@ -1,0 +1,4 @@
+@chapter Accounts
+
+@anchor{account_type}
+@anchor{account_path}

@@ -1,4 +1,4 @@
-@chapter Data format
+@chapter Data representation
 
 The canonical ledger data format is XML.
 
@@ -23,3 +23,43 @@ It includes:
 @item Ledger state, under the element @code{incoming}, defining the digest of the position of the entry chain the ledger document starts at. @ref{incoming, Ledger State}.
 @item Signatures that may authenticate the ledger state.
 @end itemize
+
+
+@subsection Truncated header
+
+An important feature of the header is to allow only a portion of the ledger's entries to appear in the document.
+
+This is accomplished by populating the @code{digest} and @code{serial} values in the ledger state with those of the parent of the first entry listed. @ref{xml_example_trunc, Truncated XML example} for more details.
+
+In order to list all entries in a ledger, the @code{digest} value should be the zero-digest (64 zero-value bytes), and with a @code{serial} of @code{0}.
+
+
+@section Entry
+
+Every entry is comprised of two or more parts, where there is at least one debit and one credit part. All the parts should add up to 0.
+
+The parts represents instantaneous changes in the ledger within a single entry. E.g. at the same time an expense account and a sales tax credit.
+
+Each part may have different units of account. In this case, conversion rates for each part must be provided in order to verify the zero sum of the parts.
+
+The debit and credit entry part elements have identical stucture, and include:
+
+@itemize
+@item The unit of account.
+@item The account specifier, which is a combination of @ref{account_type, account type}, and @ref{account_path, account path}.
+@item The amount in the unit of account, as decimal integer to the level of precision defined for the unit.
+@end itemize
+
+The entry representation also defines data necessary for the immutability chain to be verified:
+
+@itemize
+@item The digest of the parent.
+@item The serial number of this entry in the ledger.
+@item The external reference of the entry, e.g. a blockchain transaction specificer or tax invoice uuid.
+@item The date or datetime when the transaction took place. @ref{entry_timing, Entry timing}.
+@item The datetime when the transaction was registered in the ledger.
+@item A free-text description for the entry.
+@end itemize
+
+
+@anchor{xml_example_trunc}
