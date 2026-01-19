@@ -1,1 +1,30 @@
 @anchor{resolver}
+@chapter Resolvers
+
+
+The resolver element describes endpoints that can be used as key-value stores to expand content.
+
+Content to resolve may include:
+
+@itemize
+@item Ledger entries
+@item 
+@end itemize
+
+Typically, they are content-addressed stores where a digest is used to retrieve content corresponding to the digest from a @xref{resolver}.
+
+Resolvers are defined per lookup key algorithm, and any algorithm may have several resolvers defined. Defining more than one resolver per algorithm enables redundancy in conent retrieval.
+
+
+@section Defining a resolver
+
+The endpoint is defined as a combination of protocol for retrieval, location for retrieval and algorithms for content lookup key. An example for a @code{sha256} resolver could be defined as:
+
+@example
+<resolver algo="sha256" proto="https">foo.com/content/</resolver>
+@end example
+
+
+@section Security
+
+Note that even if an endpoint is trusted, it is always up to the client to verify that any digest used as a lookup key actually matches the content returned.

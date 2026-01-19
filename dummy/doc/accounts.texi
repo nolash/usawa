@@ -12,6 +12,7 @@ There are four account types:
 @item @strong{liability}, representing value owed in the ledger.
 @end itemize
 
+@anchor{account_path}
 Under each type, a path-like identifier may be freely chosen to subdivide the context under each type. This context can in turn be used to obtain granular balances and totals.
 
 For example, @code{rents/Apartment A} could subdivide an @code{income} account type to separate it from @code{rents/Apartment B}

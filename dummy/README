@@ -1,0 +1,189 @@
+# Usawa
+
+A local-first, authenticated and immutable accounting schema for individuals and small businesses.
+
+
+## Documentation
+
+Please refer to the documentation in `doc/`. If is vanilla GNU texinfo, and can easily be built with:
+
+```
+cd doc/
+makeinfo --html index.texi
+``` 
+
+The HTML entry point for local browsing will be in `doc/index_html/index.html`
+
+
+## Dependencies
+
+OS dependencies upon which python dependencies rely:
+
+* [libsodium](https://libsodium.net/)
+* [valkey](https://valkey.io/) (server running)
+
+Note that `valkey` is implemented for the POC, but even this POC library allows for any key-value store that satisfies the [whee](https://pypi.org/project/wheepy/) interface.
+
+
+## Trying out the tools
+
+First install requirements in a virtual environment:
+
+```
+python -mvenv .venv
+. .venv/bin/activate
+pip install .[valkey]
+```
+
+### Creating a ledger
+
+The topic may be any value, and will be stored under its digest. Prefix with `0x` to define a literal hexadecimal value.
+
+`python usawa/runnable/create.py -t <sometopic> -o start.xml`
+
+Once completed, the contents of `start.xml` will be something like this:
+
+
+```
+<?xml version="1.0"?>
+<ledger xmlns="http://usawa.defalsify.org/" version="1">
+  <topic xmlns:ns="http://usawa.defalsify.org/">7092e69f8179a45f673f8e4b85cf7de2a09d5f3e43f801fd2c1a47c6dcd9f14a0137c7a1244e7e625057850f3e0c4132bbd23877c2ede5f49f12e646bb5cca7b</topic>
+  <generated xmlns:ns="http://usawa.defalsify.org/">2026-01-19T18:19:57Z</generated>
+  <src xmlns:ns="http://usawa.defalsify.org/"/>
+  <units xmlns:ns="http://usawa.defalsify.org/" base="BTC">
+    <unit sym="BTC">
+      <precision>2</precision>
+      <exchange>1000000000</exchange>
+    </unit>
+  </units>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <incoming xmlns:ns="http://usawa.defalsify.org/" serial="0">
+    <real unit="BTC">
+      <asset>0</asset>
+      <liability>0</liability>
+    </real>
+    <digest algo="sha512">00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</digest>
+    <sig keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" type="ed25519">3615f40538a11d625400ac0195f803c68c7b53b93f095753dcca93c5eb2851004c2b28ca067fd6bd298e73ebe1fa02eb1392e0ff83c87a5c421516951c33c30b</sig>
+  </incoming>
+</ledger>
+```
+
+
+### Adding a ledger entry
+
+Using the initial state of the ledger, the `add.py` tool can be used to interactively specify a new entry in the ledger.
+
+`python usawa/runnable/add.py -i start.xml -o first.xml`
+
+If correctly specified, this will store an entry in the `valkey` database, and output the new _truncated state_ of the ledger to `first.xml`.
+
+Another entry may be added using the new _truncated state_:
+
+`python usawa/runnable/add.py -i first.xml -o second.xml`
+
+... and so on.
+
+
+### Viewing the ledger
+
+An XML representation of the ledger and its entries may be generated using the corresponding ledger state.
+
+Using states from the precending examples:
+
+```
+# Will output the zero-state ledger header, aswell as two entries
+python usawa/runnable/view.py start.xml
+# Will output the ledger header after the first entry, aswell as one entry.
+python usawa/runnable/view.py first.xml
+# Will output the ledger header after the second entry with no entries.
+python usawa/runnable/view.py second.xml
+``` 
+
+Example output of the first command:
+
+```
+<?xml version="1.0"?>
+<ledger xmlns="http://usawa.defalsify.org/" version="1">
+  <topic xmlns:ns="http://usawa.defalsify.org/">59e0bb093d185a9f8e677b1fb76f84d829709561ca03f3c1b53dd9cc275b26f106777ea96998a85803e6fd582173c0f631c626c2725126405e969ba0459c73ea</topic>
+  <generated xmlns:ns="http://usawa.defalsify.org/">2026-01-19T18:42:17Z</generated>
+  <src xmlns:ns="http://usawa.defalsify.org/">defalsify.org</src>
+  <units xmlns:ns="http://usawa.defalsify.org/" base="BTC">
+    <unit sym="BTC">
+      <precision>2</precision>
+      <exchange>1000000000</exchange>
+    </unit>
+  </units>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <incoming xmlns:ns="http://usawa.defalsify.org/" serial="0">
+    <real unit="BTC">
+      <asset>0</asset>
+      <liability>0</liability>
+    </real>
+    <digest algo="sha512">00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</digest>
+  </incoming>
+  <entry>
+    <data>
+      <parent>00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</parent>
+      <ref>a844baa7-074d-4654-8513-a0510ead7f41</ref>
+      <serial>1</serial>
+      <date>2026-01-19</date>
+      <dateTimeRegistered>2026-01-19T18:41:37Z</dateTimeRegistered>
+      <description>aergiuaheorg</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-1212500</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>1212500</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">6811b639e6679dee7e4e229ed1bc836eca6c0731556f47f6ce9c4829221fdbc2472949f968f60d16e51c56d781f0f168fbfcc12e2366b1cd29e793a611e48a0f</sig>
+  </entry>
+  <entry>
+    <data>
+      <parent>00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</parent>
+      <ref>450956b1-99e3-4011-af32-3b88723ab233</ref>
+      <serial>2</serial>
+      <date>2026-01-19</date>
+      <dateTimeRegistered>2026-01-19T18:41:57Z</dateTimeRegistered>
+      <description>eqriguheqighq3ghoq3hgqhrg</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-4968347600</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>4968347600</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">c8d728ecc17cc1ac0d11dd24f35025f133e3fd91be6037d35df056b9a6ab26e67b7028826069b3f99b37258176921c45f0b333d8e950e36a7e5f729994cbd60c</sig>
+  </entry>
+</ledger>
+
+```
+
+
+## State of development
+
+This software is to be considered proof-of-concept and not safe for use in production in any way.
+
+Shortcomings include:
+
+* Media assets and attachments are not yet implemented.
+* No PKI functions are available to manage public key lists.
+* A single, unencrypted private key entry in the key-value store is used for signatures.
+
+
+## Legals
+
+Copyright 2026 by Louis Holbrook, all rights reserved.
+
+All software licensed under [GNU Affero General Public License 3.0](https://www.gnu.org/licenses/agpl-3.0.en.html).
+
+All documentation licensed under [Creative Commons Attribution-Sharealike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).

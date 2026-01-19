@@ -1,3 +1,43 @@
-@chapter Introduction
+@chapter Overview
+
+The @strong{usawa} data format specification is an attempt at creating a portable, immutable and authenticated accounting schema.
+
+It is a @emph{decentralized ledger} project without being a @ref{blockchain_compare,blockchain}.
+
+At its heart, the specification is little more than a chained of entries, where each new entry points to the previous and is cryptographically signed.
 
 
+@section Design goals
+
+@itemize
+@item Enable publishing of ledger entries regardless of technology of platform.
+@item Primarily target an offline, local-first environment.
+@item Natively accommodate use of multiple currencies and units of accounts.
+@item Make receipts and other documentation aswell as conversion rates part of the immutable chain.
+@item Tailored for individuals and small businesses.
+@end itemize
+
+
+@anchor{blockchain_compare}
+@section Comparison with blockchain
+
+Although this specification may seem similar to a blockchain concept, there are some important differences. The difference can best be defined as what @strong{usawa} does @emph{not} seek to provide.
+
+
+@subsection No double-spend prevention
+
+The primary innovation of blockchains and the peer-to-peer software that support them is to solve the double-spend problem of decentralized transactions.
+
+@strong{usawa} is an @emph{accounting} project, and does not seek to solve such problems.
+
+
+@subsection No built-in finality and consensus.
+
+The @strong{usawa} specification only concentrates on @emph{how} to describe an accounting ledger and its evolving state.
+
+It leaves it up the implementer to create protocols and procedures to make sure that enough information of state is known to enough parties so that immutability can be enforced.
+
+
+@subsection No bundled dissemination.
+
+There is no node software specific to nor any protocol proposal for @strong{usawa} that defines how to make the state of the ledger known to all relevant parties at any one time.

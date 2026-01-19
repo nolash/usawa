@@ -31,7 +31,7 @@
 			<xs:element name="digest" type="Digest" minOccurs="1" maxOccurs="1"/>
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
-		<xs:attribute name="serial" type="xs:positiveInteger" />
+		<xs:attribute name="serial" type="xs:nonNegativeInteger" />
 	</xs:complexType>
 
 	<xs:complexType name="Balance">
@@ -51,6 +51,14 @@
 		<xs:attribute name="base" type="xs:string" />
 	</xs:complexType>
 
+	<xs:complexType name="Lookup">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="method" type="xs:string" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	
 	<xs:complexType name="Digest">
 		<xs:simpleContent>
 			<xs:extension base="xs:string">
@@ -58,6 +66,7 @@
 			</xs:extension>
 		</xs:simpleContent>
 	</xs:complexType>
+
 
 	<xs:complexType name="Signature">
 		<xs:simpleContent>
@@ -124,21 +133,21 @@
 			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="ref" type="xs:string" />
 			<xs:element name="serial" type="xs:positiveInteger" />
-			<xs:element name="unit" type="xs:string" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
-			<xs:element name="src" type="EntryPart"/>
-			<xs:element name="dst" type="EntryPart"/>
+			<xs:element name="debit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
+			<xs:element name="credit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="attachment" type="Attachment" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="EntryPart">
 		<xs:sequence>
+			<xs:element name="unit" type="xs:string" />
 			<xs:element name="account" type="xs:string" />
 			<xs:element name="amount" type="xs:nonNegativeInteger" />
 		</xs:sequence>
-		<xs:attribute name="type" type="xs:string" />
+		<xs:attribute name="type" type="accountType" />
 	</xs:complexType>
 
 	<xs:complexType name="Attachment">
@@ -146,10 +155,19 @@
 			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="slug" type="xs:string" />
 			<xs:element name="description" type="xs:string" />
-			<xs:element name="digest" type="Digest" />
+			<xs:element name="lookup" type="Lookup" />
 		</xs:sequence>
 		<xs:attribute name="mime" type="xs:string" />
 	</xs:complexType>
+
+	<xs:simpleType name="accountType" final="restriction">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="income" />
+			<xs:enumeration value="expense" />
+			<xs:enumeration value="asset" />
+			<xs:enumeration value="liability" />
+		</xs:restriction>
+	</xs:simpleType>
 </xs:schema>
 @end example
 

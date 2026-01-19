@@ -19,12 +19,14 @@ Documentation released 2026 under CC-BY-SA
 @end ifnottex
 
 @include intro.texi
+@include protocol.texi
 @include xml.texi
 @include ledger.texi
 @include accounts.texi
 @include unit.texi
 @include identity.texi
 @include time.texi
+@include store.texi
 @include resolver.texi
 @include assets.texi
 @include internals.texi

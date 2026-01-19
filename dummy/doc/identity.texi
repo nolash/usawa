@@ -1,1 +1,8 @@
 @anchor{identity}
+@chapter Identities
+
+Ledger headers and entry chains may be signed be more than one private key.
+
+Each entry signature element is bundled with a @code{keyid} attribute. @code{identity} elements matching the @code{keyid} may be defined in the ledger header, mapping them to a @emph{did URI}@footnote{DID v1.0: @url{https://www.w3.org/TR/did-1.0/}}.
+
+The default @emph{did method} is @code{usawa}, which refers to a resolution using the usawa store mechanism directly. @ref{store_identity, Identity entries in the store chapter} for details.

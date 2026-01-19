@@ -4,7 +4,7 @@ The canonical ledger data format is XML.
 
 The XML schema is designed to allow embedding of all data necessary to verify integrity signatures, including exchange rates between units of account.
 
-Order of elements are important in the XML document. The schema is cited in @xref{xml_schema, appendix A}.
+Order of elements are important in the XML document. The schema is cited in @ref{xml_schema, appendix A}.
 
 
 @section Ledger header
@@ -19,8 +19,8 @@ It includes:
 @item Generation date and time of the XML document.
 @item Index of units of account used in the following entries. @ref{unit_index,Unix Index}
 @item The public key identities whose signatures appear in the document. @ref{identity,Public Key Identities}.
-@item Details on resolver services that can be used to expand assets references by digests. See @xref{resolver, Resolvers} and @xref{assets, Referencing assets}.
-@item Ledger state, under the element @code{incoming}, defining the digest of the position of the entry chain the ledger document starts at. @ref{incoming, Ledger State}.
+@item Details on resolver services that can be used to expand assets references by digests. @xref{resolver, Resolvers} and @ref{assets, Referencing assets}.
+@item Ledger state, under the element @code{incoming}, defining the digest of the position of the entry chain the ledger document starts at. @xref{incoming, Ledger State}.
 @item Signatures that may authenticate the ledger state.
 @end itemize
 
@@ -29,7 +29,7 @@ It includes:
 
 An important feature of the header is to allow only a portion of the ledger's entries to appear in the document.
 
-This is accomplished by populating the @code{digest} and @code{serial} values in the ledger state with those of the parent of the first entry listed. @ref{xml_example_trunc, Truncated XML example} for more details.
+This is accomplished by populating the @code{digest} and @code{serial} values in the ledger state with those of the parent of the first entry listed. @xref{xml_example_trunc, Truncated XML example} for more details.
 
 In order to list all entries in a ledger, the @code{digest} value should be the zero-digest (64 zero-value bytes), and with a @code{serial} of @code{0}.
 
@@ -56,7 +56,7 @@ The entry representation also defines data necessary for the immutability chain 
 @item The digest of the parent.
 @item The serial number of this entry in the ledger.
 @item The external reference of the entry, e.g. a blockchain transaction specificer or tax invoice uuid.
-@item The date or datetime when the transaction took place. @ref{entry_timing, Entry timing}.
+@item The date or datetime when the transaction took place. @xref{entry_timing, Entry timing}.
 @item The datetime when the transaction was registered in the ledger.
 @item A free-text description for the entry.
 @end itemize

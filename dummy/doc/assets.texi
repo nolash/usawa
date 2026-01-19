@@ -1,1 +1,33 @@
 @anchor{assets}
+@chapter Media assets
+
+Any entry may contain one or more media assets as @emph{attachments}. These allow for detailed documentation of the transaction the entry represents.
+
+Attachments are not limited to any specific type of content, but are usually a @emph{receipt}, an @emph{invoice} or a @emph{proof of payment}.
+
+
+@section Structure
+
+The attachment is defined by the following data:
+
+@itemize
+@item A @strong{slug}, specifically a filesystem-safe string appropriate for use as a filename stem. (i.e. the substring @emph{"picture"} from @file{/foo/bar/picture.png})
+@item A (preferably succint) @strong{description} of what the asset represents.
+@item One or more @strong{lookup} elements, specifying the @emph{lookup key} and the @xref{method} used to generate the lookup key.
+@end itemize
+
+
+@anchor{method}
+@subsection Lookup methods
+
+The method may or may not be verifiable from the content. 
+
+
+At a minimum, any implementation should accommodate the following methods:
+
+@itemize
+@item @code{sha256} and @code{sha512}, for which the @emph{lookup value} is the corresponding digest according to those algorithms.
+@item @code{uuid}@footnote{Note that uuid should not be used alone, as the value domain may carry the risk of collisions}, for which the key is a @emph{uuid string} that may or may not be related to a @emph{content digest}.
+@end itemize
+
+Any implementation is free to define any method it wishes, but should refrain from using well-known method strings like the above.
