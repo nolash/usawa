@@ -2,20 +2,9 @@
 
 A local-first, authenticated and immutable accounting schema for individuals and small businesses.
 
+This readme will only guide you to run some example commands, without giving you much insight.
 
-## Build
-
-```
-git submodule update --init
-python -mvenv .venv
-. .venv/bin/activate
-pip install .[valkey]
-```
-
-
-## Documentation
-
-Please refer to the documentation in `doc/`. If is vanilla GNU texinfo, and can easily be built with:
+Please refer to the documentation in `doc/`. If is vanilla [GNU Texinfo](https://www.gnu.org/software/texinfo/), and can easily be built with:
 
 ```
 cd doc/
@@ -33,6 +22,20 @@ OS dependencies upon which python dependencies rely:
 * [valkey](https://valkey.io/) (server running)
 
 Note that `valkey` is implemented for the POC, but even this POC library allows for any key-value store that satisfies the [whee](https://pypi.org/project/wheepy/) interface.
+
+## Build
+
+```
+git submodule update --init
+python -mvenv .venv
+. .venv/bin/activate
+cd dummy
+pip install .
+```
+
+You can verify the setup by running the tests:
+
+`find tests/ -iname "*.py" -exec python {} \;`
 
 
 ## Trying out the tools
