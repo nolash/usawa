@@ -97,6 +97,14 @@
 		</xs:sequence>
 	</xs:complexType>
 
+	<xs:complexType name="Permission">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="flag" type="xs:positiveInteger" />
+			</xs:extension>
+		</xs:simpleContent>
+
+	</xs:complexType>
 	<xs:complexType name="Identity">
 		<xs:simpleContent>
 			<xs:extension base="xs:string">
@@ -120,7 +128,6 @@
 			<xs:element name="data" type="EntryData" />
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
-		<!-- TODO: attribute enum -->
 	</xs:complexType>
 
 	<xs:complexType name="EntryData">

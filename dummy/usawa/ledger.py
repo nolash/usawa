@@ -207,6 +207,7 @@ class Ledger:
         self.wallet = v
         if self.acl == None:
             self.acl = ACL.from_wallet(self.wallet)
+        self.apply_wallet()
 
 
     """
@@ -214,6 +215,12 @@ class Ledger:
     def apply_wallet(self):
         incoming = self.tree.find('incoming', namespaces=nsmap()) 
         v = self.wallet.pubkey()
+        try:
+            self.sigs[v]
+            return
+        except KeyError:
+            pass
+        self.sigs[v] = b''
 
         o = lxml.etree.Element(NSPREFIX + 'identity', nsmap=nsmap())
         o.set('keyid', v.hex())
@@ -302,16 +309,18 @@ class Ledger:
         # TODO: move identity tree generation to wallet object
         identities = []
         for tree_identity in self.tree.xpath('ns:identity', namespaces=ns):
+            keyid = tree_identity.get('keyid')
+            try:
+                self.sigs[keyid]
+                continue
+            except KeyError:
+                pass
             v = tree_identity.text
-            identities.append(v)
+            identities.append(keyid)
             identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
             identity.text = v
-            identity.set('keyid', tree_identity.get('keyid'))
+            identity.set('keyid', keyid)
             identity.set('didtype', tree_identity.get('didtype'))
-
-        if self.wallet != None:
-            if self.wallet.pubkey() not in identities:
-                self.apply_wallet()
 
         if acl != None:
             for v in acl.pubkeys(binary=False):
@@ -326,7 +335,8 @@ class Ledger:
 
         incoming = lxml.etree.SubElement(tree, NSPREFIX + 'incoming', nsmap=nsmap())
         incoming.set('serial', str(self.serial))
-        
+ 
+              
         # swap running and apply all bases
         self.running = {}
         incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
@@ -452,6 +462,8 @@ class Ledger:
             except KeyError:
                 logg.debug('no signature from {}'.format(k))
                 continue
+            if sig == None:
+                raise ValueError('Signature entry without signature value')
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
             return wallet.verify(v[0], sig)

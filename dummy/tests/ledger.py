@@ -85,7 +85,7 @@ class TestLedger(unittest.TestCase):
         o = Ledger(uidx)
         store = LedgerStore(self.store, ledger=o)
         store.start()
-
+    
         wallet = DemoWallet()
         o.set_wallet(wallet)
         x = EntryPart(s, 'income', 'foo', 1337, debit=True)

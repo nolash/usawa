@@ -17,3 +17,8 @@ There should be more than one channel through which entries are published, and i
 All participants could be asked to follow both a @strong{nostr}@footnote{nostr is an ownerless, client- and server-agnostic protocol for publishing arbitrary content ("notes and other stuff"): @url{https://nostr.com/}} and an @emph{email mailist list}, that both would publish the full entry data as clearly defined data structures. 
 
 Also, all participants would be encouraged to follow an @emph{EVM chain}@footnote{A list of EVM chains: @url{https://chainlist.org/}} that could publish the latest ledger state digest in the data field of a transaction.
+
+
+@section Determining trust
+
+

@@ -171,3 +171,195 @@
 </xs:schema>
 @end example
 
+@anchor{xml_example}
+@appendix Example XML
+
+The two following examples are of the same ledger, containing two entries.
+
+The first displays header and entries from the initial (zero) state. It lists two entries.
+
+The second displays header and entries for the ledger state after the first entry added. It lists one entry.
+
+The third displays header for the ledger state after last entry added. It lists zero entries.
+
+
+@section Ledger from initial state
+
+@example
+<?xml version="1.0"?>
+<ledger xmlns="http://usawa.defalsify.org/" version="1">
+  <topic xmlns:ns="http://usawa.defalsify.org/">24448167713e4f7d7e09fd06716b17ffcbd8bd10aa2ebbaac0a0902292993a86244acb9683c7dc45500daf1193a760b87de6fadd0f7b30c1a7b63ac06c555ca8</topic>
+  <generated xmlns:ns="http://usawa.defalsify.org/">2026-01-20T09:30:34Z</generated>
+  <src xmlns:ns="http://usawa.defalsify.org/">defalsify.org</src>
+  <units xmlns:ns="http://usawa.defalsify.org/" base="BTC">
+    <unit sym="BTC">
+      <precision>2</precision>
+      <exchange>1000000000</exchange>
+    </unit>
+  </units>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <incoming xmlns:ns="http://usawa.defalsify.org/" serial="0">
+    <real unit="BTC">
+      <asset>0</asset>
+      <liability>0</liability>
+    </real>
+    <digest algo="sha512">00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</digest>
+  </incoming>
+  <entry>
+    <data>
+      <parent>00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</parent>
+      <ref>2ae1dae8-8071-4a40-983d-e25f80634d6b</ref>
+      <serial>1</serial>
+      <date>2026-01-20</date>
+      <dateTimeRegistered>2026-01-20T09:29:28Z</dateTimeRegistered>
+      <description>awergaergh</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-2346300</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>2346300</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">0a0bec86152bd411dff6d7569778305f30bf52dd03c060992d8bfd1f3432fe27cf3acd17d8019a0e5e3fe0c038664c478b1576fed027f3902bb32b56b05fd708</sig>
+  </entry>
+  <entry>
+    <data>
+      <parent>50740013c78726ddd4fd199bbe21ad3eb3c50dcfd3540e12c5b52151a9b9f3a41346a22a2d1928dfc5749faac332a8c15ff2f545e8ff92b07aa037c39b1ba93e</parent>
+      <ref>182536c7-f2ce-4976-af2a-6b0d2cf10e0c</ref>
+      <serial>2</serial>
+      <date>2026-01-20</date>
+      <dateTimeRegistered>2026-01-20T09:29:40Z</dateTimeRegistered>
+      <description>wergagh</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-1251613262700</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>1251613262700</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">603bf1bf05951f1c78e3ba9ab430e914f73f03b6570c15cb241695393e57eb178029ba1ff0f86afa5f29ea10ea49418825e387feb8d03f79280593e4598b1b0d</sig>
+  </entry>
+</ledger>
+@end example
+
+
+@section Ledger after last entry
+
+@example
+<?xml version="1.0"?>
+<ledger xmlns="http://usawa.defalsify.org/" version="1">
+  <topic xmlns:ns="http://usawa.defalsify.org/">24448167713e4f7d7e09fd06716b17ffcbd8bd10aa2ebbaac0a0902292993a86244acb9683c7dc45500daf1193a760b87de6fadd0f7b30c1a7b63ac06c555ca8</topic>
+  <generated xmlns:ns="http://usawa.defalsify.org/">2026-01-20T09:30:34Z</generated>
+  <src xmlns:ns="http://usawa.defalsify.org/">defalsify.org</src>
+  <units xmlns:ns="http://usawa.defalsify.org/" base="BTC">
+    <unit sym="BTC">
+      <precision>2</precision>
+      <exchange>1000000000</exchange>
+    </unit>
+  </units>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <incoming xmlns:ns="http://usawa.defalsify.org/" serial="0">
+    <real unit="BTC">
+      <asset>0</asset>
+      <liability>0</liability>
+    </real>
+    <digest algo="sha512">00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</digest>
+  </incoming>
+  <entry>
+    <data>
+      <parent>00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</parent>
+      <ref>2ae1dae8-8071-4a40-983d-e25f80634d6b</ref>
+      <serial>1</serial>
+      <date>2026-01-20</date>
+      <dateTimeRegistered>2026-01-20T09:29:28Z</dateTimeRegistered>
+      <description>awergaergh</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-2346300</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>2346300</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">0a0bec86152bd411dff6d7569778305f30bf52dd03c060992d8bfd1f3432fe27cf3acd17d8019a0e5e3fe0c038664c478b1576fed027f3902bb32b56b05fd708</sig>
+  </entry>
+  <entry>
+    <data>
+      <parent>50740013c78726ddd4fd199bbe21ad3eb3c50dcfd3540e12c5b52151a9b9f3a41346a22a2d1928dfc5749faac332a8c15ff2f545e8ff92b07aa037c39b1ba93e</parent>
+      <ref>182536c7-f2ce-4976-af2a-6b0d2cf10e0c</ref>
+      <serial>2</serial>
+      <date>2026-01-20</date>
+      <dateTimeRegistered>2026-01-20T09:29:40Z</dateTimeRegistered>
+      <description>wergagh</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-1251613262700</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>1251613262700</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">603bf1bf05951f1c78e3ba9ab430e914f73f03b6570c15cb241695393e57eb178029ba1ff0f86afa5f29ea10ea49418825e387feb8d03f79280593e4598b1b0d</sig>
+  </entry>
+</ledger>
+@end example
+
+@section Ledger after last entry
+
+@example
+<?xml version="1.0"?>
+<ledger xmlns="http://usawa.defalsify.org/" version="1">
+  <topic xmlns:ns="http://usawa.defalsify.org/">24448167713e4f7d7e09fd06716b17ffcbd8bd10aa2ebbaac0a0902292993a86244acb9683c7dc45500daf1193a760b87de6fadd0f7b30c1a7b63ac06c555ca8</topic>
+  <generated xmlns:ns="http://usawa.defalsify.org/">2026-01-20T09:32:09Z</generated>
+  <src xmlns:ns="http://usawa.defalsify.org/">defalsify.org</src>
+  <units xmlns:ns="http://usawa.defalsify.org/" base="BTC">
+    <unit sym="BTC">
+      <precision>2</precision>
+      <exchange>1000000000</exchange>
+    </unit>
+  </units>
+  <identity xmlns:ns="http://usawa.defalsify.org/" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc" didtype="usawa"/>
+  <incoming xmlns:ns="http://usawa.defalsify.org/" serial="1">
+    <real unit="BTC">
+      <asset>2346300</asset>
+      <liability>0</liability>
+    </real>
+    <digest algo="sha512">50740013c78726ddd4fd199bbe21ad3eb3c50dcfd3540e12c5b52151a9b9f3a41346a22a2d1928dfc5749faac332a8c15ff2f545e8ff92b07aa037c39b1ba93e</digest>
+  </incoming>
+  <entry>
+    <data>
+      <parent>50740013c78726ddd4fd199bbe21ad3eb3c50dcfd3540e12c5b52151a9b9f3a41346a22a2d1928dfc5749faac332a8c15ff2f545e8ff92b07aa037c39b1ba93e</parent>
+      <ref>182536c7-f2ce-4976-af2a-6b0d2cf10e0c</ref>
+      <serial>2</serial>
+      <date>2026-01-20</date>
+      <dateTimeRegistered>2026-01-20T09:29:40Z</dateTimeRegistered>
+      <description>wergagh</description>
+      <debit type="expense">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>-1251613262700</amount>
+      </debit>
+      <credit type="asset">
+        <unit>BTC</unit>
+        <account>general</account>
+        <amount>1251613262700</amount>
+      </credit>
+    </data>
+    <sig type="ed25519" keyid="3b54648d60bb8a5b9e84fa0057f79b3a5996e511682e80176dc948dcbff5a4fc">603bf1bf05951f1c78e3ba9ab430e914f73f03b6570c15cb241695393e57eb178029ba1ff0f86afa5f29ea10ea49418825e387feb8d03f79280593e4598b1b0d</sig>
+  </entry>
+</ledger>
+@end example
