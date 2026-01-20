@@ -1,0 +1,5 @@
+
+[submodule "dummy/aux/varints"]
+	path = dummy/aux/varints
+	url = https://git.defalsify.org/varints.git
+	branch = lash/add-missing-readme
