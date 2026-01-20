@@ -3,6 +3,16 @@
 A local-first, authenticated and immutable accounting schema for individuals and small businesses.
 
 
+## Build
+
+```
+git submodule update --init
+python -mvenv .venv
+. .venv/bin/activate
+pip install .[valkey]
+```
+
+
 ## Documentation
 
 Please refer to the documentation in `doc/`. If is vanilla GNU texinfo, and can easily be built with:
@@ -27,13 +37,6 @@ Note that `valkey` is implemented for the POC, but even this POC library allows 
 
 ## Trying out the tools
 
-First install requirements in a virtual environment:
-
-```
-python -mvenv .venv
-. .venv/bin/activate
-pip install .[valkey]
-```
 
 ### Creating a ledger
 
