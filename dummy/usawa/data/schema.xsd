@@ -106,12 +106,11 @@
 
 	</xs:complexType>
 	<xs:complexType name="Identity">
-		<xs:simpleContent>
-			<xs:extension base="xs:string">
-				<xs:attribute name="keyid" type="xs:string" />
-				<xs:attribute name="didtype" type="xs:string" />
-			</xs:extension>
-		</xs:simpleContent>
+		<xs:sequence>
+			<xs:element name="trust" type="Permission" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+		<xs:attribute name="keyid" type="xs:string" />
+		<xs:attribute name="didtype" type="xs:string" />
 	</xs:complexType>
 
 	<xs:complexType name="Resolver">
