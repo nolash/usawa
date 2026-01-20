@@ -207,12 +207,14 @@ class Ledger:
         self.wallet = v
         if self.acl == None:
             self.acl = ACL.from_wallet(self.wallet)
-        self.apply_wallet()
 
 
+    """
+    """
     def apply_wallet(self):
         incoming = self.tree.find('incoming', namespaces=nsmap()) 
         v = self.wallet.pubkey()
+
         o = lxml.etree.Element(NSPREFIX + 'identity', nsmap=nsmap())
         o.set('keyid', v.hex())
         did = self.wallet.did()
@@ -306,6 +308,10 @@ class Ledger:
             identity.text = v
             identity.set('keyid', tree_identity.get('keyid'))
             identity.set('didtype', tree_identity.get('didtype'))
+
+        if self.wallet != None:
+            if self.wallet.pubkey() not in identities:
+                self.apply_wallet()
 
         if acl != None:
             for v in acl.pubkeys(binary=False):
@@ -516,13 +522,23 @@ class Ledger:
         logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.debit, entry.credit))
 
 
+    """
+
+    :todo: handle canonical hex
+    """
     def apply_signature(self, identity):
         sig = self.sigs[identity]
+        sig_hx = sig.hex()
         tree = self.tree.find('incoming', namespaces=nsmap())
+   
+        for v in tree.iter(NSPREFIX + 'sig'):
+            if v.get('keyid') == identity.hex():
+                v.text = sig_hx
+                return
         o = lxml.etree.SubElement(tree, NSPREFIX + 'sig', nsmap=nsmap())
         o.set('keyid', identity.hex())
         o.set('type', 'ed25519')
-        o.text = sig.hex()
+        o.text = sig_hx
         
 
     """Add a signature on the ledger.
@@ -565,6 +581,12 @@ class Ledger:
             keyid = sig.get('keyid')
             digest = sig.text
             r.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid), modify_tree=False)
+
+        for sig in part.iter(NSPREFIX + 'identity'):
+            keyid = identity.get('keyid')
+            didtyp = identity.get('didtype')
+            did = identity.text
+            r.add_identity(keyid, did, typ=didtyp)
 
         o = part.find('real', namespaces=nsmap())
         asset = int(o.find('asset', namespaces=nsmap()).text)
