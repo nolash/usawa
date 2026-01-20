@@ -473,9 +473,10 @@ class Ledger:
             self.entries[entry.serial] = []
             #entries = self.entries[entry.serial]
         self.serial = entry.serial
-        oldbase = self.base
+        #oldbase = self.base
+        oldsum = self.cur
         self.cur = entry.sum()[0]
-        entry.parent = oldbase
+        entry.parent = oldsum
         self.entries[entry.serial].append(entry)
         #self.running[entry.unit].apply_entry(entry)
         self.apply_entryparts(entry)

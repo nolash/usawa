@@ -268,7 +268,6 @@ class Entry:
                 debit,
                 credit,
                 ]
-        logg.debug('serialize entry {}'.format(d))
         return rencode.dumps(d)
 
     """Create an entry object from serialized data.
@@ -298,6 +297,7 @@ class Entry:
         for v in dst_data:
             dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
             o.add_part(dst)
+        logg.debug('deserialized entry {}'.format(o))
         
         return o
 
@@ -398,7 +398,6 @@ class Entry:
         wallet = DemoWallet(publickey=pubkey_bytes)
         # TODO: demo only takes into account single signature
         sig = v[1][0]
-        logg.debug('our sig {} {}'.format(pubkey_bytes.hex(), sig.hex()))
         entry = Entry.deserialize(v[2])
         (z, b) = entry.sum()
         if not wallet.verify(z, sig):
@@ -465,3 +464,6 @@ class Entry:
             tree.append(o)
 
         return tree
+
+    def __str__(self):
+        return 'entry serial {} parent {}'.format(self.serial, self.parent.hex())
