@@ -19,6 +19,63 @@ All participants could be asked to follow both a @strong{nostr}@footnote{nostr i
 Also, all participants would be encouraged to follow an @emph{EVM chain}@footnote{A list of EVM chains: @url{https://chainlist.org/}} that could publish the latest ledger state digest in the data field of a transaction.
 
 
-@section Determining trust
+@section Authentication
+
+In the @strong{usawa} system, signatures are not part of the immutable state.
+
+Hence, once an entry is created, multiple parties may sign off on the transaction.
+
+Authentication is contingent on the availability of the detached signatures. In other words, it is the responibility of each party wishing to verify the ledger to collect and store the signatures.
 
 
+@subsection Procedure
+
+To authenticate, signatures must be verified @emph{and} the signers must be trusted to make authentication statements.
+
+In principle, a trusted signature on the last entry in a chain could be understood to be a statement of the entire entry chain. However, it is recommended that client software explicitly verifies trusted signatures on every entry.
+
+
+@subsection Quorum
+
+It is up to the client to determine the "weight" of signatures required to be considered authentic.
+
+This weighting can be a number of principles, at discretion of the client:
+
+* A single valid signature.
+* `n` of out `m` signatures.
+* Cumulative score of individually weighted signatures.
+
+
+@subsection Local authentication
+
+It is also recommended that the software adds the client's own signature over the entries. This way, entries can easily be authenticated in the future by merely checking for this signature.
+
+In general, a local signature should always result in successful authentication (locally) of any data item, regardless of quorum.
+
+
+@subsection Seal and deletion
+
+As part of local authentication, entries should be explicitly sealed when considered authentic by the client.
+
+To seal an entry means that the entry may no longer be deleted (or changed). It also means that any consecutive entry needs to have succeeding serial number to be successfully authenticated.
+
+Any unsealed entry may be deleted, but doing so necessarily invalidates any succeeding entries using the digest of the deleted entry as its parent.
+
+
+@subsection Example
+
+Alice wants to know if a entry chain in a ledger is authentic.
+
+Alice trusts any entry that has at least two signatures from either Bob, Carol or Dave.
+
+Alice receives notification about a new entry. She inspects the entry. It has a signature from Carol.
+
+Alice stores the entry, waiting for an additional signature.
+
+Alice receives notification about a new signature. It has a signature from Dave on the same entry. Alice stores the signature.
+
+Alice notices that the entry has quorum. Alice signs the entry. Alice stores her signature.
+
+Alice seals the entry. 
+
+When Alices later views the ledger, each entry is authenticated against her signature.

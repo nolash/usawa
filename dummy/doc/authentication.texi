@@ -1,0 +1,17 @@
+@anchor{authentication}
+@chapter {Authentication}
+
+Both the ledger state and individual entries are signed by one or more private keys.
+
+A ledger state is kept to ensure sequential serial numbers for each added entries. A serial number out of sequence @emph{must} invalidate the ledger.
+
+Furthermore, entries form a chain. Each entry contains the digest of the entry preceding it.
+
+
+@subsection{Key trust}
+
+@strong{usawa} does not specify any particular trust engine or public key infrastructure to use.
+
+However, the specification does include a mechanism for embedding identity metadata, described in @ref{identity,Identities}.
+
+The corresponding element in the @ref{ledger_header, ledger header} also provides a means to describe what each identity can be trusted to sign for.
