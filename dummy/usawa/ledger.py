@@ -213,7 +213,8 @@ class Ledger:
     """
     """
     def apply_wallet(self):
-        incoming = self.tree.find('incoming', namespaces=nsmap()) 
+        #incoming = self.tree.find('incoming', namespaces=nsmap()) 
+        incoming = self.tree.find('incoming')
         v = self.wallet.pubkey()
         try:
             self.sigs[v]
@@ -268,7 +269,9 @@ class Ledger:
         tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         if self.tree == None:
             self.tree = tree
-        o = lxml.etree.SubElement(tree, NSPREFIX + 'topic', nsmap=nsmap())
+        #o = lxml.etree.SubElement(tree, NSPREFIX + 'topic', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, 'topic')
+        tree.append(o)
         if topic == None:
             if self.topic == None:
                 topic = os.urandom(64)
@@ -276,11 +279,13 @@ class Ledger:
             else:
                 topic = self.topic.hex()
         o.text = topic
-        o = lxml.etree.SubElement(tree, NSPREFIX + 'generated', nsmap=nsmap())
+        #o = lxml.etree.SubElement(tree, NSPREFIX + 'generated', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, 'generated')
         self.dt = datetime.datetime.now()
         o.text = to_datestring(self.dt)
         #self.tree.append(o)
-        o = lxml.etree.SubElement(tree, NSPREFIX + 'src', nsmap=nsmap())
+        #o = lxml.etree.SubElement(tree, NSPREFIX + 'src', nsmap=nsmap())
+        o = lxml.etree.SubElement(tree, 'src')
         if src == None:
             if self.src == None:
                 src = self.default_src
@@ -288,16 +293,19 @@ class Ledger:
                 src = self.src
         o.text = src
 
-        units = lxml.etree.SubElement(tree, NSPREFIX + 'units', nsmap=nsmap())
+        units = lxml.etree.SubElement(tree, 'units', nsmap=nsmap())
         logg.debug('uidx {} units {} base {}'.format(self.uidx, units, self.uidx.base))
         units.set('base', self.uidx.base)
         for v in self.uidx.syms():
-            unit = lxml.etree.SubElement(units, NSPREFIX + 'unit', nsmap=nsmap())
+            #unit = lxml.etree.SubElement(units, NSPREFIX + 'unit', nsmap=nsmap())
+            unit = lxml.etree.SubElement(units, 'unit')
             unit.attrib['sym'] = v
-            o = lxml.etree.SubElement(unit, NSPREFIX + 'precision', nsmap=nsmap())
+            #o = lxml.etree.SubElement(unit, NSPREFIX + 'precision', nsmap=nsmap())
+            o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.uidx.get(v))
             #unit.append(o)
-            o = lxml.etree.SubElement(unit, NSPREFIX + 'exchange', nsmap=nsmap())
+            #o = lxml.etree.SubElement(unit, NSPREFIX + 'exchange', nsmap=nsmap())
+            o = lxml.etree.SubElement(unit, 'exchange')
             o.text = str(self.uidx.ex(v))
             #unit.append(o)
             #units.append(unit)
@@ -317,7 +325,8 @@ class Ledger:
                 pass
             v = tree_identity.text
             identities.append(keyid)
-            identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+            #identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+            identity = lxml.etree.SubElement(tree, 'identity')
             identity.text = v
             identity.set('keyid', keyid)
             identity.set('didtype', tree_identity.get('didtype'))
@@ -326,20 +335,23 @@ class Ledger:
             for v in acl.pubkeys(binary=False):
                 if v not in identities:
                     identities.append(v)
-                    identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+                    #identity = lxml.etree.SubElement(tree, NSPREFIX + 'identity', nsmap=nsmap())
+                    identity = lxml.etree.SubElement(tree, 'identity')
                     identity.set('keyid', v)
                     identity.set('didtype', acl.did(v).method())
 
         if len(identities) == 0:
             logg.warning('no identities in xml, need at least one to validate against schema')
 
-        incoming = lxml.etree.SubElement(tree, NSPREFIX + 'incoming', nsmap=nsmap())
+        #incoming = lxml.etree.SubElement(tree, NSPREFIX + 'incoming', nsmap=nsmap())
+        incoming = lxml.etree.SubElement(tree, 'incoming')
         incoming.set('serial', str(self.serial))
  
               
         # swap running and apply all bases
         self.running = {}
-        incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
+        #incoming_old = self.tree.find('incoming', namespaces=nsmap()) 
+        incoming_old = self.tree.find('incoming')
         logg.debug('inc {}'.format(lxml.etree.tostring(incoming_old)))
 
         if incoming_old != None:
@@ -373,13 +385,15 @@ class Ledger:
             logg.debug('add new runningtotal for {}'.format(k))
             self.running[k] = RunningTotal(k, self.uidx)
 
-        o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
+        #o = lxml.etree.SubElement(incoming, NSPREFIX + 'digest', nsmap=nsmap())
+        o = lxml.etree.SubElement(incoming, 'digest')
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
 
         if self.wallet != None:
             r = self.sign()
-            o = lxml.etree.SubElement(incoming, NSPREFIX + 'sig', nsmap=nsmap())
+            #o = lxml.etree.SubElement(incoming, NSPREFIX + 'sig', nsmap=nsmap())
+            o = lxml.etree.SubElement(incoming, 'sig')
             o.set('keyid', self.wallet.address().hex())
             o.set('type', 'ed25519')
             o.text = r.hex()
@@ -541,7 +555,8 @@ class Ledger:
     def apply_signature(self, identity):
         sig = self.sigs[identity]
         sig_hx = sig.hex()
-        tree = self.tree.find('incoming', namespaces=nsmap())
+        #tree = self.tree.find('incoming', namespaces=nsmap())
+        tree = self.tree.find('incoming')
    
         for v in tree.iter(NSPREFIX + 'sig'):
             if v.get('keyid') == identity.hex():
@@ -586,7 +601,8 @@ class Ledger:
         unit = units.get('base')
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
-        o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
+        #o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
+        o = part.find('digest').text # verify that is sha512
         r = Ledger(unitindex, topic=topic, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
 
         for sig in part.iter(NSPREFIX + 'sig'):
@@ -663,7 +679,8 @@ class Ledger:
 
         inc_tree = self.tree.find('incoming', namespaces=nsmap())
         inc_tree.set('serial', str(self.base_serial))
-        o = inc_tree.find('digest', namespaces=nsmap())
+        #o = inc_tree.find('digest', namespaces=nsmap())
+        o = inc_tree.find('digest')
         o.text = self.base.hex()
 
         # xpath does not support empty namespace names

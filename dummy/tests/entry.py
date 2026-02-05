@@ -4,8 +4,9 @@ import unittest
 import os
 import copy
 
-from usawa import EntryPart, Entry, DemoWallet, ACL
+from usawa import EntryPart, Entry, DemoWallet, ACL, UnitIndex
 from usawa.error import ACLError
+import lxml.etree
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -19,6 +20,7 @@ class TestEntry(unittest.TestCase):
         self.ref = '1bda7dfa-b8fd-400d-8b42-1d2861ad7f70'
         self.description = "foo bar baz"
         self.dtreg = datetime.datetime.now()
+        self.uidx = UnitIndex('FOO')
 
 
     def test_entry_serialize(self):
@@ -54,6 +56,23 @@ class TestEntry(unittest.TestCase):
         wallet = DemoWallet()
         data = o.wrap(wallet=wallet)
         r = Entry.unwrap(data)
+
+
+    def test_entry_sign_verify_imported(self):
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+        wallet = DemoWallet()
+        (digest, sig, msg) = o.sign(wallet)
+        tree = o.to_tree()
+        s = lxml.etree.tostring(tree, method='c14n2')
+        logg.debug('string {}'.format(s))
+        
+        tree = lxml.etree.fromstring(s)
+        o = Entry.from_tree(tree, self.uidx)
+        o.verify(wallet)
 
 
     def test_entry_acl_verify(self):

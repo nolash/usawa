@@ -73,7 +73,7 @@ class EntryPart:
         if self.isdebit:
             tag = 'debit'
 
-        part = etree.Element(tag, type=self.typ)
+        part = etree.Element(tag, type=self.typ, nsmap=nsmap())
 
         o = etree.Element('unit')
         o.text = self.unit
@@ -229,18 +229,21 @@ class Entry:
             description = description.text
         dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
         dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
+    
+        src_tree = o.find('debit', namespaces=nsmap())
+        dst_tree = o.find('credit', namespaces=nsmap())
 
         o = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
 
-        src = EntryPart.from_tree(tree.find('src', namespaces=nsmap()), debit=True)
-        dst = EntryPart.from_tree(tree.find('dst', namespaces=nsmap()))
+        src = EntryPart.from_tree(src_tree, debit=True)
+        dst = EntryPart.from_tree(dst_tree)
         o.add_part(src, debit=True)
         o.add_part(dst)
 
         for sig in tree.iter(NSPREFIX + 'sig'):
-            r.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
+            o.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
 
-        return r
+        return o
 
 
     """Generate the serialization format used to calculate the digest for the entry.
@@ -401,12 +404,18 @@ class Entry:
         # TODO: demo only takes into account single signature
         sig = v[1][0]
         entry = Entry.deserialize(v[2])
-        (z, b) = entry.sum()
+        entry.add_signature(pubkey_bytes, sig)
+        entry.verify(wallet)
+        return entry
+
+
+    def verify(self, wallet):
+        (z, b) = self.sum()
+        pubkeys = list(self.sigs.keys())
+        sig = self.sigs[pubkeys[0]]
         if not wallet.verify(z, sig):
             raise VerifyError()
         # TODO: demo only takes into account single signature
-        entry.add_signature(pubkey_bytes, sig)
-        return entry
 
 
     """Generate and return an XML representation of the entry.
@@ -417,7 +426,7 @@ class Entry:
     """
     def to_tree(self):
         #tree = etree.Element('entry', type=self.typ)
-        tree = etree.Element('entry')
+        tree = etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
         data = etree.Element('data')
 
         o = etree.Element('parent')
