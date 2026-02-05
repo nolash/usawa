@@ -308,7 +308,7 @@ class Entry:
     :rtype: tuple
     """
     def sum(self):
-        b = self.serialize()
+        b = self.canon()
         h = hashlib.new(self.digest_algo)
         h.update(b)
         return (h.digest(), b)
@@ -342,11 +342,13 @@ class Entry:
         digest = None
         data = None
         if wallet != None:
-            (digest, _sig, data) = self.sign(wallet)
+            (digest, _sig, _data) = self.sign(wallet)
+            data = self.serialize()
         elif len(self.sigs) == 0:
             raise PermissionError('at least one signature required')
         else:
-            (digest, data) = self.sum()
+            (digest, _data) = self.sum()
+            data = self.serialize()
 
         hdr = []
         sigs = []
@@ -464,6 +466,14 @@ class Entry:
             tree.append(o)
 
         return tree
+
+
+    def canon(self):
+        tree = self.to_tree()
+        b = etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
+        logg.debug('b {}'.format(b.encode('utf-8')))
+        return b.encode('utf-8')
+
 
     def __str__(self):
         return 'entry serial {} parent {}'.format(self.serial, self.parent.hex())
