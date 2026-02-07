@@ -24,7 +24,8 @@ class TestLedger(unittest.TestCase):
 
     def test_ledger_create(self):
         uidx = UnitIndex('FOO')
-        o = Ledger(uidx)
+        wallet = DemoWallet()
+        o = Ledger(uidx, wallet=wallet)
         store = LedgerStore(self.store, ledger=o)
         store.start()
         print(o.to_string())
@@ -44,12 +45,12 @@ class TestLedger(unittest.TestCase):
         s = 'FOO'
         uidx = UnitIndex(s)
         uidx.add('USD')
-        o = Ledger(uidx)
+        wallet = DemoWallet()
+        o = Ledger(uidx, wallet=wallet)
         store = LedgerStore(self.store, ledger=o)
         store.start()
         print(o.to_string())
 
-        wallet = DemoWallet()
         x = EntryPart(s, 'income', 'foo', 1337, debit=True)
         y = EntryPart(s, 'asset', 'foo', 1337)
         v = Entry(o.peek(), datetime.datetime.now(), parent=o.current())

@@ -1,9 +1,11 @@
 import logging
 
 import rencode
+import lxml.etree
 
 from .constant import NSPREFIX
 from .xml import nsmap
+
 
 logg = logging.getLogger('usawa.unit')
 
@@ -219,3 +221,19 @@ class UnitIndex:
     @staticmethod
     def deserialize(v):
         pass
+
+
+    def to_tree(self):
+        tree = lxml.etree.XML('<units></units>')
+        tree.set('base', self.base)
+        for k in self.detail.keys():
+            unit = lxml.etree.SubElement(tree, 'unit')
+            o = lxml.etree.SubElement(unit, 'precision')
+            o.text = str(self.detail[k])
+            unit.append(o)
+            o = lxml.etree.SubElement(unit, 'exchange')
+            o.text = str(self.exchange[k])
+            unit.append(o)
+            tree.append(unit)
+
+        return tree
