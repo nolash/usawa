@@ -153,7 +153,8 @@ if wallet == None:
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
 
 acl = ACL.from_wallet(wallet)
-ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
+#ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
+ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
 ledger.sign()
 ctx.f.write(ledger.to_string())
 ctx.close()

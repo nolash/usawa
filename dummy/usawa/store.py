@@ -159,7 +159,7 @@ class LedgerStore(Interface):
     :raises FileNotFoundError: If an entry cannot be found.
     """
     def load(self):
-        self.ledger.reset()
+        #self.ledger.reset()
         logg.debug('load ledger from store {}'.format(self.ledger))
         while True:
             o = None
@@ -167,7 +167,8 @@ class LedgerStore(Interface):
                 o = self.get_entry(self.ledger.next_serial())
             except FileNotFoundError:
                 break
-            self.ledger.add_entry(o, modify_tree=True)
+            #self.ledger.add_entry(o, modify_tree=True)
+            self.ledger.add_entry(o)
 
 
     """Add signing key to the store.

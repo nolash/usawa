@@ -12,6 +12,7 @@ from .crypto import DemoWallet, ACL
 from .xml import nsmap, XML_FORMAT_VERSION
 from .constant import NSPREFIX, DEFAULTPARENT
 from .entry import Entry
+from .unit import UnitIndex
 from .util import to_datestring
 
 logg = logging.getLogger('usawa.ledger')
@@ -208,6 +209,7 @@ class Ledger:
         self.sigs = {}
         self.entries = {}
         self.running = {}
+        self.wallet = None
 #        base_running = RunningTotal(self.uidx.base, self.uidx)
 #        self.running = {self.uidx.base: base_running}
         for k in self.uidx.syms():
@@ -453,6 +455,13 @@ class Ledger:
             k = list(self.sigs.keys())[0]
             logg.debug('sig {}'.format(self.sigs[k].hex()))
 
+
+        # TODO: entry should not be array
+        for k in self.entries.keys():
+            for v in self.entries[k]:
+                entry_tree = v.to_tree()
+                tree.append(entry_tree)
+
         return tree
 
 
@@ -658,7 +667,8 @@ class Ledger:
     :todo: Specify in docs which exception raised if unit not found in index.
     """
     @staticmethod
-    def from_tree(tree, unitindex, acl=None):
+    def from_tree(tree, acl=None):
+        unitindex = UnitIndex.from_tree(tree)
         topic_node = tree.find('topic', namespaces=nsmap())
         topic = bytes.fromhex(topic_node.text)
 
@@ -668,25 +678,31 @@ class Ledger:
         serial = int(part.get('serial'))
         #o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
         o = part.find('digest', namespaces=nsmap()).text # verify that is sha512
-        r = Ledger(unitindex, topic=topic, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
+        #r = Ledger(unitindex, topic=topic, tree=tree, acl=acl, serial=serial, base=bytes.fromhex(o))
+        ledger = Ledger(unitindex, topic=topic, acl=acl, serial=serial, base=bytes.fromhex(o))
 
         #for sig in part.iter(NSPREFIX + 'sig'):
         for sig in part.iter('sig'):
             keyid = sig.get('keyid')
             digest = sig.text
-            r.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid), modify_tree=False)
+            ledger.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid), modify_tree=False)
 
         #for sig in part.iter(NSPREFIX + 'identity'):
-        for sig in part.iter('identity'):
+        for identity in tree.findall('identity', namespaces=nsmap()):
             keyid = identity.get('keyid')
             didtyp = identity.get('didtype')
             did = identity.text
-            r.add_identity(keyid, did, typ=didtyp)
+            #ledger.add_identity(keyid, did, typ=didtyp)
+            public_key = bytes.fromhex(keyid)
+            wallet = DemoWallet(publickey=public_key)
+            ledger.set_wallet(wallet)
+            logg.warn('currently only support for single identity')
+            break
 
         o = part.find('real', namespaces=nsmap())
         asset = int(o.find('asset', namespaces=nsmap()).text)
         liability = int(o.find('liability', namespaces=nsmap()).text)
-        r.real = RunningTotal(unit, unitindex, asset=asset, liability=liability)
+        ledger.real = RunningTotal(unit, unitindex, asset=asset, liability=liability)
 
         for v in part.iter(NSPREFIX + 'virt'):
             income = int(v.find('income', namespaces=nsmap()).text)
@@ -694,16 +710,16 @@ class Ledger:
             asset = int(v.find('asset', namespaces=nsmap()).text)
             liability = int(v.find('liability', namespaces=nsmap()).text)
             sym = v.get('unit')
-            r.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
+            ledger.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
             logg.debug(r.running[sym])
 
-        if r.running.get(unit) == None:
-            r.running[unit] = RunningTotal(unit, unitindex)
+        if ledger.running.get(unit) == None:
+            ledger.running[unit] = RunningTotal(unit, unitindex)
 
         #r.apply_tree(tree)
-        r.apply_entries(tree)
-        logg.debug('loaded ledger tree last serial {}'.format(r.serial))
-        return r.check()
+        ledger.apply_entries(tree)
+        logg.debug('loaded ledger tree last serial {}'.format(ledger.serial))
+        return ledger.check()
 
 
     """Append all entries from XML tree to ledger.
@@ -731,12 +747,15 @@ class Ledger:
 
     """
     """
-    def truncate(self, modify_tree=True):
+    #def truncate(self, modify_tree=True):
+    def truncate(self):
         self.base = self.cur
         self.base_serial = self.serial
 
-        if not modify_tree:
-            return
+        # skip xml mods
+        return
+        #if not modify_tree:
+        #    return
 
         inc_tree = self.tree.find('incoming', namespaces=nsmap())
         inc_tree.set('serial', str(self.base_serial))

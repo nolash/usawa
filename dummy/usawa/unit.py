@@ -228,6 +228,7 @@ class UnitIndex:
         tree.set('base', self.base)
         for k in self.detail.keys():
             unit = lxml.etree.SubElement(tree, 'unit')
+            unit.set('sym', k)
             o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.detail[k])
             unit.append(o)
