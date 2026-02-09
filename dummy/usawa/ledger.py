@@ -547,11 +547,11 @@ class Ledger:
     """
     @staticmethod
     def from_tree(tree, acl=None):
-        unitindex = UnitIndex.from_tree(tree)
         topic_node = tree.find('topic', namespaces=nsmap())
         topic = bytes.fromhex(topic_node.text)
 
         units = tree.find('units', namespaces=nsmap())
+        unitindex = UnitIndex.from_tree(units)
         unit = units.get('base')
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
@@ -560,10 +560,10 @@ class Ledger:
        
         ledger = Ledger(unitindex, topic=topic, acl=acl, serial=serial, base=bytes.fromhex(o))
 
-        for sig in part.iter('sig'):
+        for sig in part.findall('sig', namespaces=nsmap()):
             keyid = sig.get('keyid')
             digest = sig.text
-            ledger.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid), modify_tree=False)
+            ledger.add_signature(bytes.fromhex(digest), bytes.fromhex(keyid))
 
         for identity in tree.findall('identity', namespaces=nsmap()):
             keyid = identity.get('keyid')
