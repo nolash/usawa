@@ -633,6 +633,11 @@ class Ledger:
         return self.cur
 
 
+    """Generate canonical XML for signature material.
+
+    :return: Signature material.
+    :rtype: str
+    """
     def canon(self):
         tree = self.to_tree()
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])

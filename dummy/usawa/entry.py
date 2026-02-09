@@ -108,7 +108,7 @@ class EntryPart:
 
 class Entry:
 
-    digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type.
+    digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type string identifier.
 
     """Entry represents a single pair of accounts, credit and debit, for a transaction.
 
@@ -129,11 +129,12 @@ class Entry:
     :param tx_datereg: Date and time entry was added to the ledger. If not set, the current date and time will be used.
     :type tx_datereg: datetime.datetime
     :param unitindex: Unix index top validate unit symbols and exchange rates against.
-    :type unit: UnitIndex
+    :type unitindex: UnitIndex
     :todo: Add an optional time part to the entry, e.g. for POS items.
     :todo: Implement throw error if non-zero serial has zero-value digest.
     :todo: Check hashlen of parent against actual digest length defined in digest_algo.
     :todo: Prevent changes after the first signature calculation.
+    :todo: Ensure canonical format of keyid.
     """
     def __init__(self, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
         if isinstance(parent, str):
@@ -187,7 +188,7 @@ class Entry:
     :param digest: The digest of the asset.
     :type digest: bytes
     :param description: Optional description string for the asset.
-    :type digest: str
+    :type description: str
     :param slug: Optional machine-friendly name, e.g. used as filename stem.
     :type slug: str
     """
@@ -200,7 +201,7 @@ class Entry:
     :param keyid: Key identifier, e.g. as used in a DID.
     :type keyid: str or bytes
     :param sigdata: Key identifier, e.g. as used in a DID.
-    :type keyid: bytes
+    :type sigdata: bytes
     """
     def add_signature(self, keyid, sigdata):
         if isinstance(keyid, bytes):
@@ -252,14 +253,12 @@ class Entry:
 
         return o
 
+    """Generate the simple data structure used for rencode serialization.
 
-    """Generate the serialization format used to calculate the digest for the entry.
-
-    :returns: String representation of the entry, in rencode format.
-    :rtype: str
+    :returns: data structure
+    :rtype: list
     """
-    def serialize(self):
-
+    def to_list(self):
         debit = []
         credit = []
         for v in self.debit:
@@ -278,7 +277,18 @@ class Entry:
                 debit,
                 credit,
                 ]
-        return rencode.dumps(d)
+        return d
+
+
+    """Generate the serialization format used to calculate the digest for the entry.
+
+    :returns: String representation of the entry, in rencode format.
+    :rtype: str
+    """
+    def serialize(self):
+        b = self.to_list()
+        return rencode.dumps(b)
+
 
     """Create an entry object from serialized data.
 
@@ -393,11 +403,11 @@ class Entry:
     :raises: usawa.VerifyError if entry data could not be verified with any available public key.
     :returns: The entry object.
     :rtype: usawa.Entry
+    :todo: Current version only takes into account single signature
     """
     @staticmethod
     def unwrap(data, acl=None):
         v = rencode.loads(data)
-        # TODO: demo only takes into account single signature
         pubkey_bytes = v[0][0][1]
         if acl != None:
             label = None
@@ -408,7 +418,6 @@ class Entry:
             if not acl.may(label, 0x01):
                 raise ACLError()
         wallet = DemoWallet(publickey=pubkey_bytes)
-        # TODO: demo only takes into account single signature
         sig = v[1][0]
         entry = Entry.deserialize(v[2])
         entry.add_signature(pubkey_bytes, sig)
@@ -482,6 +491,11 @@ class Entry:
         return tree
 
 
+    """Generate canonical XML for signature material.
+
+    :return: Signature material.
+    :rtype: str
+    """
     def canon(self):
         tree = self.to_tree()
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])

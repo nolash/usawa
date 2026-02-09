@@ -16,6 +16,15 @@ PFX_ENTRY = b'\x04'
 logg = logging.getLogger('usawa.store')
 
 
+"""DB key prefix for a private key entry
+
+If public key is not specified, the prefix will reference the DEFAULT key.
+
+:param pubkey: Public key to get private key for.
+:type pubkey: bytes
+:return: DB prefix
+:rtype: bytes
+"""
 def pfx_key(pubkey=None):
     v = PFX_KEY
     if pubkey == None:
@@ -23,6 +32,13 @@ def pfx_key(pubkey=None):
     return v + pubkey
 
 
+"""DB key prefix for the ledger state of a topic.
+
+:param topic: Legder topic.
+:type topic: bytes
+:return: DB prefix
+:rtype: bytes
+"""
 def pfx_ledger_topic(topic):
     """Return ledger store prefix for topic.
 
@@ -34,6 +50,14 @@ def pfx_ledger_topic(topic):
     r = PFX_LEDGER + topic
     return r
 
+
+"""DB key prefix for locking the ledger state of a topic.
+
+:param topic: Legder topic.
+:type topic: bytes
+:return: DB prefix
+:rtype: bytes
+"""
 def pfx_ledger_lock(topic):
     """Return ledger store locking prefix for topic.
 
@@ -46,12 +70,15 @@ def pfx_ledger_lock(topic):
     return r
 
 
-#def pfx_ledger(ledger):
-#    if not isinstance(ledger, Ledger):
-#        raise ValueError('invalid ledger')
-#    return pfx_ledger_topic(topic)
+"""DB key prefix for adding an entry to a ledger.
 
-
+:param ledger: Ledger object.
+:type ledger: usawa.Ledger
+:param entry: Entry object to add to ledger.
+:type entry: usawa.Entry
+:return: DB prefix
+:rtype: bytes
+"""
 def pfx_entry(ledger, entry):
     """Return ledger store prefix for an entry.
 
@@ -91,6 +118,8 @@ class LedgerStore(Interface):
         self.__o = implementation
 
 
+    """Implements whee.Interface.start
+    """
     def start(self):
         serial = 0
         k = pfx_ledger_topic(self.ledger.topic)
@@ -103,6 +132,8 @@ class LedgerStore(Interface):
         self.ledger.serial = serial
 
 
+    """Implements whee.Interface.lock
+    """
     def lock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = None
@@ -115,6 +146,8 @@ class LedgerStore(Interface):
         # atomic until here
 
 
+    """Implements whee.Interface.unlock
+    """
     def unlock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = self.__o.delete(k)
@@ -124,6 +157,8 @@ class LedgerStore(Interface):
 
     :param entry: Entry to add.
     :type entry: usawa.Entry or int
+    :param update_ledger: Add the underlying ledger object with the entry.
+    :type update_ledger: boolean
     :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
@@ -140,7 +175,7 @@ class LedgerStore(Interface):
 
     :param entry: Entry of entry serial to restore.
     :type entry: usawa.Entry or int
-    :param acl: Optional list of public keys to validate signatures against.
+    :param acl: Optional collection of public keys to validate signatures against.
     :type acl: usawa.ACL
     :raises: PermissionError if the entry does not have a valid signature.
     :raises: ValueError if the serial number cannot be retrieved from the entry argument.
@@ -161,7 +196,6 @@ class LedgerStore(Interface):
     :raises FileNotFoundError: If an entry cannot be found.
     """
     def load(self):
-        #self.ledger.reset()
         logg.debug('load ledger from store {}'.format(self.ledger))
         while True:
             o = None
@@ -169,7 +203,6 @@ class LedgerStore(Interface):
                 o = self.get_entry(self.ledger.next_serial())
             except FileNotFoundError:
                 break
-            #self.ledger.add_entry(o, modify_tree=True)
             self.ledger.add_entry(o)
 
 
@@ -196,6 +229,15 @@ class LedgerStore(Interface):
         self.__o.put(k, wallet.privkey())
 
 
+    """Get corresponding private key from the store.
+    
+    If public key is not supplied, will retrieve the default private key.
+
+    :param pubkey: Public key to retrieve private key for.
+    :type pubkey: bytes
+    :return: Resulting key
+    :rtype: bytes
+    """
     def get_key(self, pubkey=None):
         if pubkey == None:
             k = pfx_key()
