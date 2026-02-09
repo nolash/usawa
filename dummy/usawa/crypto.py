@@ -1,6 +1,7 @@
 import logging
 
 import rencode
+import lxml.etree
 
 import nacl.signing
 import nacl.exceptions
@@ -89,20 +90,34 @@ class Wallet:
         """
         raise NotImplementedError
 
+    """Verify signature data against the given message.
 
+    :returns: True if signature is valid.
+    :rtype: boolean
+    """
     def verify(self, v, sig):
-        """Verify signature data against the given message.
+            raise NotImplementedError
 
-        :returns: True if signature is valid.
-        :rtype: boolean
-        """
-        raise NotImplementedError
+
+    """Generate an identity XML tree entry from the wallet.
+
+    The element generated is valid to be inserted as an identity sub-element in the ledger element.
+
+    :returns: XML tree.
+    :rtype: lxml.etree.Element
+    """
+    def to_tree(self):
+        pubkey = self.pubkey()
+        o = lxml.etree.Element('identity')
+        o.set('keyid', pubkey.hex())
+        did = self.did()
+        o.set('didtype', did.method())
+        return o
 
 
 class DemoWallet(Wallet):
     """DemoWallet is an unsafe wallet implementation used during development. It implements the Wallet interface class.
     """
-
     def __init__(self, privatekey=None, publickey=None):
         super(DemoWallet, self).__init__()
         self.pk = None

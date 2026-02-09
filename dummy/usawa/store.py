@@ -127,10 +127,12 @@ class LedgerStore(Interface):
     :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
-    def add_entry(self, entry):
+    def add_entry(self, entry, update_ledger=False):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap()
         self.__o.put(k, v)
+        if update_ledger:
+            self.ledger.add_entry(entry)
 
     """Restore an entry from data from the store.
 

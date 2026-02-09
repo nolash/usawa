@@ -357,13 +357,9 @@ class Ledger:
         tree.append(units_tree)
        
         # identity entry for the key signing the ledger state.
-        pubkey = self.wallet.pubkey()
-        o = lxml.etree.Element('identity')
-        o.set('keyid', pubkey.hex())
-        did = self.wallet.did()
-        o.set('didtype', did.method())
+        o = self.wallet.to_tree()
         tree.append(o)
-
+        
         # incoming state
         incoming = lxml.etree.SubElement(tree, 'incoming')
 
@@ -500,33 +496,11 @@ class Ledger:
         logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.debit, entry.credit))
 
 
-#    """
-#
-#    :todo: handle canonical hex
-#    """
-#    def apply_signatures(self, root, identity):
-#        sig = self.sigs[identity]
-#        sig_hx = sig.hex()
-#        #tree = self.tree.find('incoming', namespaces=nsmap())
-#        tree = root.find('incoming')
-#   
-#        #for v in tree.iter(NSPREFIX + 'sig'):
-#        for v in tree.iter('sig', namespaces=nsmap()):
-#            if v.get('keyid') == identity.hex():
-#                v.text = sig_hx
-#                return
-#        #o = lxml.etree.SubElement(tree, NSPREFIX + 'sig', nsmap=nsmap())
-#        #o = lxml.etree.SubElement(tree, 'sig', nsmap=nsmap())
-#        o = lxml.etree.SubElement(tree, 'sig')
-#        o.set('keyid', identity.hex())
-#        o.set('type', 'ed25519')
-#        o.text = sig_hx
-        
-
     """Add a signature on the ledger.
     
     :todo: not an appropriate API function?
     :todo: implement validity checks for signature.
+    :todo: canonlicalize identity
     """
     def add_signature(self, sigdata, identity):
         self.sigs[identity] = sigdata
