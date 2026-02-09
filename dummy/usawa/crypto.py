@@ -15,12 +15,27 @@ logg = logging.getLogger('crypto')
 
 
 class DID:
+    """Represents a method and endpoint pair for a Decentralized IDentifier resource.
 
+    Using default values implies that integrated tools for usawa library and executable will be used.
+
+    DID v1.0 is specified in https://www.w3.org/TR/did-1.0/
+
+    :param v: The endpoint value of the method.
+    :type v: str
+    :param method: DID method
+    :type method: str
+    """
     def __init__(self, v='_', method=DEFAULT_DID):
         self.v = v
         self.m = method
 
 
+    """Return DID method
+
+    :returns: Method
+    :rtype :str
+    """
     def method(self):
         return self.m
 
@@ -36,7 +51,9 @@ class Wallet:
 
     """Get the did URI for the wallet identity.
 
-    :returns: DID URI
+    :param did: An optional DID object to apply. Default is a DID object with default values.
+    :type did: usawa.DID
+    :return: DID URI
     :rtype: str
     """
     def __init__(self, did=None):
@@ -45,53 +62,83 @@ class Wallet:
         self.didval = did
 
 
+    """Return the DID object for the wallet.
+
+    :return: DID
+    :rtype: usawa.DID
+    """
     def did(self):
         return self.didval
 
 
+    """Return the method part of the DID wallet.
+
+    :return: DID method
+    :rtype: str
+    """
     def did_method(self):
         return self.didval.method()
 
 
+    """Return the endpoint part of the DID wallet.
+
+    :return: DID method
+    :rtype: str
+    """
     def did_uri(self):
         return str(self.didval)
 
 
+    """Return the well-known identifier for a signature produced by the wallet.
+
+    By default this is the same as the public key of the wallet.
+
+    :return: Wallet identifier
+    :rtype: bytes
+    """
     def address(self):
         return self.pubkey()
 
+    """Sign data with the wallet's private key.
 
+    Depending on the signature algorithm, the data provided may or may not be hashed.
+
+    :param v: Data to sign.
+    :type v: bytes
+    :returns: Signature data.
+    :rtype: bytes
+    :todo: Raise local error if sign fail
+    """
     def sign(self, v):
-        """Sign data with the wallet's private key.
-
-        :returns: Signature data.
-        :rtype: bytes
-        :todo: Raise local error if sign fail
-        """
         raise NotImplementedError
 
 
+    """Return the public key data in the wallet.
+
+    :returns: Public key data.
+    :rtype: bytes
+    :todo: Raise local error if sign fail
+    """
     def pubkey(self):
-        """Return the public key data in the wallet.
-
-        :returns: Public key data.
-        :rtype: bytes
-        :todo: Raise local error if sign fail
-        """
-        raise NotImplementedError
+            raise NotImplementedError
 
 
-    def privkey(self):
-        """Return the private key data in the wallet.
+    """Return the private key data in the wallet.
         
-        :returns: Private key data.
-        :rtype: bytes
-        :todo: Raise local error if sign fail
-        """
-        raise NotImplementedError
+    :returns: Private key data.
+    :rtype: bytes
+    :todo: Raise local error if sign fail
+    """
+    def privkey(self):
+            raise NotImplementedError
+
 
     """Verify signature data against the given message.
 
+    :param v: Data to verify
+    :type v: bytes
+    :param sig: Signature data
+    :type sig: bytes
     :returns: True if signature is valid.
     :rtype: boolean
     """
@@ -117,9 +164,20 @@ class Wallet:
 
 class DemoWallet(Wallet):
     """DemoWallet is an unsafe wallet implementation used during development. It implements the Wallet interface class.
+
+    If private key is passed, the public key of the private key will be used (and the publickey parameter will be ignored).
+
+    If only public key is passed, wallet will not be able to sign.
+
+    :param privatekey: Private key data to use for wallet operations.
+    :type privatekey: bytes
+    :param publickey: Private key data to use for wallet operations.
+    :type publickey: bytes
+    :param did: DID object (see usawa.Wallet for details).
+    :type did: usawa.DID
     """
-    def __init__(self, privatekey=None, publickey=None):
-        super(DemoWallet, self).__init__()
+    def __init__(self, privatekey=None, publickey=None, did=None):
+        super(DemoWallet, self).__init__(did=did)
         self.pk = None
         publickey_chk = None
         if privatekey == None:
@@ -141,31 +199,30 @@ class DemoWallet(Wallet):
         self.pubk = publickey
         self.didval = DID(v=self.pubkey().hex())
   
-
+    """Implements usawa.Wallet.sign
+    """
     def sign(self, v):
-        """Implements usawa.Wallet.sign
-        """
         r = self.pk.sign(v)
         return r.signature
 
 
+    """Implements usawa.Wallet.sign
+    """
     def pubkey(self):
         """Implements usawa.Wallet.pubkey
         """
         return self.pubk.encode()
 
 
+    """Implements usawa.Wallet.privkey
+    """
     def privkey(self, passphrase=None):
-        """Implements usawa.Wallet.privkey
-        """
         return self.pk.encode()
 
-    def verify(self, v, sig):
-        """Implements usawa.Wallet.verify
 
-        :raises usawa.VerifyError: Signature does not match data.
-        """
-        #return self.pubk.verify(v, sig)
+    """Implements usawa.Wallet.verify
+    """
+    def verify(self, v, sig):
         r = False
         try:
             self.pubk.verify(v, sig)
@@ -180,13 +237,24 @@ class ACL:
 
     :todo: Implement signing purpose distinction.
     """
-
     def __init__(self):
         self.axx = {}
         self.rev = {}
         self.dids = {}
 
 
+    """Create an ACL object from a wallet.
+
+    The what parameter specified which actions the wallet identifier can sign off on in the given context.
+
+    :param wallet: Wallet to read verifying key from
+    :type wallet: usawa.Wallet
+    :param what: Bitfield defining credentials for the signing key.
+    :type what: bytes
+    :param label: Human-friendly name of the wallet identifier.
+    :type label: str
+    :todo: what should be an object
+    """
     @staticmethod
     def from_wallet(wallet, what=None, label=None):
         o = ACL()
@@ -194,20 +262,29 @@ class ACL:
         return o
 
 
+    """Retrieve DID for a wallet identifier.
+
+    :param v: ID of the wallet.
+    :type v: bytes
+    :return: DID object
+    :rtype: usawa.DID
+    """
     def did(self, v):
         return self.dids[v]
 
 
-    def add(self, who, what=None, label=None, did=DEFAULT_DID):
-        """Add a public key to the trusted list of keys.
+    """Add a public key to the trusted list of keys.
 
-        :param who: Binary or hexadecimal public key data.
-        :type who: str or bytes
-        :param what: A bit-field representing what purpose key may be used.
-        :type what: bytes
-        :param label: A human-readable string describing the public key identity.
-        :type label: str
-        """
+    :param who: Binary or hexadecimal public key data.
+    :type who: str or bytes
+    :param what: A bit-field representing what purpose key may be used.
+    :type what: bytes
+    :param label: A human-readable string describing the public key identity.
+    :type label: str
+    :param did: DID to associate to ACL. See usawa.DID for more details on default values.
+    :type did: usawa.DID
+    """
+    def add(self, who, what=None, label=None, did=DEFAULT_DID):
         if isinstance(who, bytes):
             who = who.hex()
         if label == None:
@@ -219,28 +296,29 @@ class ACL:
         self.rev[who] = label
         self.dids[label] = did
 
+    """Check whether the given public key identity is in the trusted key list.
 
+    :param who: Binary or hexadecimal public key data.
+    :type who: str or bytes
+    :returns: True if found.
+    :rtype: boolean
+    """
     def have(self, who):
-        """Check whether the given public key identity is in the trusted key list.
-
-        :param who: Binary or hexadecimal public key data.
-        :type who: str or bytes
-        :returns: True if found.
-        :rtype: boolean
-        """
         if isinstance(who, bytes):
             who = who.hex()
         return self.rev[who]
 
 
-    def may(self, who, what):
-        """Check if key is valid for the given purpose.
+    """Check if key is valid for the given purpose.
 
-        :param who: Binary or hexadecimal public key data.
-        :type who: str or bytes
-        :returns: 0 if key not found. Otherwise True key is valid for purpose.
-        :rtype: bool or int
-        """
+    :param who: Binary or hexadecimal public key data.
+    :type who: str or bytes
+    :param what: Specifier for credentials to test against.
+    :type what: bytes
+    :returns: 0 if key not found. Otherwise True key is valid for purpose.
+    :rtype: bool or int
+    """
+    def may(self, who, what):
         label = who
         if isinstance(label, bytes):
             label = who.hex()
@@ -249,16 +327,15 @@ class ACL:
         except KeyError:
             return 0
 
+    """Return all public keys currently in list.
 
+    :param binary: If True, return in binary format. Return in hex otherwise.
+    :type binary: boolean
+    :returns: A list of public keys.
+    :rtype: list of str or bytes
+    :todo: Filter by purpose.
+    """
     def pubkeys(self, binary=True):
-        """Return all public keys currently in list.
-
-        :param binary: If True, return in binary format. Return in hex otherwise.
-        :type binary: boolean
-        :returns: A list of public keys.
-        :rtype: list of str or bytes
-        :todo: Filter by purpose.
-        """
         r = []
         for k in self.axx.values():
             v = k[0]
@@ -271,6 +348,11 @@ class ACL:
         return r
 
 
+    """Generate the simple data structure used for rencode serialization.
+
+    :returns: data structure
+    :rtype: list
+    """
     def to_list(self):
         keys = list(self.rev.keys())
         keys.sort()
@@ -281,6 +363,11 @@ class ACL:
         return r
 
 
+    """Generate the unit index part of a Wallet in wire format.
+
+    :return: rencoded object
+    :rtype: bytes
+    """
     def serialize(self):
         r = self.to_list()
         return rencode.dumps(r)
