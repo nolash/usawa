@@ -3,6 +3,7 @@ import logging
 import rencode
 
 import nacl.signing
+import nacl.exceptions
 
 AXX_ALL = 0xffffffff
 AXX_ANY = 0x01
@@ -146,10 +147,17 @@ class DemoWallet(Wallet):
 
     def verify(self, v, sig):
         """Implements usawa.Wallet.verify
+
+        :raises usawa.VerifyError: Signature does not match data.
         """
         #return self.pubk.verify(v, sig)
-        self.pubk.verify(v, sig)
-        return True
+        r = False
+        try:
+            self.pubk.verify(v, sig)
+            r = True
+        except nacl.exceptions.BadSignatureError:
+            pass
+        return r
 
 
 class ACL:

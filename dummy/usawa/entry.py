@@ -4,7 +4,7 @@ import datetime
 import uuid
 import hashlib
 
-from lxml import etree
+import lxml.etree
 import rencode
 
 from .constant import DEFAULTPARENT, NSPREFIX
@@ -73,17 +73,17 @@ class EntryPart:
         if self.isdebit:
             tag = 'debit'
 
-        part = etree.Element(tag, type=self.typ, nsmap=nsmap())
+        part = lxml.etree.Element(tag, type=self.typ, nsmap=nsmap())
 
-        o = etree.Element('unit')
+        o = lxml.etree.Element('unit')
         o.text = self.unit
         part.append(o)
 
-        o = etree.Element('account')
+        o = lxml.etree.Element('account')
         o.text = self.account
         part.append(o)
 
-        o = etree.Element('amount')
+        o = lxml.etree.Element('amount')
         o.text = str(self.amount)
         logg.debug('tree amount {} {}'.format(self.unit, o.text))
         part.append(o)
@@ -426,35 +426,31 @@ class Entry:
     """
     def to_tree(self):
         #tree = etree.Element('entry', type=self.typ)
-        tree = etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
-        data = etree.Element('data')
+        tree = lxml.etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
+        data = lxml.etree.Element('data')
 
-        o = etree.Element('parent')
+        o = lxml.etree.Element('parent')
         o.text = self.parent.hex()
         data.append(o)
 
-        o = etree.Element('ref')
+        o = lxml.etree.Element('ref')
         o.text = self.ref
         data.append(o)
 
-        o = etree.Element('serial')
+        o = lxml.etree.Element('serial')
         o.text = str(self.serial)
         data.append(o)
 
-#        o = etree.Element('unit')
-#        o.text = self.unit 
-#        data.append(o)
-
-        o = etree.Element('date')
+        o = lxml.etree.Element('date')
         o.text = self.dt.strftime('%Y-%m-%d')
         data.append(o)
 
-        o = etree.Element('dateTimeRegistered')
+        o = lxml.etree.Element('dateTimeRegistered')
         o.text = self.dtreg.strftime('%Y-%m-%dT%H:%M:%SZ')
         data.append(o)
         
         if self.description:
-            o = etree.Element('description')
+            o = lxml.etree.Element('description')
             o.text = self.description
             data.append(o)
 
@@ -470,7 +466,7 @@ class Entry:
             v = k
             if isinstance(v, bytes):
                 v = k.hex()
-            o = etree.Element('sig', type='ed25519', keyid=v)
+            o = lxml.etree.Element('sig', type='ed25519', keyid=v)
             o.text = self.sigs[k].hex()
             tree.append(o)
 
@@ -479,8 +475,7 @@ class Entry:
 
     def canon(self):
         tree = self.to_tree()
-        b = etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
-        logg.debug('b {}'.format(b.encode('utf-8')))
+        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
         return b.encode('utf-8')
 
 

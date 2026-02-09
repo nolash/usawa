@@ -50,19 +50,21 @@ class UnitIndex:
         self.exchange[sym] = ex
 
 
-    """Create a unit index from a full ledger XML tree.
+    """Create a unit index object from XML.
 
-    :param tree: Parsed and verified XML tree.
-    :type tree: lxml.etree.ElementTree
+    The XML element expected is ledger/units.
+
+    :param tree: XML tree.
+    :type tree: lxml.etree.Element
     :returns: The unit index object.
     :rtype: usawa.UnitIndex
     """
     @staticmethod
     def from_tree(tree):
-        unit_tree = tree.find(NSPREFIX + 'units')
-        base = unit_tree.get('base')
+        #tree = tree.find(NSPREFIX + 'units')
+        base = tree.get('base')
         r = UnitIndex(base)
-        for o in unit_tree.iter(NSPREFIX + 'unit'):
+        for o in tree.iter(NSPREFIX + 'unit'):
             logg.debug('add unit ' + o.get('sym'))
             r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
             r.exchange[o.get('sym')] = int(o.find('exchange', namespaces=nsmap()).text)
@@ -223,6 +225,12 @@ class UnitIndex:
         pass
 
 
+    """Generate XML tree from current state of the object.
+
+    The XML element generated is the units sub-element of the root ledger element.
+    :returns: XML tree
+    :rtype: lxml.etree.Element
+    """
     def to_tree(self):
         tree = lxml.etree.XML('<units></units>')
         tree.set('base', self.base)
