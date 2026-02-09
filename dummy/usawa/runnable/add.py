@@ -131,7 +131,7 @@ logg.warning('hardcoding unit index default sym, need unitindex xml parser')
 logg.warning('using default sym for all entries for now')
 ledger_tree = load(arg.ledger_xml_file)
 uidx = UnitIndex.from_tree(ledger_tree)
-ledger = Ledger.from_tree(ledger_tree, uidx)
+ledger = Ledger.from_tree(ledger_tree)
 
 db = ValkeyStore('')
 store = LedgerStore(db, ledger)

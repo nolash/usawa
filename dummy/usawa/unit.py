@@ -61,7 +61,9 @@ class UnitIndex:
     """
     @staticmethod
     def from_tree(tree):
-        #tree = tree.find(NSPREFIX + 'units')
+        if tree.tag == 'ledger':
+            tree = tree.find('units', namespaces=nsmap())
+        logg.debug('unit index tag ' + tree.tag)
         base = tree.get('base')
         r = UnitIndex(base)
         for o in tree.iter(NSPREFIX + 'unit'):
