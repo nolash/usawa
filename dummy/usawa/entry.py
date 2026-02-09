@@ -28,14 +28,16 @@ class EntryPart:
 
     Each side of the transaction may have several parts.
 
+    :param unit: Unit of account of transaction part.
+    :type unit: str
     :param typ: One of 'asset', 'liability', 'income', 'expense'
     :type typ: str
     :param account: A path-like account name.
     :type account: str
     :param amount: Amount as integer, including decimals according to unit precision.
     :type amount: int
-    :param src: False is credit side of transaction, True if debit side.
-    :type src: boolean
+    :param debit: True if the transaction part is a debit.
+    :type debit: boolean
     :todo: Make typ enum
     """
     def __init__(self, unit, typ, account, amount, debit=False):
@@ -48,10 +50,14 @@ class EntryPart:
 
     """Create object from an entry part defined as an XML tree.
 
+    The XML expected is the ledger/entry/data/debit or ledger/entry/data/credit (in schema, defined as the EntryPart complexType).
+
     :param tree: The entry as XML tree.
     :type tree: lxml.etree.ElementTree
-    :param src: If True, will create the debit side of the transaction. Otherwise, will create the credit side.
-    :type src: boolean
+    :param debit: True if the transaction part is a debit.
+    :type debit: boolean
+    :return: Entry part
+    :rtype: usawa.EntryPart
     """
     @staticmethod
     def from_tree(tree, debit=False):
@@ -62,34 +68,35 @@ class EntryPart:
         return EntryPart(unit, typ, account, amount, debit=debit)
 
 
-    """Commit the object state to XML.
+    """Generate XML element from state of entry part.
 
-    :returns: Same object.
-    :rtype: usawa.EntryPart
+    The XML generated is valid for insertion as ledger/entry/data as elements debit and credit.
+
+    :returns: XML tree.
+    :rtype: lxml.etree.Element
     :todo: Not an API function?
     """
-    def apply_tree(self, tree):
+    def to_tree(self):
         tag = 'credit'
         if self.isdebit:
             tag = 'debit'
 
-        part = lxml.etree.Element(tag, type=self.typ, nsmap=nsmap())
+        tree = lxml.etree.Element(tag, type=self.typ, nsmap=nsmap())
 
         o = lxml.etree.Element('unit')
         o.text = self.unit
-        part.append(o)
+        tree.append(o)
 
         o = lxml.etree.Element('account')
         o.text = self.account
-        part.append(o)
+        tree.append(o)
 
         o = lxml.etree.Element('amount')
         o.text = str(self.amount)
         logg.debug('tree amount {} {}'.format(self.unit, o.text))
-        part.append(o)
+        tree.append(o)
 
-        tree.append(part)
-        return part
+        return tree
 
 
     def __str__(self):
@@ -455,10 +462,12 @@ class Entry:
             data.append(o)
 
         for v in self.debit:
-            v.apply_tree(data)
+            o = v.to_tree()
+            data.append(o)
 
         for v in self.credit:
-            v.apply_tree(data)
+            o = v.to_tree()
+            data.append(o)
         
         tree.append(data)
 
