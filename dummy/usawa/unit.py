@@ -14,6 +14,7 @@ class UnitIndex:
 
     default_precision = 2
     default_unit = 'BTC'
+    default_exchange = 1000000000
 
     """UnitIndex holds metadata for units of account.
 
@@ -26,10 +27,12 @@ class UnitIndex:
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
     """
-    def __init__(self, base, precision=2):
+    def __init__(self, base, precision=None):
         self.base = base
+        if precision == None:
+            precision = UnitIndex.default_precision
         self.detail = {base: precision}
-        self.exchange = {base: 1000000000}
+        self.exchange = {base: UnitIndex.default_exchange}
 
 
     """Add a unit to the index.
@@ -99,6 +102,8 @@ class UnitIndex:
 
     """Check whether symbol exists in index.
 
+    :param k: Unit symbol.
+    :type k: str
     :raises: KeyError if symbol not found.
     :returns: Symbol
     :rtype: str
@@ -112,6 +117,8 @@ class UnitIndex:
 
     The value represents a decimal number with nano precision. For example, a value of 4200000000 corresponds to a float value of 4.2.
 
+    :param k: Unit symbol.
+    :type k: str
     :raises: KeyError if symbol not found.
     :returns: Rate
     :rtype: int
@@ -202,6 +209,12 @@ class UnitIndex:
             r *= -1
         return int(r)
 
+
+    """Generate the simple data structure used for rencode serialization.
+
+    :returns: data structure
+    :rtype: list
+    """
     def to_list(self):
         syms = list(self.detail.keys())
         syms.sort()
@@ -217,19 +230,25 @@ class UnitIndex:
         return d
 
 
+    """Generate the unit index part of an Entry in wire format.
+
+    :return: rencoded object
+    :rtype: bytes
+    """
     def serialize(self):
         d = self.to_list() 
         return rencode.dumps(d)
 
 
-    @staticmethod
-    def deserialize(v):
-        pass
-
+#    @staticmethod
+#    def deserialize(v):
+#        pass
+#
 
     """Generate XML tree from current state of the object.
 
     The XML element generated is the units sub-element of the root ledger element.
+
     :returns: XML tree
     :rtype: lxml.etree.Element
     """
