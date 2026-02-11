@@ -8,3 +8,7 @@ class VerifyError(Exception):
 
 class ValidateError(Exception):
     pass
+
+
+class SocketError(Exception):
+    pass

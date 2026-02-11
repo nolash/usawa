@@ -1,7 +1,9 @@
 import logging
 import socket
 
+from whee import Interface
 from usawa.store import LedgerStore
+from usawa.error import SocketError
 
 logg = logging.getLogger('handler')
 
@@ -35,9 +37,9 @@ class Handler:
             if r > 0:
                 return r
         if self.handle_len() > 0:
-            return False
+            return -1
         if self.handle_collect() > 0:
-            return False
+            return -1
         return self.handle()
 
 
@@ -47,6 +49,7 @@ class Handler:
         self.l = -1
         self.state = 1
         self.r = None
+        self.v = None
         return self.handle_len()
 
 
@@ -89,12 +92,22 @@ class Handler:
 
 
     def handle(self):
-        self.state = 0
+        self.state = 3
         fn = self.h.get(self.cmd)
         if fn == None:
             raise ValueError()
         logg.debug('handling cmd {} arg 0x{} rest buffer 0x{}'.format(self.cmd, self.r.hex(), self.buf.hex()))
-        return fn(self.r)
+        r = fn(self.r)
+        self.v = b'\x00'
+        l = len(r)
+        self.v += l.to_bytes(3, byteorder='big')
+        self.v += r
+        return 0
+
+
+    def harvest(self):
+        self.state = 0
+        return self.v
 
 
 class SocketServer:
@@ -125,51 +138,120 @@ class SocketServer:
                 break
             try:
                 (sckc, address) = self.scks.accept()
+            except TimeoutError:
+                logg.debug('timeout')
+                continue
             except OSError:
                 logg.warning('Socket accept aborted. Bailing.')
                 break
-            logg.info('connect: {}'.format(address))
-            #th = threading.Thread(target=self.receive, args=(sckc, address))
-            #th.start()
-            self.receive(sckc, address)
+            if sckc != None:
+                logg.info('connect: {}'.format(address))
+                #th = threading.Thread(target=self.receive, args=(sckc, address))
+                #th.start()
+                try:
+                    self.receive(sckc, address)
+                except ConnectionResetError:
+                    logg.warning('connection reset')
+                sckc.close()
+                break
          
-
-    def default_handler(self, v):
-        return 0
-
 
     def receive(self, sckc, address):
         c = 0
         data = bytearray()
         handler = Handler()
-        handler.register(0, self.default_handler)
+        handler.register(0, self.store.get)
+        handler.register(1, self.store.put)
         while True:
+            r = -1
             b = sckc.recv(READ_SIZE)
             if len(b) == 0:
                 logg.info('connection broken: {}'.format(address))
                 break
-            for v in b:
-                if v == 0x0a:
-                    logg.debug('command boundary reached')
-                    parse(bytes(data))
-                data.append(v)
-            logg.debug('read {}: {}'.format(len(b), b.hex()))
+            try:
+                r = handler.scan(b)
+            except Exception as e:
+                logg.warning('socket cmd fail: ' + str(type(e)))
+            if r == -1:
+                sckc.sendall(b'\x02')
+                break
+            v = handler.harvest()
+            sckc.sendall(v)
 
 
 class UnixServer(SocketServer):
+
+    timeout = 1
 
     def __init__(self, db, ledger, acl=None, path='./usawa.socket'):
         super(UnixServer, self).__init__(db, ledger, acl=acl)
         self.scks = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.scks.bind(path)
+        self.scks.settimeout(UnixServer.timeout)
 
 
 class TCPServer(SocketServer):
     
+    timeout = 1
+
     def __init__(self, db, ledger, acl=None, host='', port=32327):
         super(TCPServer, self).__init__(db, ledger, acl=acl)
         self.scks = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.scks.bind((host, port,))
+        self.scks.settimeout(UnixServer.timeout)
+
+
+
+class SocketClient(Interface):
+
+    def __init__(self):
+        self.sck = None
+
+
+    def close(self):
+        logg.debug('request client close')
+        if self.sck != None:
+            self.sck.shutdown(socket.SHUT_RDWR)
+            self.sck.close()
+
+
+class UnixClient(SocketClient):
+
+    def __init__(self, path='./usawa.socket'):
+        super(UnixClient, self).__init__()
+        self.sck = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sck.connect(path)
+
+    
+    """
+
+    :todo: optimize length for key and value
+    """
+    def put(self, k, v):
+        b = b'\x00'
+        l = len(k) + len(v)
+        b += l.to_bytes(3, byteorder='big')
+        l = len(k)
+        b += l.to_bytes(3, byteorder='big')
+        b += k
+        l = len(v)
+        b += l.to_bytes(3, byteorder='big')
+        b += v
+        self.sck.sendall(b)
+        r = self.sck.recv(1)
+        if r != b'\x00':
+            raise SocketError()
+
+
+    def get(self, k):
+        b = b'\x00'
+        l = len(k)
+        b += l.to_bytes(3, byteorder='big')
+        b += k
+        self.sck.sendall(b)
+        r = self.sck.recv(1)
+        if r != b'\x00':
+            raise SocketError()
 
 
 class TCPClient:

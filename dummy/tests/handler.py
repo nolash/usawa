@@ -18,7 +18,7 @@ testdir = os.path.realpath(os.path.dirname(__file__))
 
 def zero_handler(v):
     logg.debug('zero handler arg 0x{}'.format(v.hex()))
-    return 0
+    return b'\x00'
 
 
 def create_handler():
