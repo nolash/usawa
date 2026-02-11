@@ -67,7 +67,7 @@ class TestSocket(unittest.TestCase):
         th.join()
 
 
-    def test_socket_entry(self):
+    def test_socket_entry_get(self):
         s = 'FOO'
         x = EntryPart(s, 'income', 'foo', 1337, debit=True)
         y = EntryPart(s, 'asset', 'foo', 1337)
@@ -84,11 +84,36 @@ class TestSocket(unittest.TestCase):
         th.start()
         client = UnixClient(path=srv_path)
 
-        b = pfx_entry(self.ledger, entry)
-        client.get(b)
+        k = pfx_entry(self.ledger, entry)
+        client.get(k)
         client.close()
         srv.stop()
         th.join()
+
+
+    def test_socket_entry_putget(self):
+        s = 'FOO'
+        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
+        y = EntryPart(s, 'asset', 'foo', 1337)
+        entry = Entry(self.ledger.peek(), datetime.datetime.now(), parent=self.ledger.current())
+        entry.add_part(x, debit=True)
+        entry.add_part(y)
+
+        s = str(uuid.uuid4())
+        srv_path = os.path.join(self.workdir, s)
+        srv = UnixServer(self.db, self.ledger, path=srv_path)
+        th = threading.Thread(target=self.serve, args=(srv,))
+        th.start()
+        client = UnixClient(path=srv_path)
+
+        k = pfx_entry(self.ledger, entry)
+        v = entry.wrap(wallet=self.wallet)
+        client.put(k, v)
+        r = client.get(k)
+        client.close()
+        srv.stop()
+        th.join()
+        Entry.unwrap(r, acl=self.acl)
 
 
 if __name__ == '__main__':

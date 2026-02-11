@@ -87,7 +87,7 @@ class Handler:
             self.buf = self.buf[c:]
             self.c = 0
             c = l
-            logg.debug('have cmd {} len {} arg {}'.format(self.cmd, self.l, self.buf[3:self.c].hex()))
+            logg.debug('have cmd {} len {} arg {}'.format(self.cmd, self.l, self.r.hex()))
         return l - c
 
 
@@ -154,14 +154,29 @@ class SocketServer:
                     logg.warning('connection reset')
                 sckc.close()
                 break
-         
+        
+
+    def put(self, b):
+        l = int.from_bytes(b[:3], byteorder='big')
+        k = b[3:l+3]
+        b = b[l+3:]
+        l = int.from_bytes(b[:3], byteorder='big')
+        v = b[3:l+3]
+        b = b[l+3:]
+        l = len(b)
+        logg.debug('put parse k {} v {}'.format(k.hex(), v.hex()))
+        if l > 0:
+            logg.warning(str(l) + 'bytes excess put data')
+        self.store.put(k, v)
+        return b'\x00'
+
 
     def receive(self, sckc, address):
         c = 0
         data = bytearray()
         handler = Handler()
         handler.register(0, self.store.get)
-        handler.register(1, self.store.put)
+        handler.register(1, self.put)
         while True:
             r = -1
             b = sckc.recv(READ_SIZE)
@@ -176,6 +191,7 @@ class SocketServer:
                 sckc.sendall(b'\x02')
                 break
             v = handler.harvest()
+            logg.debug('harvest {}'.format(v.hex()))
             sckc.sendall(v)
 
 
@@ -214,22 +230,14 @@ class SocketClient(Interface):
             self.sck.shutdown(socket.SHUT_RDWR)
             self.sck.close()
 
-
-class UnixClient(SocketClient):
-
-    def __init__(self, path='./usawa.socket'):
-        super(UnixClient, self).__init__()
-        self.sck = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sck.connect(path)
-
     
     """
 
     :todo: optimize length for key and value
     """
     def put(self, k, v):
-        b = b'\x00'
-        l = len(k) + len(v)
+        b = b'\x01'
+        l = len(k) + len(v) + 6 # length of key and value, and serialized lengths of both (3+3)
         b += l.to_bytes(3, byteorder='big')
         l = len(k)
         b += l.to_bytes(3, byteorder='big')
@@ -238,9 +246,22 @@ class UnixClient(SocketClient):
         b += l.to_bytes(3, byteorder='big')
         b += v
         self.sck.sendall(b)
-        r = self.sck.recv(1)
-        if r != b'\x00':
+        r = self.sck.recv(4)
+        if r[:1] != b'\x00':
+            logg.error('error return value {}'.format(r.hex()))
             raise SocketError()
+        l = int.from_bytes(r[1:], byteorder='big')
+        logg.debug('recv data len {} {}'.format(l, r))
+
+        c = l
+        b = b''
+        while c > 0:
+            r = self.sck.recv(c)
+            logg.debug('recv {} {}'.format(len(r), c, l))
+            if len(r) == 0:
+                break
+            c -= len(r)
+            b += r
 
 
     def get(self, k):
@@ -249,9 +270,33 @@ class UnixClient(SocketClient):
         b += l.to_bytes(3, byteorder='big')
         b += k
         self.sck.sendall(b)
-        r = self.sck.recv(1)
-        if r != b'\x00':
+        r = self.sck.recv(4)
+        if r[:1] != b'\x00':
             raise SocketError()
+        l = int.from_bytes(r[1:], byteorder='big')
+        logg.debug('recv data len {} {}'.format(l, r))
+
+        c = l
+        b = b''
+        while c > 0:
+            r = self.sck.recv(c)
+            logg.debug('recv {} {}'.format(len(r), c, l))
+            if len(r) == 0:
+                break
+            c -= len(r)
+            b += r
+
+        logg.debug('get recv data {} {}'.format(len(b), b))
+        return b
+
+
+class UnixClient(SocketClient):
+
+    def __init__(self, path='./usawa.socket'):
+        super(UnixClient, self).__init__()
+        self.sck = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sck.connect(path)
+
 
 
 class TCPClient:

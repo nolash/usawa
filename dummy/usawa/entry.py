@@ -155,6 +155,8 @@ class Entry:
         self.dtreg = tx_datereg
         self.attachment = []
         self.sigs = {}
+        if description == None:
+            description = ''
         self.description = description
         self.debit = []
         self.credit = []

@@ -306,7 +306,7 @@ class ACL:
     def have(self, who):
         if isinstance(who, bytes):
             who = who.hex()
-        return self.rev.get(who) != None
+        return self.rev[who]
 
 
     """Check if key is valid for the given purpose.
