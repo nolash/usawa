@@ -169,6 +169,7 @@ class LedgerStore(Interface):
         if update_ledger:
             self.ledger.add_entry(entry)
 
+
     """Restore an entry from data from the store.
 
     The entry is referenced by its serial number within the store's ledger. It can either be specified as an integer, or an entry object with the serial number property set accordingly.
@@ -243,4 +244,12 @@ class LedgerStore(Interface):
             k = pfx_key()
             pubkey = self.__o.get(k)
         k = pfx_key(pubkey=pubkey)
+        return self.__o.get(k)
+
+
+    def put(self, k, v):
+        return self.__o.put(k, v)
+
+
+    def get(self, k):
         return self.__o.get(k)

@@ -280,12 +280,14 @@ class Ledger:
     """
     def set_wallet(self, v):
         self.wallet = v
+        pubkey = self.wallet.pubkey()
         if self.acl == None:
             self.acl = ACL.from_wallet(self.wallet)
+        elif not self.acl.have(pubkey):
+            self.acl.add(pubkey)
 
-        v = self.wallet.pubkey()
         try:
-            self.sigs[v]
+            self.sigs[pubkey]
             return
         except KeyError:
             pass
@@ -560,6 +562,7 @@ class Ledger:
 
         ledger.apply_entries(tree)
         logg.debug('loaded ledger tree last serial {}'.format(ledger.serial))
+
         return ledger.check()
 
 

@@ -56,10 +56,10 @@ ctx = Context.from_args(arg)
 ledger = None
 ledger_tree = load(arg.ledger_xml_file)
 uidx = UnitIndex.from_tree(ledger_tree)
-ledger = Ledger.from_tree(ledger_tree) #, uidx)
+ledger = Ledger.from_tree(ledger_tree)
 
-db = ValkeyStore('')
-store = LedgerStore(db, ledger)
+storedb = ValkeyStore('')
+store = LedgerStore(storedb, ledger)
 pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)
 store.load()
