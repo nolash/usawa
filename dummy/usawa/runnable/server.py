@@ -4,7 +4,6 @@ import argparse
 
 from usawa import Ledger, Entry, EntryPart, DemoWallet, ACL, UnitIndex, load
 from usawa.context import Context
-from usawa.store import LedgerStore
 from usawa.service import Handler, SocketServer
 from whee.valkey import ValkeyStore
 
@@ -34,10 +33,9 @@ def main():
     ledger_tree = load(arg.ledger_xml_file)
     uidx = UnitIndex.from_tree(ledger_tree)
     ledger = Ledger.from_tree(ledger_tree, acl=acl)
+    
     db = ValkeyStore('')
-    store = LedgerStore(db, ledger)
-
-    srv = SocketServer(store)
+    srv = SocketServer(db, ledger, acl=acl)
     #srv.start()
 
 
