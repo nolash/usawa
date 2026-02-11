@@ -70,7 +70,6 @@ class Handler:
         self.l = int.from_bytes(v, byteorder='big')
         self.c += 3
         self.state = 2
-        logg.debug('cmd {} has len {}'.format(self.cmd, self.l))
         return 0
 
 
@@ -87,7 +86,6 @@ class Handler:
             self.buf = self.buf[c:]
             self.c = 0
             c = l
-            logg.debug('have cmd {} len {} arg {}'.format(self.cmd, self.l, self.r.hex()))
         return l - c
 
 

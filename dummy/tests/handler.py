@@ -37,6 +37,7 @@ class TestHandler(unittest.TestCase):
         handler = create_handler()
         b = b'\x00\x00\x00\x00'
         r = handler.scan(b)
+        handler.harvest()
         self.assertEqual(r, 0)
 
 
@@ -45,6 +46,7 @@ class TestHandler(unittest.TestCase):
         b = b'\x00\x00\x00\x00\x09\x00\x00\x00'
         r = handler.scan(b)
         self.assertEqual(r, 0)
+        handler.harvest()
         with self.assertRaises(ValueError):
             handler.scan(b'')
 
@@ -64,6 +66,8 @@ class TestHandler(unittest.TestCase):
         b = b'\x00\x00\x00\x00\x09\x00\x00'
         r = handler.scan(b)
         self.assertEqual(r, 0)
+        handler.harvest()
+
         b = b'\x00'
         r = handler.scan(b'')
         self.assertEqual(r, 1)
@@ -76,7 +80,8 @@ class TestHandler(unittest.TestCase):
         b = b'\x00\x00\x00\x00\x09\x00\x00'
         r = handler.scan(b)
         self.assertEqual(r, 0)
-        b = b'\x00'
+        handler.harvest()
+
         r = handler.scan(b'')
         self.assertEqual(r, 1)
         with self.assertRaises(ValueError):

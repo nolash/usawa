@@ -291,7 +291,7 @@ class Ledger:
             return
         except KeyError:
             pass
-        self.sigs[v] = b''
+        self.sigs[pubkey] = b''
 
 
     """Retrieve the serial that will be assigned to the next entry, without incrementing it in the object state.
