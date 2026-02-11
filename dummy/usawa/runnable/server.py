@@ -11,9 +11,6 @@ from whee.valkey import ValkeyStore
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
-READ_SIZE = 2048
-LISTEN_COUNT = 5
-
 
 def parse(v):
     logg.debug('parsing {}'.format(v.hex()))
@@ -35,7 +32,7 @@ def main():
     ledger = Ledger.from_tree(ledger_tree, acl=acl)
     
     db = ValkeyStore('')
-    srv = SocketServer(db, ledger, acl=acl)
+    srv = TCPServer(db, ledger, acl=acl)
     #srv.start()
 
 

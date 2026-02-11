@@ -5,6 +5,9 @@ from usawa.store import LedgerStore
 
 logg = logging.getLogger('handler')
 
+READ_SIZE = 2048
+LISTEN_COUNT = 5
+
 
 class Handler:
 
@@ -95,29 +98,51 @@ class Handler:
 
 
 class SocketServer:
-    
+
     def __init__(self, db, ledger, acl=None):
-        self.scks = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.store = LedgerStore(db, ledger)
         self.acl = acl
+        self.scks = None
+        self.running = True
+
+
+    def stop(self):
+        if self.scks != None:
+            self.scks.shutdown(socket.SHUT_RD)
+            self.scks.close()
+            self.scks = None
+        self.running = False
 
 
     def start(self):
-        scks.bind(('', 32327,))
-        scks.listen(LISTEN_COUNT)
-        while True:
+        self.scks.listen(LISTEN_COUNT)
+        while self.running:
             logg.debug('waiting for connection')
-            (sckc, address) = scks.accept()
+            sckc = None
+            address = None
+            if self.scks == None:
+                logg.warning('Socket gone. Bailing.')
+                break
+            try:
+                (sckc, address) = self.scks.accept()
+            except OSError:
+                logg.warning('Socket accept aborted. Bailing.')
+                break
             logg.info('connect: {}'.format(address))
             #th = threading.Thread(target=self.receive, args=(sckc, address))
             #th.start()
             self.receive(sckc, address)
-           
+         
+
+    def default_handler(self, v):
+        return 0
+
 
     def receive(self, sckc, address):
         c = 0
         data = bytearray()
         handler = Handler()
+        handler.register(0, self.default_handler)
         while True:
             b = sckc.recv(READ_SIZE)
             if len(b) == 0:
@@ -129,3 +154,26 @@ class SocketServer:
                     parse(bytes(data))
                 data.append(v)
             logg.debug('read {}: {}'.format(len(b), b.hex()))
+
+
+class UnixServer(SocketServer):
+
+    def __init__(self, db, ledger, acl=None, path='./usawa.socket'):
+        super(UnixServer, self).__init__(db, ledger, acl=acl)
+        self.scks = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.scks.bind(path)
+
+
+class TCPServer(SocketServer):
+    
+    def __init__(self, db, ledger, acl=None, host='', port=32327):
+        super(TCPServer, self).__init__(db, ledger, acl=acl)
+        self.scks = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.scks.bind((host, port,))
+
+
+class TCPClient:
+
+    def __init__(self, host, port=32327):
+        self.scks = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect((host, port,))

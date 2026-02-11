@@ -83,6 +83,5 @@ class TestHandler(unittest.TestCase):
             handler.scan(b'\x00')
 
 
-
 if __name__ == '__main__':
     unittest.main()
