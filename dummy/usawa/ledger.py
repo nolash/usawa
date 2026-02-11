@@ -326,7 +326,6 @@ class Ledger:
     def to_tree(self):
         self.serial = self.base_serial
         self.cur = self.base
-        self.entries[self.uidx.base] = []
         tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
 
         # generate topic
@@ -397,11 +396,10 @@ class Ledger:
             incoming.append(o)
 
         # apply all entries in object state
-        # TODO: entry should not be array
         for k in self.entries.keys():
-            for v in self.entries[k]:
-                entry_tree = v.to_tree()
-                tree.append(entry_tree)
+            v = self.entries[k]
+            entry_tree = v.to_tree()
+            tree.append(entry_tree)
 
         return tree
 
@@ -455,12 +453,6 @@ class Ledger:
         if self.cur != entry.parent:
             raise ValueError('entry parent does not match ledger state')
         self.check_sigs(entry)
-        # TODO: entries should not be list
-        try:
-            entries = self.entries[entry.serial]
-        except KeyError:
-            self.entries[entry.serial] = []
-
        
         # update the internal state
         self.serial = entry.serial
@@ -470,7 +462,7 @@ class Ledger:
         self.apply_entryparts(entry)
 
         # Add entry to the ledger object.
-        self.entries[entry.serial].append(entry)
+        self.entries[entry.serial] = entry
 
     
     """Update running total according to the entry.
