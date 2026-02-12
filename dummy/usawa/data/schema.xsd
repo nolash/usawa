@@ -154,6 +154,7 @@
 
 	<xs:complexType name="Attachment">
 		<xs:sequence>
+			<xs:element name="digest" type="Digest" />
 			<xs:element name="uuid" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="slug" type="xs:string" />
 			<xs:element name="description" type="xs:string" />
