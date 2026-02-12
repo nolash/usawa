@@ -29,5 +29,6 @@ Documentation released 2026 under CC-BY-SA
 @include store.texi
 @include resolver.texi
 @include assets.texi
+@include server.texi
 @include internals.texi
 @include appendix.texi
