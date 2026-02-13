@@ -122,7 +122,6 @@ class TestEntry(unittest.TestCase):
         wallet = DemoWallet()
         o.sign(wallet)
         tree = o.to_tree()
-        logg.debug('entry tree with attachment {}'.format(lxml.etree.tostring(tree)))
 
 
 if __name__ == '__main__':

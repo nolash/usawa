@@ -199,6 +199,8 @@ class Asset:
 
     """Generate and return an XML representation of the asset.
 
+    :param canon: Return canonical results to use in signature material.
+    :type canon: boolean
     :returns: XML tree representing the asset.
     :rtype: lxml.etree.Element
     :todo: implement sigs

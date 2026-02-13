@@ -430,11 +430,13 @@ class Entry:
 
     """Generate and return an XML representation of the entry.
 
+    :param canon: Return canonical results to use in signature material.
+    :type canon: boolean
     :todo: Make sure that sigs publickey lookup key is bytes type
     :returns: XML tree representing the entry.
     :rtype: lxml.etree.Element
     """
-    def to_tree(self):
+    def to_tree(self, canon=False):
         #tree = etree.Element('entry', type=self.typ)
         tree = lxml.etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
         data = lxml.etree.Element('data')
@@ -473,7 +475,7 @@ class Entry:
             data.append(o)
 
         for v in self.attachment:
-            o = v.to_tree()
+            o = v.to_tree(canon=canon)
             data.append(o)
 
         tree.append(data)
@@ -496,7 +498,7 @@ class Entry:
     :todo: replace attachment list with only non-optional parts for signature.
     """
     def canon(self):
-        tree = self.to_tree()
+        tree = self.to_tree(canon=True)
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
         return b.encode('utf-8')
 
