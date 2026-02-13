@@ -28,6 +28,7 @@ class Context:
         self.part = []
         self.output = None
         self.f = None
+        self.attachments = []
 
 
     def close(self):
@@ -114,6 +115,7 @@ argp.add_argument('-r', type=str, help='external reference')
 argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
 argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
 argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
+argp.add_argument('-x', type=str, dest='attachment', action='append', help='add file attachment')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')

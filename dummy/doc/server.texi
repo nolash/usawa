@@ -1,0 +1,10 @@
+@anchor{service}
+@chapter Service
+
+usawa provides a socket daemon service to allow multiple clients operate on the same entry store concurrently.
+
+It is currently implemented as a @emph{Unix socket} and a @emph{TCP socket}.
+
+The daemon will be run with its own private key, and will sign all responses.
+
+The daemon will also provide an authentication mechanism, checking access to the store with an ACL and a signature for each request. 

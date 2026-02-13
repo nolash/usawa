@@ -9,6 +9,7 @@ varints_dir = os.path.join(aux_dir, 'varints', 'varints')
 
 setup(
         install_requires=[
+            "filemagic~=1.6",
             "wheepy[valkey]~=0.0.3",
             "confini~=0.6.5",
             "lxml~=6.0.2",
