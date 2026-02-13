@@ -143,7 +143,7 @@ class Wallet:
     :rtype: boolean
     """
     def verify(self, v, sig):
-            raise NotImplementedError
+        raise NotImplementedError
 
 
     """Generate an identity XML tree entry from the wallet.
@@ -285,8 +285,8 @@ class ACL:
     :type did: usawa.DID
     """
     def add(self, who, what=None, label=None, did=DEFAULT_DID):
-        if isinstance(who, bytes):
-            who = who.hex()
+        if isinstance(who, str):
+            who = bytes.fromhex(who)
         if label == None:
             label = who
         if what == None:
@@ -304,8 +304,8 @@ class ACL:
     :rtype: boolean
     """
     def have(self, who):
-        if isinstance(who, bytes):
-            who = who.hex()
+        if isinstance(who, str):
+            who = bytes.fromhex(who)
         return self.rev[who]
 
 

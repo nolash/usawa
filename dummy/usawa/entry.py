@@ -190,7 +190,7 @@ class Entry:
     :type asset: usawa.Asset
     """
     def attach(self, asset):
-        logg.debug('attach {} to {}'.format(asset, self))
+        logg.debug('attach {} to {}'.format(asset.get_digest(), self))
         self.attachment.append(asset)
 
 
@@ -253,6 +253,7 @@ class Entry:
 
         return entry
 
+
     """Generate the simple data structure used for rencode serialization.
 
     :returns: data structure
@@ -261,11 +262,15 @@ class Entry:
     def to_list(self):
         debit = []
         credit = []
+        attach = []
         for v in self.debit:
             debit.append((v.unit, v.typ, v.account, v.amount,))
 
         for v in self.credit:
             credit.append((v.unit, v.typ, v.account, v.amount,))
+
+        for v in self.attachment:
+            attach.append(v.get_digest(binary=True))
 
         d = [
                 self.parent,
@@ -276,6 +281,7 @@ class Entry:
                 self.description,
                 debit,
                 credit,
+                attach,
                 ]
         return d
 
@@ -309,6 +315,7 @@ class Entry:
         description = v[5].decode('utf-8')
         src_data = v[6]
         dst_data = v[7]
+        attach_data = v[8]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         for v in src_data:
             src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
@@ -317,8 +324,13 @@ class Entry:
         for v in dst_data:
             dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
             o.add_part(dst)
-        logg.debug('deserialized entry {}'.format(o))
+
+        for v in attach_data:
+            asset = Asset(digest=v)
+            o.attach(asset)
         
+        logg.debug('deserialized entry {}'.format(o))
+
         return o
 
 
@@ -408,30 +420,47 @@ class Entry:
     @staticmethod
     def unwrap(data, acl=None):
         v = rencode.loads(data)
-        pubkey_bytes = v[0][0][1]
-        if acl != None:
-            label = None
-            try:
-                label = acl.have(pubkey_bytes)
-            except KeyError:
-                raise ACLError()
-            if not acl.may(label, 0x01):
-                raise ACLError()
-        wallet = DemoWallet(publickey=pubkey_bytes)
-        sig = v[1][0]
         entry = Entry.deserialize(v[2])
+        pubkey_bytes = v[0][0][1]
+        sig = v[1][0]
         entry.add_signature(pubkey_bytes, sig)
-        entry.verify(wallet)
+
+        if acl == None:
+            return entry
+
+        label = None
+        try:
+            label = acl.have(pubkey_bytes)
+        except KeyError:
+            raise ACLError()
+        if not acl.may(label, 0x01):
+            raise ACLError()
+        wallet = DemoWallet(publickey=pubkey_bytes)
+        entry.verify(wallet, acl=acl)
+
         return entry
 
 
-    def verify(self, wallet):
+    def verify(self, wallet=None, acl=None):
+        if wallet == None and acl == None:
+            raise ValueError('verify needs at least one of wallet or acl')
         (z, b) = self.sum()
         pubkeys = list(self.sigs.keys())
         sig = self.sigs[pubkeys[0]]
-        if not wallet.verify(z, sig):
+        if wallet != None:
+            if wallet.verify(z, sig):
+                return
+        have = False
+        if acl != None:
+            for pubkey in acl.pubkeys(binary=True):
+                logg.debug('publickey acl {}'.format(pubkey))
+                wallet = DemoWallet(publickey=pubkey)
+                sig = self.sigs[pubkey.hex()]
+                if wallet.verify(z, sig):
+                    have = True
+                    break
+        if not have:
             raise VerifyError()
-        # TODO: demo only takes into account single signature
 
 
     """Generate and return an XML representation of the entry.

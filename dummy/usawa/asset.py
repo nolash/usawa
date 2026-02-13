@@ -5,6 +5,7 @@ import os
 import uuid
 
 import lxml.etree
+import rencode
 import magic
 
 from .constant import NSPREFIX
@@ -49,8 +50,8 @@ class Asset:
     Asset.from_io() - Read from a io.BufferedIOBase input stream.
     Asset.from_tree() - Recreate from an XML tree.
     """
-    def __init__(self):
-        self.digest = None
+    def __init__(self, digest=None):
+        self.digest = digest
         self.mime = None
         self.enc = None
         self.slug = None
@@ -89,6 +90,20 @@ class Asset:
             if self.enc != None:
                 s += ';charset=' + self.enc
         return s
+
+
+    """Return the digest of the asset, in hex.
+
+    :raises AttributeError: Digest not set
+    :return: Digest hex
+    :rtype: str
+    """
+    def get_digest(self, binary=False):
+        if self.digest == None:
+            raise AttributeError('')
+        if binary:
+            return self.digest
+        return self.digest.hex()
 
 
     """Instantiate an asset object from a local file.
@@ -267,6 +282,55 @@ class Asset:
         for v in tree.findall('sig', namespaces=nsmap()):
             logg.debug('skipping sig from ' . v.get('keyid'))
 
+        return o
+
+
+    """Generate the simple data structure used for rencode serialization.
+
+    :returns: data structure
+    :rtype: list
+    """
+    def to_list(self):
+        d = [
+                self.mime,
+                self.uuid,
+                self.extref,
+                self.slug,
+                self.ext,
+                self.description,
+                ]
+        return d
+
+
+    """Generate the serialization format used to calculate the digest for the asset.
+
+    :returns: String representation of the entry, in rencode format.
+    :rtype: str
+    """
+    def serialize(self):
+        b = self.to_list()
+        return rencode.dumps(b)
+
+
+    """Create an entry object from serialized data.
+
+    :param data: rencoded entry object, as produced by the serialize() method.
+    :type data: str
+    :returns: Entry object.
+    :rtype: usawa.Entry
+    """
+    @staticmethod
+    def deserialize(data, digest):
+        o = Asset()
+        v = rencode.loads(data)
+        i = 0
+        for k in ['mime', 'uuid', 'extref', 'slug', 'ext', 'description']:
+            if v[i] != None:
+                setattr(o, k, v[i].decode('utf-8'))
+            i += 1
+        if isinstance(digest, str):
+            digest = bytes.fromhex(digest)
+        o.digest = digest
         return o
 
 

@@ -6,12 +6,14 @@ from whee import Interface
 
 from .ledger import Ledger
 from .entry import Entry
+from .asset import Asset
 
 
 PFX_KEY = b'\x00'
 PFX_LEDGER = b'\x01'
 PFX_LEDGER_LOCK = b'\x02'
 PFX_ENTRY = b'\x04'
+PFX_ASSET = b'\x10'
 
 logg = logging.getLogger('usawa.store')
 
@@ -40,13 +42,6 @@ def pfx_key(pubkey=None):
 :rtype: bytes
 """
 def pfx_ledger_topic(topic):
-    """Return ledger store prefix for topic.
-
-    :params topic: Topic to generate prefix for.
-    :type topic: bytes
-    :returns: Prefix.
-    :rtype: bytes
-    """
     r = PFX_LEDGER + topic
     return r
 
@@ -59,13 +54,6 @@ def pfx_ledger_topic(topic):
 :rtype: bytes
 """
 def pfx_ledger_lock(topic):
-    """Return ledger store locking prefix for topic.
-
-    :params topic: Topic to generate prefix for.
-    :type topic: bytes
-    :returns: Prefix.
-    :rtype: bytes
-    """
     r = PFX_LEDGER_LOCK + topic
     return r
 
@@ -80,15 +68,6 @@ def pfx_ledger_lock(topic):
 :rtype: bytes
 """
 def pfx_entry(ledger, entry):
-    """Return ledger store prefix for an entry.
-
-    :param ledger: Ledger context for the entry.
-    :type ledger: usawa.Ledger
-    :param entry: Entry or serial to create prefix for.
-    :type entry: usawa.Entry or int
-    :returns: Prefix.
-    :rtype: bytes
-    """
     serial = 0
     if isinstance(entry, Entry):
         serial = entry.serial
@@ -99,6 +78,16 @@ def pfx_entry(ledger, entry):
     if not isinstance(ledger, Ledger):
         raise ValueError('invalid ledger')
     return PFX_LEDGER + ledger.topic + serial.to_bytes(8, byteorder='big')
+
+
+"""DB key prefix for adding entry attachment asset to a ledger.
+
+"""
+def pfx_asset(asset):
+    if not isinstance(asset, Asset):
+        raise ValueError('invalid asset')
+    return PFX_ASSET + asset.get_digest(binary=True)
+
 
 
 class LedgerStore(Interface):
@@ -181,11 +170,43 @@ class LedgerStore(Interface):
     :raises: PermissionError if the entry does not have a valid signature.
     :raises: ValueError if the serial number cannot be retrieved from the entry argument.
     :raises: FileExistsError if entry is already in store.
+    :todo: optimize replacing asset stub with deserialized asset
     """
     def get_entry(self, entry, acl=None):
         k = pfx_entry(self.ledger, entry)
         v = self.__o.get(k)
-        return Entry.unwrap(v, acl=acl)
+        entry = Entry.unwrap(v)
+        # TODO: hacky!
+        i = 0
+        for o in entry.attachment:
+            logg.debug('getentry ' + o.get_digest())
+            asset = self.get_asset(o)
+            #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
+            entry.attachment[i] = asset
+            i += 1
+        entry.verify(acl=acl)
+        return entry
+
+
+    """Add an entry attachment asset to the store.
+
+    :param asset: Asset containing digest to restore.
+    :type asset: usawa.Asset
+    :raises: FileExistsError if entry is already in store.
+    """
+    def add_asset(self, asset):
+        k = pfx_asset(asset)
+        v = asset.serialize()
+        self.__o.put(k, v)
+
+
+    """Restore an entry attachment asset from the store.
+    """
+    def get_asset(self, asset):
+        k = pfx_asset(asset)
+        v = self.__o.get(k)
+        digest = asset.get_digest(binary=True)
+        return Asset.deserialize(v, digest)
 
 
     """Flush ledger and load all entries from store.
@@ -196,12 +217,12 @@ class LedgerStore(Interface):
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
-    def load(self):
+    def load(self, acl=None):
         logg.debug('load ledger from store {}'.format(self.ledger))
         while True:
             o = None
             try:
-                o = self.get_entry(self.ledger.next_serial())
+                o = self.get_entry(self.ledger.next_serial(), acl=acl)
             except FileNotFoundError:
                 break
             self.ledger.add_entry(o)
@@ -247,9 +268,13 @@ class LedgerStore(Interface):
         return self.__o.get(k)
 
 
+    """Implements whee.Interface.put
+    """
     def put(self, k, v):
         return self.__o.put(k, v)
 
 
+    """Implements whee.Interface.get
+    """
     def get(self, k):
         return self.__o.get(k)

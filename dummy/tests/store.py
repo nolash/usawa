@@ -8,7 +8,7 @@ import uuid
 import lxml.etree
 from whee.mem import MemStore
 
-from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet
+from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, Asset
 from usawa.store import LedgerStore
 from usawa.crypto import ACL
 
@@ -40,16 +40,42 @@ class TestStore(unittest.TestCase):
         wallet = DemoWallet()
         o.sign(wallet)
         store.add_entry(o)
-        r = store.get_entry(o.serial)
+
+        acl = ACL.from_wallet(wallet)
+        r = store.get_entry(o.serial, acl=acl)
         self.assertEqual(r.ref, o.ref)
         self.assertEqual(r.description, o.description)
+
+
+    def test_store_entry_attach(self):
+        uidx = UnitIndex('FOO')
+        ledger = Ledger(uidx, serial=42, base=self.parent)
+        store = LedgerStore(self.store, ledger)
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+
+        fp = os.path.join(testdir, 'test.xml')
+        asset = Asset.from_file(fp, description='foobar')
+        store.add_asset(asset)
+        o.attach(asset)
+
+        wallet = DemoWallet()
+        o.sign(wallet)
+        store.add_entry(o)
+
+        acl = ACL.from_wallet(wallet)
+        r = store.get_entry(o.serial, acl=acl)
+        self.assertEqual(r.ref, o.ref)
+        self.assertEqual(r.description, o.description)
+        self.assertEqual(r.attachment[0].description, 'foobar')
 
 
     def test_store_ledger(self):
         uidx = UnitIndex('FOO')
         wallet = DemoWallet()
-        #acl = ACL()
-        #acl.add(wallet.pubkey())
         acl = ACL.from_wallet(wallet)
         ledger = Ledger(uidx, serial=41, base=self.parent, acl=acl, wallet=wallet)
         store = LedgerStore(self.store, ledger)
@@ -75,8 +101,7 @@ class TestStore(unittest.TestCase):
         store.add_entry(o)
 
         ledger.sign()
-        #ledger.reset()
-        store.load()
+        store.load(acl=acl)
 
 
 if __name__ == '__main__':
