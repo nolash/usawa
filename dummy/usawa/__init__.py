@@ -7,6 +7,7 @@ from .entry import Entry, EntryPart
 from .crypto import DemoWallet, ACL
 from .xml import nsmap
 from .unit import UnitIndex
+from .asset import Asset
 
 
 data_dir = os.path.join(os.path.dirname(__file__), 'data')

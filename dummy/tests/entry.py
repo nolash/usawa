@@ -4,7 +4,7 @@ import unittest
 import os
 import copy
 
-from usawa import EntryPart, Entry, DemoWallet, ACL, UnitIndex
+from usawa import EntryPart, Entry, DemoWallet, ACL, UnitIndex, Asset
 from usawa.error import ACLError
 import lxml.etree
 
@@ -107,6 +107,22 @@ class TestEntry(unittest.TestCase):
         s = lxml.etree.tostring(tree)
         tree = lxml.etree.fromstring(s)
         tree = Entry.from_tree(tree, self.uidx)
+
+
+    def test_entry_attach(self):
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+
+        fp = os.path.join(testdir, 'test.xml')
+        asset = Asset.from_file(fp)
+        o.attach(asset)
+        wallet = DemoWallet()
+        o.sign(wallet)
+        tree = o.to_tree()
+        logg.debug('entry tree with attachment {}'.format(lxml.etree.tostring(tree)))
 
 
 if __name__ == '__main__':

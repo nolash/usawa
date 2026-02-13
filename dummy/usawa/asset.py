@@ -55,7 +55,6 @@ class Asset:
         self.enc = None
         self.slug = None
         self.ext = None
-        self.localref = None
         self.extref = None
         self.uuid = None
         self.description = None
@@ -108,9 +107,9 @@ class Asset:
     :raises PermissionError: File cannot be read.
     """
     @staticmethod
-    def from_file(filepath, description=None, slug=None, mimetype=None, localref=None, extref=None):
+    def from_file(filepath, description=None, slug=None, mimetype=None, extref=None):
         f = open(filepath, 'rb')
-        return Asset.from_io(f, filepath, closer=f.close, description=description, slug=slug, mimetype=mimetype, localref=localref, extref=extref)
+        return Asset.from_io(f, filepath, closer=f.close, description=description, slug=slug, mimetype=mimetype, extref=extref)
 
 
     """Instantiate an asset object from an input stream.
@@ -129,8 +128,6 @@ class Asset:
     :type slug: str
     :param mimetype: Explicitly set mime type to this value.
     :type mimetype: str
-    :param localref: A local reference (e.g. invoice number).
-    :type localref: str
     :param extref: An external reference (e.g. invoice number).
     :type extref: str
     :todo: make sure stream close on exception.
@@ -138,7 +135,7 @@ class Asset:
     :todo: document possible exceptions.
     """
     @staticmethod
-    def from_io(io, src, closer=None, description=None, slug=None, mimetype=None, localref=None, extref=None):
+    def from_io(io, src, closer=None, description=None, slug=None, mimetype=None, extref=None):
         o = Asset()
         h = hashlib.sha256()
         b = io.read(BLOCKSIZE)
@@ -173,13 +170,31 @@ class Asset:
         logg.debug('asset read {} bytes from path {} mime {}'.format(c, src, o.mime))
 
         o.uuid = str(uuid.uuid4())
-        if localref == None:
-            localref = o.uuid
-        o.localref = localref
         o.extref = extref
         o.description = description
 
         return o
+
+
+    """Return canonical XML for use in signature message calculation.
+
+    Elements in canonical XML for the asset is data that can be recreated by the actual file data.
+
+    Although MIME type may be ambigious, it can reasonably be guessed by scanning the asset data after the fact and most likely with trial-and-error from the results of that operation.
+
+    For custom or arcane MIME types, the data needed to recreate the MIME type has to be retained outside the application.
+    """
+    def canon(self):
+        tree = lxml.etree.Element(NSPREFIX + 'attachment', nsmap=nsmap())
+        if self.mime != None:
+            tree.set('mime', self.get_mimestring())
+
+        o = lxml.etree.SubElement(tree, 'digest')
+        o.set('algo', 'sha256')
+        o.text = self.digest.hex()
+        tree.append(o)
+
+        return tree
 
 
     """Generate and return an XML representation of the asset.
@@ -188,25 +203,13 @@ class Asset:
     :rtype: lxml.etree.Element
     :todo: implement sigs
     """
-    def to_tree(self):
-        tree = lxml.etree.Element(NSPREFIX + 'attachment', nsmap=nsmap())
-        if self.mime != None:
-            tree.set('mime', self.get_mimestring())
+    def to_tree(self, canon=False):
+        tree = self.canon() 
+        if canon:
+            return tree
+
         if self.uuid != None:
             tree.set('uuid', self.uuid)
-
-        o = lxml.etree.SubElement(tree, 'digest')
-        o.text = self.digest.hex()
-        tree.append(o)
-
-        o = lxml.etree.SubElement(tree, 'lookup')
-        o.text = '.'
-        o.set('method', 'local')
-        tree.append(o)
-
-        o = lxml.etree.SubElement(tree, 'ref')
-        o.text = self.localref
-        tree.append(o)
 
         if self.extref != None:
             o = lxml.etree.SubElement(tree, 'extref')
@@ -243,7 +246,6 @@ class Asset:
         o.mime = tree.get('mime')
         v = tree.find('digest', namespaces=nsmap()).text
         o.digest = bytes.fromhex(v)
-        o.ref = tree.find('ref', namespaces=nsmap()).text
 
         v = tree.find('extref', namespaces=nsmap())
         if v != None:

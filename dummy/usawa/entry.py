@@ -183,19 +183,13 @@ class Entry:
 
     """Append a single media asset to the attachment list for the entry.
 
-    :param mime: MIME type of asset.
-    :type mime: str
-    :param algo: Algorithm used to generate digest of attachment. Must be a valid algorithm identifier for hashlib (standard library).
-    :type algo: str
-    :param digest: The digest of the asset.
-    :type digest: bytes
-    :param description: Optional description string for the asset.
-    :type description: str
-    :param slug: Optional machine-friendly name, e.g. used as filename stem.
-    :type slug: str
+    Does not detect duplicate inserts (inserts with same digest).
+
+    :param asset: The asset to add.
+    :type asset: usawa.Asset
     """
-    def attach(self, mime, algo, digest, description=None, slug=None):
-        self.attachment.append((mime, algo, digest, description, slug,))
+    def attach(self, asset):
+        self.attachment.append(asset)
 
 
     """Add a signature over the ledger state of the entry.
@@ -477,7 +471,11 @@ class Entry:
         for v in self.credit:
             o = v.to_tree()
             data.append(o)
-        
+
+        for v in self.attachment:
+            o = v.to_tree()
+            data.append(o)
+
         tree.append(data)
 
         for k in self.sigs.keys():
@@ -495,6 +493,7 @@ class Entry:
 
     :return: Signature material.
     :rtype: str
+    :todo: replace attachment list with only non-optional parts for signature.
     """
     def canon(self):
         tree = self.to_tree()

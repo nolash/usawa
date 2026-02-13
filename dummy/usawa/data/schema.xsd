@@ -157,8 +157,6 @@
 	<xs:complexType name="Attachment">
 		<xs:sequence>
 			<xs:element name="digest" type="Digest" />
-			<xs:element name="lookup" type="Lookup" />
-			<xs:element name="ref" type="xs:string" />
 			<xs:element name="extref" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="filename" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1" />
