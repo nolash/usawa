@@ -135,7 +135,7 @@
 	<xs:complexType name="EntryData">
 		<xs:sequence>
 			<xs:element name="parent" type="xs:string" />
-			<xs:element name="ref" type="xs:string" />
+			<xs:element name="ext" type="xs:string" />
 			<xs:element name="serial" type="xs:positiveInteger" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
@@ -157,9 +157,11 @@
 	<xs:complexType name="Attachment">
 		<xs:sequence>
 			<xs:element name="digest" type="Digest" />
-			<xs:element name="slug" type="xs:string" />
-			<xs:element name="description" type="xs:string" />
 			<xs:element name="lookup" type="Lookup" />
+			<xs:element name="ref" type="xs:string" />
+			<xs:element name="extref" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="filename" type="xs:string" minOccurs="0" maxOccurs="1" />
+			<xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1" />
 		</xs:sequence>
 		<xs:attribute name="mime" type="xs:string" />
 		<xs:attribute name="uuid" type="xs:string" />

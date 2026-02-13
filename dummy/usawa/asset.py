@@ -2,10 +2,14 @@ import hashlib
 import mimetypes
 import logging
 import os
+import uuid
 
+import lxml.etree
 import magic
 
-logg = logging.getLogger('asset')
+from .xml import nsmap
+
+logg = logging.getLogger('usawa.asset')
 
 BLOCKSIZE = 512
 
@@ -28,9 +32,11 @@ class Asset:
         self.enc = None
         self.slug = None
         self.ext = None
+        self.localref = None
+        self.extref = None
+        self.uuid = None
+        self.description = None
 
-
-    
 
     def get_filename(self):
         s = self.slug
@@ -46,15 +52,22 @@ class Asset:
         return s
 
 
-
     @staticmethod
-    def from_file(filepath, description=None, slug=None, mimetype=None):
+    def from_file(filepath, description=None, slug=None, mimetype=None, localref=None, extref=None):
+        f = open(filepath, 'rb')
+        return Asset.from_io(f, filepath, f.close, description=description, slug=slug, mimetype=mimetype, localref=localref, extref=extref)
+
+
+    """
+    :todo: make sure stream close on exception
+    """
+    @staticmethod
+    def from_io(io, path, closer, description=None, slug=None, mimetype=None, localref=None, extref=None):
         o = Asset()
         h = hashlib.sha256()
-        f = open(filepath, 'rb')
-        b = f.read(BLOCKSIZE)
+        b = io.read(BLOCKSIZE)
         if mimetype == None:
-            v = mimetypes.guess_file_type(filepath, strict=True)
+            v = mimetypes.guess_file_type(path, strict=True)
             if v != None:
                 mimetype = v[0]
                 o.enc = v[1]
@@ -64,24 +77,68 @@ class Asset:
         h.update(b)
         c = BLOCKSIZE
         while True:
-            b = f.read(BLOCKSIZE)
+            b = io.read(BLOCKSIZE)
             if len(b) == 0:
                 break
             h.update(b)
             c += len(b)
-        f.close()
+        closer()
         o.digest = h.digest()
 
         s = mimetypes.guess_extension(o.mime, strict=True)
         if s != None:
             o.ext = s[1:] 
+        (o.slug, o.ext) = parse_path(path)
+        if slug != None:
+            logg.info('overriding file base name {} -> {}'.format(o.slug, slug))
+            o.slug = slug
 
-        (o.slug, o.ext) = parse_path(filepath)
+        logg.debug('asset read {} bytes from path {} mime {}'.format(c, path, o.mime))
 
-        logg.debug('asset read {} bytes from path {} mime {}'.format(c, filepath, o.mime))
+        o.uuid = str(uuid.uuid4())
+        if localref == None:
+            localref = o.uuid
+        o.localref = localref
+        o.extref = extref
+        o.description = description
 
         return o
 
+
+    def to_tree(self):
+        tree = lxml.etree.Element('attachment', nsmap=nsmap())
+        tree.set('mime', self.get_mimestring())
+        tree.set('uuid', self.uuid)
+
+        o = lxml.etree.SubElement(tree, 'digest')
+        o.text = self.digest.hex()
+        tree.append(o)
+
+        o = lxml.etree.SubElement(tree, 'lookup')
+        o.text = '.'
+        o.set('method', 'local')
+        tree.append(o)
+
+        o = lxml.etree.SubElement(tree, 'ref')
+        o.text = self.localref
+        tree.append(o)
+
+        if self.extref != None:
+            o = lxml.etree.SubElement(tree, 'extref')
+            o.text = self.extref
+            tree.append(o)
+
+        o = lxml.etree.SubElement(tree, 'filename')
+        o.text = self.get_filename()
+        tree.append(o)
+
+        if self.description != None:
+            o = lxml.etree.SubElement(tree, 'description')
+            o.text = self.description
+            tree.append(o)
+
+        return tree
+ 
 
     def __str__(self):
         return 'file ̈́' + self.get_filename() + ' mime ' + self.get_mimestring() + ' digest ' + self.digest.hex()
