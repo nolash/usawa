@@ -94,5 +94,19 @@ class TestEntry(unittest.TestCase):
         Entry.unwrap(data, acl=acl)
 
 
+    def test_entry_export_import(self):
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+        wallet = DemoWallet()
+        o.sign(wallet)
+        tree = o.to_tree()
+
+        s = lxml.etree.tostring(tree)
+        tree = lxml.etree.fromstring(s)
+        tree = Entry.from_tree(tree, self.uidx)
+
 if __name__ == '__main__':
     unittest.main()

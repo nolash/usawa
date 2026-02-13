@@ -107,8 +107,10 @@ class Asset:
 
     def to_tree(self):
         tree = lxml.etree.Element('attachment', nsmap=nsmap())
-        tree.set('mime', self.get_mimestring())
-        tree.set('uuid', self.uuid)
+        if self.mime != None:
+            tree.set('mime', self.get_mimestring())
+        if self.uuid != None:
+            tree.set('uuid', self.uuid)
 
         o = lxml.etree.SubElement(tree, 'digest')
         o.text = self.digest.hex()
@@ -138,7 +140,40 @@ class Asset:
             tree.append(o)
 
         return tree
- 
+
+
+    """
+    :todo: add to docs cannot directly import from tree generated from to_tree, must go way by string export
+    """
+    @staticmethod
+    def from_tree(tree):
+        o = Asset()
+        o.uuid = tree.get('uuid')
+        o.mime = tree.get('mime')
+        v = tree.find('digest', namespaces=nsmap()).text
+        o.digest = bytes.fromhex(v)
+        o.ref = tree.find('ref', namespaces=nsmap()).text
+
+        v = tree.find('extref', namespaces=nsmap())
+        if v != None:
+            o.extref = v.text
+
+        v = tree.find('filename', namespaces=nsmap())
+        if v != None:
+            v = parse_path(v.text)
+            o.slug = v[0]
+            o.ext = v[1]
+
+        v = tree.find('description', namespaces=nsmap())
+        if v != None:
+            o.description = v.text
+
+        logg.warning('asset sigs not yet implemented')
+        for v in tree.findall('sig', namespaces=nsmap()):
+            logg.debug('skipping sig from ' . v.get('keyid'))
+
+        return o
+
 
     def __str__(self):
         return 'file ̈́' + self.get_filename() + ' mime ' + self.get_mimestring() + ' digest ' + self.digest.hex()

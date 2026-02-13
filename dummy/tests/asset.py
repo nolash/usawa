@@ -28,5 +28,17 @@ class TestAsset(unittest.TestCase):
         logg.debug('asset {}'.format(lxml.etree.tostring(tree)))
 
 
+    def test_asset_import(self):
+        fp = os.path.join(testdir, 'test.xml')
+        asset = Asset.from_file(fp, slug='foo', description='barbarbar', extref='xyzzy', localref='plugh')
+        tree = asset.to_tree()
+
+        s = lxml.etree.tostring(tree)
+        tree = lxml.etree.fromstring(s)
+        o = Asset.from_tree(tree)
+        logg.debug('imported asset {}'.format(o))
+
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -229,8 +229,6 @@ class Entry:
         serial = int(o.find('serial', namespaces=nsmap()).text)
         if min > serial:
             raise ValueError('entry serial preceeds ledger')
-        #unit = o.find('unit', namespaces=nsmap()).text
-        #unitindex.sym(unit)
 
         ref = o.find('ref', namespaces=nsmap()).text
         parent = o.find('parent', namespaces=nsmap()).text
