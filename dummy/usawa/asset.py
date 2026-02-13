@@ -7,6 +7,7 @@ import uuid
 import lxml.etree
 import magic
 
+from .constant import NSPREFIX
 from .xml import nsmap
 
 logg = logging.getLogger('usawa.asset')
@@ -15,7 +16,21 @@ BLOCKSIZE = 512
 
 magic = magic.Magic(flags=magic.MAGIC_MIME_TYPE)
 
+"""Return a stem name and extension as a tuple from an absolute or relative path.
+
+Stem name will always be set. Extension will be returned as None if none could be found.
+
+Does not check whether or not the file exists.
+
+:param path: File path.
+:type path: str
+:raises ValueError: Empty path value.
+:return: Stem name and extension.
+:rtype: Tuple
+"""
 def parse_path(path):
+    if len(path) == 0 or path == None:
+        raise ValueError('empty path')
     s = os.path.basename(path)
     v = s.rsplit('.', maxsplit=1)
     slug = v[0]
@@ -24,8 +39,16 @@ def parse_path(path):
         ext = v[1]
     return (slug, ext,)
 
-class Asset:
 
+class Asset:
+    """Represents a file asset, used as attachment in usawa.Entry.
+
+    Object is not intended to be instantiated directly. Instead one of the following static methods should be used:
+
+    Asset.from_file() - Read from local file.
+    Asset.from_io() - Read from a io.BufferedIOBase input stream.
+    Asset.from_tree() - Recreate from an XML tree.
+    """
     def __init__(self):
         self.digest = None
         self.mime = None
@@ -38,6 +61,13 @@ class Asset:
         self.description = None
 
 
+    """Return the preferred filename with extension for the asset.
+
+    Must always return a value. The filename may or may not have an extension.
+
+    :return: Filename
+    :rtype: str
+    """
     def get_filename(self):
         s = self.slug
         if self.ext != None:
@@ -45,29 +75,75 @@ class Asset:
         return s
 
 
+    """Return the mime type.
+
+    The encoding specifier will be added if it exists.
+
+    Returns None if mime type has not been set.
+
+    :return: Mime string
+    :rtype: str
+    """
     def get_mimestring(self):
         s = self.mime
-        if self.enc != None:
-            s += '; encoding=' + self.enc
+        if s != None:
+            if self.enc != None:
+                s += ';charset=' + self.enc
         return s
 
 
+    """Instantiate an asset object from a local file.
+
+    File is opened and the file object is passed on to the from_io() method. 
+
+    The filepath argument will be passed as the "src" argument to from_io().
+
+    See from_io() for documentation on the named arguments.
+
+    :param filepath: File path to read from.
+    :type filepath: str
+
+    :raises FileNotFoundError: File does not exist.
+    :raises IsADirectoryError: Path is a directory.
+    :raises PermissionError: File cannot be read.
+    """
     @staticmethod
     def from_file(filepath, description=None, slug=None, mimetype=None, localref=None, extref=None):
         f = open(filepath, 'rb')
-        return Asset.from_io(f, filepath, f.close, description=description, slug=slug, mimetype=mimetype, localref=localref, extref=extref)
+        return Asset.from_io(f, filepath, closer=f.close, description=description, slug=slug, mimetype=mimetype, localref=localref, extref=extref)
 
 
-    """
-    :todo: make sure stream close on exception
+    """Instantiate an asset object from an input stream.
+
+    Unless explicitly set, an attempt to automatically guess the mime type of the stream. If the mime type cannot be guessed by the file extension, a filemagic buffer scan is attempted (first usawa.asset.BLOCKSIZE bytes).
+
+    :param io: Buffered input to read from.
+    :type io: io.BufferedIOBase
+    :param src: Source location.
+    :type src: Source location
+    :param closer: Function that will be called after completed read to close the io stream.
+    :type closer: io.IOBase.close
+    :param description: A description of the file contents.
+    :type description:  to this value.
+    :param slug: Override filename with this as stem name.
+    :type slug: str
+    :param mimetype: Explicitly set mime type to this value.
+    :type mimetype: str
+    :param localref: A local reference (e.g. invoice number).
+    :type localref: str
+    :param extref: An external reference (e.g. invoice number).
+    :type extref: str
+    :todo: make sure stream close on exception.
+    :todo: make path uri/remote url friendly when implementing remote stream.
+    :todo: document possible exceptions.
     """
     @staticmethod
-    def from_io(io, path, closer, description=None, slug=None, mimetype=None, localref=None, extref=None):
+    def from_io(io, src, closer=None, description=None, slug=None, mimetype=None, localref=None, extref=None):
         o = Asset()
         h = hashlib.sha256()
         b = io.read(BLOCKSIZE)
         if mimetype == None:
-            v = mimetypes.guess_file_type(path, strict=True)
+            v = mimetypes.guess_file_type(src, strict=True)
             if v != None:
                 mimetype = v[0]
                 o.enc = v[1]
@@ -82,18 +158,19 @@ class Asset:
                 break
             h.update(b)
             c += len(b)
-        closer()
+        if closer != None:
+            closer()
         o.digest = h.digest()
 
         s = mimetypes.guess_extension(o.mime, strict=True)
         if s != None:
             o.ext = s[1:] 
-        (o.slug, o.ext) = parse_path(path)
+        (o.slug, o.ext) = parse_path(src)
         if slug != None:
             logg.info('overriding file base name {} -> {}'.format(o.slug, slug))
             o.slug = slug
 
-        logg.debug('asset read {} bytes from path {} mime {}'.format(c, path, o.mime))
+        logg.debug('asset read {} bytes from path {} mime {}'.format(c, src, o.mime))
 
         o.uuid = str(uuid.uuid4())
         if localref == None:
@@ -105,8 +182,14 @@ class Asset:
         return o
 
 
+    """Generate and return an XML representation of the asset.
+
+    :returns: XML tree representing the asset.
+    :rtype: lxml.etree.Element
+    :todo: implement sigs
+    """
     def to_tree(self):
-        tree = lxml.etree.Element('attachment', nsmap=nsmap())
+        tree = lxml.etree.Element(NSPREFIX + 'attachment', nsmap=nsmap())
         if self.mime != None:
             tree.set('mime', self.get_mimestring())
         if self.uuid != None:
@@ -142,8 +225,16 @@ class Asset:
         return tree
 
 
-    """
+    """Create object from an asset part defined as an XML tree.
+
+    The XML expected is an ledger/entry[]/attachment[] element (in schema defined as the Attachment complexType)
+
+    :param tree: The asset as XML tree.
+    :type tree: lxml.etree.ElementTree
+    :return: Asset part
+    :rtype: lxml.etree.Element
     :todo: add to docs cannot directly import from tree generated from to_tree, must go way by string export
+    :todo: implement sigs
     """
     @staticmethod
     def from_tree(tree):

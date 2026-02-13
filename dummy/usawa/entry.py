@@ -53,7 +53,7 @@ class EntryPart:
     The XML expected is the ledger/entry/data/debit or ledger/entry/data/credit (in schema, defined as the EntryPart complexType).
 
     :param tree: The entry as XML tree.
-    :type tree: lxml.etree.ElementTree
+    :type tree: lxml.etree.Element
     :param debit: True if the transaction part is a debit.
     :type debit: boolean
     :return: Entry part
@@ -214,7 +214,7 @@ class Entry:
     """Create an entry object from an XML representation.
 
     :param tree: A parsed XML tree containing the entry.
-    :type tree: lxml.etree.ElementTree
+    :type tree: lxml.etree.Element
     :param unitindex: A unitindex containing the necessary definitions for the unit symbol used in the entry.
     :type unitindex: usawa.UnitIndex
     :param min: Minimal valid serial entry.
@@ -438,7 +438,7 @@ class Entry:
 
     :todo: Make sure that sigs publickey lookup key is bytes type
     :returns: XML tree representing the entry.
-    :rtype: lxml.etree.ElementTree
+    :rtype: lxml.etree.Element
     """
     def to_tree(self):
         #tree = etree.Element('entry', type=self.typ)

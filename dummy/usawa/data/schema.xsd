@@ -135,7 +135,7 @@
 	<xs:complexType name="EntryData">
 		<xs:sequence>
 			<xs:element name="parent" type="xs:string" />
-			<xs:element name="ext" type="xs:string" />
+			<xs:element name="ref" type="xs:string" />
 			<xs:element name="serial" type="xs:positiveInteger" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />

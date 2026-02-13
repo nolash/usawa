@@ -108,5 +108,6 @@ class TestEntry(unittest.TestCase):
         tree = lxml.etree.fromstring(s)
         tree = Entry.from_tree(tree, self.uidx)
 
+
 if __name__ == '__main__':
     unittest.main()
