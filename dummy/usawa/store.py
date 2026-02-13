@@ -179,7 +179,6 @@ class LedgerStore(Interface):
         # TODO: hacky!
         i = 0
         for o in entry.attachment:
-            logg.debug('getentry ' + o.get_digest())
             asset = self.get_asset(o)
             #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
             entry.attachment[i] = asset

@@ -185,6 +185,7 @@ entry.add_part(ctx.part[0], debit=True)
 entry.add_part(ctx.part[1])
 for o in ctx.attach:
     entry.attach(o)
+    store.add_asset(o)
 entry.sign(wallet)
 logg.debug('storing entry {}'.format(entry))
 store.add_entry(entry, update_ledger=True)

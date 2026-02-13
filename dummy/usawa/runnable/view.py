@@ -6,7 +6,7 @@ import argparse
 import uuid
 import datetime
 
-from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load
+from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
@@ -62,5 +62,6 @@ storedb = ValkeyStore('')
 store = LedgerStore(storedb, ledger)
 pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)
-store.load()
+acl = ACL.from_wallet(wallet)
+store.load(acl=acl)
 sys.stdout.buffer.write(ledger.to_string())
