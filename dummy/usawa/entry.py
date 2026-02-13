@@ -11,6 +11,7 @@ from .constant import DEFAULTPARENT, NSPREFIX
 from .crypto import DemoWallet
 from .error import ACLError, VerifyError
 from .xml import nsmap
+from .asset import Asset
 
 logg = logging.getLogger('usawa.entry')
 
@@ -189,6 +190,7 @@ class Entry:
     :type asset: usawa.Asset
     """
     def attach(self, asset):
+        logg.debug('attach {} to {}'.format(asset, self))
         self.attachment.append(asset)
 
 
@@ -216,6 +218,7 @@ class Entry:
     :raises ValueError: serial is less than min
     :returns: Entry object.
     :rtype: usawa.Entry
+    :todo: Support multiple debit, credit
     """
     @staticmethod
     def from_tree(tree, unitindex, min=0):
@@ -235,17 +238,20 @@ class Entry:
         src_tree = o.find('debit', namespaces=nsmap())
         dst_tree = o.find('credit', namespaces=nsmap())
 
-        o = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
-
+        entry = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
         src = EntryPart.from_tree(src_tree, debit=True)
         dst = EntryPart.from_tree(dst_tree)
-        o.add_part(src, debit=True)
-        o.add_part(dst)
+        entry.add_part(src, debit=True)
+        entry.add_part(dst)
+
+        for v in o.findall('attachment', namespaces=nsmap()):
+            asset = Asset.from_tree(v)
+            entry.attach(asset)
 
         for sig in tree.iter(NSPREFIX + 'sig'):
-            o.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
+            entry.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
 
-        return o
+        return entry
 
     """Generate the simple data structure used for rencode serialization.
 

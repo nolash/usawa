@@ -122,6 +122,10 @@ class TestEntry(unittest.TestCase):
         wallet = DemoWallet()
         o.sign(wallet)
         tree = o.to_tree()
+     
+        s = lxml.etree.tostring(tree)
+        tree = lxml.etree.fromstring(s)
+        entry = Entry.from_tree(tree, self.uidx)
 
 
 if __name__ == '__main__':

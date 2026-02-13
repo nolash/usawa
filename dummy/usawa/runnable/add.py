@@ -6,7 +6,7 @@ import argparse
 import uuid
 import datetime
 
-from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load
+from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, Asset
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
@@ -28,7 +28,7 @@ class Context:
         self.part = []
         self.output = None
         self.f = None
-        self.attachments = []
+        self.attach = []
 
 
     def close(self):
@@ -67,6 +67,11 @@ class Context:
             ctx.output = os.path.realpath(args.output)
         else:
             ctx.output = '<stdout>'
+
+        for v in args.attachment:
+            o = Asset.from_file(v)
+            ctx.attach.append(o)
+
         return ctx
 
 
@@ -178,6 +183,8 @@ ctx.validate()
 entry = Entry(ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
 entry.add_part(ctx.part[0], debit=True)
 entry.add_part(ctx.part[1])
+for o in ctx.attach:
+    entry.attach(o)
 entry.sign(wallet)
 logg.debug('storing entry {}'.format(entry))
 store.add_entry(entry, update_ledger=True)
