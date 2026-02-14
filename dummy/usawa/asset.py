@@ -219,6 +219,7 @@ class Asset:
     :returns: XML tree representing the asset.
     :rtype: lxml.etree.Element
     :todo: implement sigs
+    :todo: implement lookup
     """
     def to_tree(self, canon=False):
         tree = self.canon() 
@@ -255,6 +256,7 @@ class Asset:
     :rtype: lxml.etree.Element
     :todo: add to docs cannot directly import from tree generated from to_tree, must go way by string export
     :todo: implement sigs
+    :todo: implement lookup
     """
     @staticmethod
     def from_tree(tree):
@@ -293,6 +295,7 @@ class Asset:
     def to_list(self):
         d = [
                 self.mime,
+                self.enc,
                 self.uuid,
                 self.extref,
                 self.slug,
@@ -324,7 +327,7 @@ class Asset:
         o = Asset()
         v = rencode.loads(data)
         i = 0
-        for k in ['mime', 'uuid', 'extref', 'slug', 'ext', 'description']:
+        for k in ['mime', 'enc', 'uuid', 'extref', 'slug', 'ext', 'description']:
             if v[i] != None:
                 setattr(o, k, v[i].decode('utf-8'))
             i += 1

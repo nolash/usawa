@@ -1,2 +1,31 @@
 @anchor{store}
+@chapter Cache store
+
+Entries, assets and keys are kept in a cache store.
+
+It is a key-value store, the first byte expressing what type of data it holds.
+
+Data stored is serialized using the @url{https://github.com/aresch/rencode,rencode} format.
+
+The prefixes are:
+
+@table @code
+@item 0x00
+Key information, currently in this early development only contains private key, unencrypted.
+@item 0x01
+Reserved for Ledger metadata, currently unimplemented, as ledger state also can be loaded from XML.
+@item 0x02 
+Reserved for Ledger lock, currently inimplemented, to be used in aiding atomic inserts if needed.
+@item 0x04
+Entry data, everything needed to reconstruct a full entry element.
+@item 0x10
+Asset (entry attachment) data, everything needed to reconstruct a full entry element @emph{except} the actual asset data (@ref{method, Lookup methods}).
+@end table
+
+The CLI tools provided use the @emph{valkey} store, thus expecting a valkey server to be running on an available host.
+
+
 @anchor{store_identity}
+@section Keys and store identities
+
+(todo)

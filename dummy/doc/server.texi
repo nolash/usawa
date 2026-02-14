@@ -1,7 +1,7 @@
 @anchor{service}
 @chapter Service
 
-usawa provides a socket daemon service to allow multiple clients operate on the same entry store concurrently.
+usawa provides a socket daemon service to allow multiple clients operate on the same cache store concurrently.
 
 It is currently implemented as a @emph{Unix socket} and a @emph{TCP socket}.
 

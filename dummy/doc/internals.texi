@@ -1,15 +1,64 @@
 @chapter Internals
 
 
-@section Serializations
+@section Serialization for signature
+
+Object XML representations are used to generate signature material. The XML is canonicalized using the @url{https://www.w3.org/TR/xml-c14n2/,C14N 2.0 standard}, and all unnecessary whitespace is removed.
+
+Signatures are calculated and embedded on three elements individually, while at the same time having a hierarchical relation. Some data is omitted from the full XML representation.
+
+The following describes any transformation applied to the XML. Also, any @code{sig} elements are removed before .
+
+
+@anchor{serialize_attachment}
+@subsection Attachment
+
+Before canonicalization, the entry attachment element is reduced to contents that can be recreated with only the actual file data available:
+
+@itemize
+@item The @code{mime} attribute.
+@item The @code{digest} element.
+@end itemize
+
+
+@subsection Entry
+
+Contains zero or more @strong{Attachment} elements, as specified @ref{serialize_attachment,above}.
+
+Otherwise, used in its entirety.
+
 
 @subsection Ledger
 
-The serialization of ledger is used to generate signature material used in the XML state header.
+Before signing, the last known entry is applied to the ledger state, and all entry elements are removed.
+
+The @code{digest} sub-element and @code{serial} attribute of the @code{ledger/incoming} element is set accordingly. @xref{ledger_trunc_header,Truncated header}.
+
+Thus, the XML used to calculate the ledger state signature material is the @code{ledger} element @emph{without} any @code{entry} elements.
+
+
+@section Serialization for cache store
+
+This serialization is used as compact representation of the data in the cache store.
 
 Serialization uses the rencode format, and all individual elements are elements in a list.
 
-The list elements are generated as follows:
+The lookup key descriptions below are enumerated. Each element in the list should be concatenated in order, without intermediate data.
+
+Any optional and undefined elements @emph{must} contain a @emph{null value} in the serialization.
+
+@xref{store,Cache store} for more details.
+
+@subsection Ledger
+
+The lookup key for the ledger cache item is:
+
+@enumerate
+@item @code{0x01}
+@item The literal bytes of the @emph{ledger topic}
+@end enumerate
+
+The list elements for the value are generated as follows:
 
 @enumerate
 @item @strong{topic}, literal bytes.
@@ -20,6 +69,75 @@ The list elements are generated as follows:
 @item Serialization of the @strong{Access Control List}.
 @item Serialization of the @strong{Running Total}.
 @end enumerate
+
+
+@anchor{serialize_entry}
+@subsection Entry
+
+The lookup key for the entry cache item is:
+
+@enumerate
+@item @code{0x04}
+@item The literal bytes of the @emph{ledger topic}.
+@item The entry @strong{serial}, LEB128s encoded.
+@end enumerate
+
+The list elements for the value are generated as follows:
+
+@enumerate
+@item @strong{parent}, literal bytes of the preceding entry digest (or zero-value if it is the first entry).
+@item The @strong{serial} number of the entry.
+@item The @strong{local reference} of the entry, by default a @emph{uuid string}.
+@item The @strong{datetime} the entry was @emph{registered} (i.e. signed into) the ldger.
+@item The @strong{date} or @strong{datetime} of the transaction. @xref{entry_timing,Timing in ledger entries}.
+@item Serializations of the @emph{entry parts} of the @strong{debits}, one or more. @xref{serialize_entry_part,Entry part serialization}.
+@item Serializations of the @emph{entry parts} of the @strong{credits}, one or more. @xref{serialize_entry_part,Entry part serialization}.
+@item The @emph{digest} from each of the @strong{attachments}, zero or more.
+@end enumerate
+
+
+@anchor{serialize_entry_part}
+@subsubsection Entry parts
+
+Entry parts are @strong{debit} and @strong{credit} items.
+
+These are individually @emph{rencode serialized} before embedded in the @ref{serialize_entry,Entry serialization}. They do not have their own lookup key.
+
+The list elements for both have identical structure, and are generated as follows:
+
+@enumerate
+@item The @ref{unit_index,account unit symbol}.
+@item The @ref{account_type,account type}.
+@item The @ref{account_path,account path}.
+@item The @ref{account_value,value of the item}.
+@end enumerate
+
+
+@anchor{serialize_asset}
+@section Entry attachment assets
+
+The lookup key for the entry cache item is:
+
+@enumerate
+@item @code{0x10}
+@item The literal bytes of the @emph{asset digest}.
+@end enumerate
+
+The list elements for the value are generated as follows:
+
+@enumerate
+@item The @strong{mime type} string (required).
+@item The @strong{mime encoding / charset} string (required, if it has been defined).
+@item The @strong{uuid}.
+@item The @strong{external reference}.
+@item The @strong{slug} (the filename stem).
+@item The @strong{file extension}.
+@item The @strong{description}.
+@end enumerate
+
+All elements are optional unless otherwise marked.
+
+The file data is never stored in the cache store. File content for a @emph{digest} should be retrieved consulting @ref{resolver,resolvers} and @ref{method,lookup methods}.
 
 
 @subsection Unit Index

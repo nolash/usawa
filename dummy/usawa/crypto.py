@@ -363,7 +363,7 @@ class ACL:
         return r
 
 
-    """Generate the unit index part of a Wallet in wire format.
+    """Generate the wire format for the ACL.
 
     :return: rencoded object
     :rtype: bytes

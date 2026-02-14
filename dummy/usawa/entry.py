@@ -100,6 +100,50 @@ class EntryPart:
         return tree
 
 
+    """Generate the simple data structure used for rencode serialization.
+
+    :returns: data structure
+    :rtype: list
+    """
+    def to_list(self):
+        d = [
+            self.unit,
+            self.typ,
+            self.account,
+            self.amount,
+                ]
+        return d
+
+
+    """Generate the serialization format used to calculate the digest for the entry part.
+
+    :returns: String representation of the entry, in rencode format.
+    :rtype: str
+    """
+    def serialize(self):
+        b = self.to_list()
+        return rencode.dumps(b)
+
+    """Create an entry part object from serialized data.
+
+    :param data: rencoded entry part object, as produced by the serialize() method.
+    :type data: str
+    :param debit: If true, a debit part will be created. Otherwise, a credit object is created.
+    :type debit: boolean
+    :returns: Entry part object.
+    :rtype: usawa.EntryPart
+    """
+    @staticmethod
+    def deserialize(data, debit=False):
+        v = rencode.loads(data)
+        unit = v[0].decode('utf-8')    
+        typ = v[1].decode('utf-8')    
+        account = v[2].decode('utf-8')    
+        amount = v[3]
+        o = EntryPart(unit, typ, account, amount, debit=debit)
+        return o
+
+
     def __str__(self):
         pfx = 'credit'
         if self.isdebit:
@@ -258,16 +302,17 @@ class Entry:
 
     :returns: data structure
     :rtype: list
+    :todo: Add time component to entry.
     """
     def to_list(self):
         debit = []
         credit = []
         attach = []
         for v in self.debit:
-            debit.append((v.unit, v.typ, v.account, v.amount,))
+            debit.append(v.serialize())
 
         for v in self.credit:
-            credit.append((v.unit, v.typ, v.account, v.amount,))
+            credit.append(v.serialize())
 
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
@@ -318,11 +363,13 @@ class Entry:
         attach_data = v[8]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         for v in src_data:
-            src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
+            #src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
+            src = EntryPart.deserialize(v, debit=True)
             o.add_part(src, debit=True)
 
         for v in dst_data:
-            dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
+            #dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
+            dst = EntryPart.deserialize(v)
             o.add_part(dst)
 
         for v in attach_data:

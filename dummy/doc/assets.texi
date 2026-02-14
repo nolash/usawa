@@ -11,9 +11,12 @@ Attachments are not limited to any specific type of content, but are usually a @
 The attachment is defined by the following data:
 
 @itemize
-@item A @strong{slug}, specifically a filesystem-safe string appropriate for use as a filename stem. (i.e. the substring @emph{"picture"} from @file{/foo/bar/picture.png})
+@item A @strong{slug} and @strong{extension}, together defining a filesystem-safe string appropriate for use as a file name. (i.e. the substrings @emph{"picture"} and @emph{"png"} from @file{/foo/bar/picture.png} respectively)
 @item A (preferably succint) @strong{description} of what the asset represents.
-@item One or more @strong{lookup} elements, specifying the @emph{lookup key} and the @xref{method} used to generate the lookup key.
+@item An optional @emph{external reference}, intended to override the external reference in the @code{entry} element (e.g. if different parties refer to the same transaction with different identifiers).
+@item Zero or more @strong{lookup} elements, specifying the @emph{lookup key} and the @xref{method} used to generate the lookup key.
+@item A @strong{mime type} string.
+@item A @strong{uuid} string.
 @end itemize
 
 
@@ -21,7 +24,6 @@ The attachment is defined by the following data:
 @subsection Lookup methods
 
 The method may or may not be verifiable from the content. 
-
 
 At a minimum, any implementation should accommodate the following methods:
 
@@ -31,3 +33,12 @@ At a minimum, any implementation should accommodate the following methods:
 @end itemize
 
 Any implementation is free to define any method it wishes, but should refrain from using well-known method strings like the above.
+
+If the lookup element is missing from an asset, any matching resolvers should be attempted in turn.
+
+
+@subsubsection Metadata
+
+The lookup method @emph{should} provide the @strong{mime type} of the contents (e.g. @code{Content-Type} header over @strong{http}).
+
+It @emph{can} also provide @strong{file name} (e.g. @code{Content-Disposition} header over @strong{http}), aswell as other metadata defined in the @strong{Attachment} schema.

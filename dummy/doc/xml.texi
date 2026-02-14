@@ -2,7 +2,7 @@
 
 The canonical ledger data format is XML.
 
-The XML schema is designed to allow embedding of all data necessary to verify integrity signatures, including exchange rates between units of account.
+The XML schema is designed to allow embedding of all data necessary to verify integrity signatures, including exchange rates between units of account. It also contains additional elements that are not part of the signature, but enriches the context of the ledger and its composite parts.
 
 Order of elements are important in the XML document. The schema is cited in @ref{xml_schema, appendix A}.
 
@@ -26,6 +26,7 @@ It includes:
 @end itemize
 
 
+@anchor{ledger_trunc_header}
 @subsection Truncated header
 
 An important feature of the header is to allow only a portion of the ledger's entries to appear in the document.

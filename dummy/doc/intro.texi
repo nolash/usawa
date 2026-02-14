@@ -41,3 +41,21 @@ It leaves it up the implementer to create protocols and procedures to make sure 
 @subsection No bundled dissemination.
 
 There is no node software specific to nor any protocol proposal for @strong{usawa} that defines how to make the state of the ledger known to all relevant parties at any one time.
+
+
+@section Cryptography
+
+Signatures and encryption use the @url{https://nacl.cr.yp.to/,NaCl} library. For the python implementation specifically, @url{https://pypi.org/project/PyNaCl/,PyNaCl} is used.
+
+The signature algorithm is the @strong{ed25519} implementation of the @url{eddsa,https://www.rfc-editor.org/rfc/rfc8032} recommendation.
+
+
+@section State of this document
+
+This is the documentation for version @code{0.1.0}.
+
+For each release (i.e. in git, a semver tag), the document @emph{should} cover the current state of the implementation.
+
+It @emph{may} cover features not yet implemented.
+
+The @emph{inline code documentation} should be kept up to date before each merge to the @emph{master} branch. It should be consulted when in doubt about state of features.

@@ -233,11 +233,14 @@ class LedgerStore(Interface):
 
     :param wallet: The wallet object to store keys for.
     :type wallet: usawa.Wallet implementation
+    :param acl: Access control list data to retrieve the allowance and label for the key.
+    :type acl: usawa.ACL
     :param default: If True, this key will be set as default key.
     :type default: bool
     :todo: Currently the signing key is stored literally. It needs encryption!
+    :todo: Implement the ACL lookup
     """
-    def add_key(self, wallet, default=False):
+    def add_key(self, wallet, acl=None, default=False):
         k = pfx_key()
         try:
             self.__o.get(k)

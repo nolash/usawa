@@ -25,7 +25,7 @@ Documentation released 2026 under CC-BY-SA
 @include accounts.texi
 @include unit.texi
 @include identity.texi
-@include time.texi
+@include entry.texi
 @include store.texi
 @include resolver.texi
 @include assets.texi

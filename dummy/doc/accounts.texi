@@ -1,8 +1,10 @@
+@anchor{accounts}
 @chapter Accounts
 
 Accounts are made up of two parts, @emph{type} and @emph{path}.
 
 @anchor{account_type}
+@section Types
 There are four account types:
 
 @itemize
@@ -12,7 +14,26 @@ There are four account types:
 @item @strong{liability}, representing value owed in the ledger.
 @end itemize
 
+@anchor{account_value}
+@subsection Values
+
+Values for each type are intepreted according as follows:
+
+A @emph{positive} value for @strong{income} or @strong{asset} means an @emph{increase} in value.
+A @emph{positive} value for @strong{expense} or @strong{liability} means a @emph{decrease} in value.
+
+Consider the following examples:
+
+@itemize
+@item Taking out credit card debt (a @emph{liability}) could be a @emph{positive debit value} for @strong{liability} (transaction leads to more liability) and a @emph{positive credit value} for @strong{asset} (the borrowed value the liability yields, e.g. in cash).
+@item Paying back credit card debt (a @emph{liability}) could be a @emph{negative debit value} for @strong{asset} (àsset has less value), and a @emph{negative credit value} for @strong{liability} (transaction leads to less liability).
+@item Crediting an @emph{issued invoice} that has already been paid could be a @emph{negative debit value} for @strong{income}, and a @emph{positive debit value} for @strong{liability} (i.e. the pending refund).
+@end itemize
+
+
 @anchor{account_path}
+@section Path
+
 Under each type, a path-like identifier may be freely chosen to subdivide the context under each type. This context can in turn be used to obtain granular balances and totals.
 
 For example, @code{rents/Apartment A} could subdivide an @code{income} account type to separate it from @code{rents/Apartment B}
