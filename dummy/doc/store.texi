@@ -23,7 +23,7 @@ Reserved for @emph{ledger lock}, currently inimplemented, to be used in aiding a
 @item 0x08
 Reserved for per-ledger @emph{unit index}.
 @item 0x10
-Asset (entry attachment) data, everything needed to reconstruct a full entry element @emph{except} the actual asset data (@ref{method, Lookup methods}).
+Asset (entry attachment) data, everything needed to reconstruct a full entry element @emph{except} the actual asset data (@xref{method, Lookup methods}).
 @end table
 
 The CLI tools provided use the @emph{valkey} store, thus expecting a valkey server to be running on an available host.
