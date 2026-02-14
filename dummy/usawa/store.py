@@ -11,8 +11,10 @@ from .asset import Asset
 
 PFX_KEY = b'\x00'
 PFX_LEDGER = b'\x01'
-PFX_LEDGER_LOCK = b'\x02'
+PFX_LEDGER_INDEX = b'\x02'
+PFX_LEDGER_LOCK = b'\x03'
 PFX_ENTRY = b'\x04'
+PFX_UNIT_INDEX = b'\x08'
 PFX_ASSET = b'\x10'
 
 logg = logging.getLogger('usawa.store')

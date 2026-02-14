@@ -9,6 +9,8 @@ Signatures are calculated and embedded on three elements individually, while at 
 
 The following describes any transformation applied to the XML. Also, any @code{sig} elements are removed before .
 
+Where expendient, @url{https://dwarfstd.org/doc/Dwarf3.pdf,LEB128s} encoding is used for variable-length integer encoding.
+
 
 @anchor{serialize_attachment}
 @subsection Attachment
@@ -114,7 +116,7 @@ The list elements for both have identical structure, and are generated as follow
 
 
 @anchor{serialize_asset}
-@section Entry attachment assets
+@subsection Entry attachment assets
 
 The lookup key for the entry cache item is:
 
@@ -146,23 +148,64 @@ A collection of units of account, defining their value precision level aswell as
 
 Serialization uses the rencode format, and all individual elements are elements in a list.
 
-The list elements are generated as follows:
+The unit index cache items have a number of lookup key variations, all of which have the prefix @code{0x08}.
+
+The values format for each variation differs.
+
+@anchor{baseunit}
+@subsubsection Base unit
+
+Defines the base unit used for the ledger.
+
+Lookup key:
 
 @enumerate
-@item The base unit symbol, UTF-8 byte value.
-@item List of unit definitions, see below
+@item @code{0x08}
+@item The @emph{legder index} @strong{reference number}.
 @end enumerate
 
+The value is the @emph{UTF-8 encoded} @strong{base symbol name}.
 
-@subsubsection Serialization of unit definitions
 
-The list elements are generated as follows:
+@anchor{ledgerunit}
+@subsubsection Ledger unit
+
+Defines the default metadata for a unit.
+
+Lookup key:
 
 @enumerate
-@item The unit symbol to define.
-@item The unit precision level, as an 8-bit unsigned integer value.
-@item Exchange rate, as a 64 bit unsigned integer value.
+@item @code{0x08}
+@item The @emph{legder index} @strong{reference number}.
+@item The unit index symbol, as stored in the @emph{baseunit,Base Unit} item.
 @end enumerate
+
+Value:
+
+@enumerate
+@item Type of unit. @xref{realvirt,Real vs virtual}.
+@item Precision, as a single-byte numeric value.
+@item Exchange rate vs base unit, @emph{LEB128s encoded integer}. @xref{data_unit_index,Unit Index data structure}.
+@end enumerate
+
+The exchange rate defined in this item is the default exchange rate, and/or the exchange rate at the moment of ledger creation (before the first entry).
+
+
+@subsubsection  Ledger unit momentary exchange rate
+
+Defines the exchange rate for a unit at a specific moment in time.
+
+Lookup key:
+
+@enumerate
+@item @code{0x08}
+@item The @emph{legder index} @strong{reference number}.
+@item The unit index symbol, as stored in the @emph{baseunit,Base Unit} item.
+@item The @strong{datetime} of the exchange rate snapshot as a @emph{32-bit big-endian numeric value}.
+@end enumerate
+
+The value is the @emph{LEB128s encoded integer} of the exchange rate. @xref{data_unit_index,Unit Index data structure}, as used in @ref{ledgerunit,Ledger unit} above.
+
 
 
 @subsection Access Control List

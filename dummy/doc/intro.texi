@@ -50,12 +50,14 @@ Signatures and encryption use the @url{https://nacl.cr.yp.to/,NaCl} library. For
 The signature algorithm is the @strong{ed25519} implementation of the @url{eddsa,https://www.rfc-editor.org/rfc/rfc8032} recommendation.
 
 
-@section State of this document
+@section Development state.
 
 This is the documentation for version @code{0.1.0}.
 
+The software is currently considered to be in @emph{alpha state}.
+
+Breaking changes may be introduced on every minor version number increase.
+
 For each release (i.e. in git, a semver tag), the document @emph{should} cover the current state of the implementation.
 
-It @emph{may} cover features not yet implemented.
-
-The @emph{inline code documentation} should be kept up to date before each merge to the @emph{master} branch. It should be consulted when in doubt about state of features.
+This documentation @emph{may} cover features not yet implemented. The @emph{inline code documentation} should be kept up to date before each merge to the @emph{master} branch. It should be consulted when in doubt about state of features.

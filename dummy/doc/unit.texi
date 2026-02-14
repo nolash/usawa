@@ -8,11 +8,12 @@ For each known unit, it defines the level of decimal precision a currency denomi
 Additionally, it defines conversion rates between different units and the base unit of account. These conversion rates may be defined statically, fixed to dates, or fixed to dates and time. This approach accommodates both pegged and floating unit conversions.
 
 
-@section Structure 
+@section Semantic structure
 
 A unit index defines a base unit of account, to which all conversion rates relates to. The base unit of account will have an effective conversion rate of 1.0.
 
 
+@anchor{realvirt}
 @subsection Real vs virtual
 
 The XML representation of the unit index defines two different elements; @code{real} and @code{virt}. 

@@ -62,3 +62,11 @@ The entry representation also defines data necessary for the immutability chain 
 @item The datetime when the transaction was registered in the ledger.
 @item A free-text description for the entry.
 @end itemize
+
+
+@anchor{data_unit_index}
+@section Unit Index
+
+The unit index exchange rate is represented as an integer with 9 decimal precision.
+
+For example, a value of @code{1.0} is represented as the integer @code{1000000000}.

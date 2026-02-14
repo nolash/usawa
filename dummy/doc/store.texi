@@ -11,13 +11,17 @@ The prefixes are:
 
 @table @code
 @item 0x00
-Key information, currently in this early development only contains private key, unencrypted.
+@emph{Cryptographic key information}, currently in this early development only contains private key, unencrypted.
 @item 0x01
-Reserved for Ledger metadata, currently unimplemented, as ledger state also can be loaded from XML.
-@item 0x02 
-Reserved for Ledger lock, currently inimplemented, to be used in aiding atomic inserts if needed.
+Reserved for @emph{ledger metadata}, currently unimplemented, as ledger state also can be loaded from XML.
+@item 0x02
+Reserved for @emph{ledger index}, currently inimplemented, to be used to refer to a ledger with a numeric value in the index, to save space by avoiding using topic as reference every time.
+@item 0x03 
+Reserved for @emph{ledger lock}, currently inimplemented, to be used in aiding atomic inserts if needed.
 @item 0x04
-Entry data, everything needed to reconstruct a full entry element.
+@emph{Entry data}, everything needed to reconstruct a full entry element.
+@item 0x08
+Reserved for per-ledger @emph{unit index}.
 @item 0x10
 Asset (entry attachment) data, everything needed to reconstruct a full entry element @emph{except} the actual asset data (@ref{method, Lookup methods}).
 @end table

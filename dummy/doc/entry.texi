@@ -1,0 +1,19 @@
+@anchor{entry}
+@chapter Ledger entry
+
+The ledger entry represents a double-entry accounting item placed in an immutable and signed chain.
+
+
+@section Accounting items
+
+An entry consists of @emph{debit} and @emph{credit} items, at least one of each.
+
+The sum of all debit and credit items must be zero. A @emph{debit} item used here to define a @emph{spend}, where the @emph{credit} item is used to define @emph{receipt}.
+
+Please @xref{accounts,Accounts} for details on how to interpret the values for each item.
+
+
+@anchor{entry_timing}
+@section Timing in ledger entries
+
+
