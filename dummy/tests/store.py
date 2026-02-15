@@ -104,5 +104,13 @@ class TestStore(unittest.TestCase):
         store.load(acl=acl)
 
 
+    def test_store_import(self):
+        fp = os.path.join(testdir, 'import.xml')
+        ledger = Ledger.from_file(fp)
+        store = LedgerStore(self.store, ledger)
+        store.put_all(store_assets=True)
+        # TODO: get and asset equal
+
+
 if __name__ == '__main__':
     unittest.main()
