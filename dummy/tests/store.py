@@ -109,7 +109,16 @@ class TestStore(unittest.TestCase):
         ledger = Ledger.from_file(fp)
         store = LedgerStore(self.store, ledger)
         store.put_all(store_assets=True)
-        # TODO: get and asset equal
+
+        # TODO: less hacky test, perhaps a ledger.rewind() to get to zero state with everything else intact?
+        topic = ledger.topic
+        uidx = ledger.uidx
+        acl = ledger.acl
+        ledger = Ledger(uidx, topic=topic, acl=acl)
+        store = LedgerStore(self.store, ledger)
+        store.load(acl=acl)
+        # TODO: improve this test
+        self.assertEqual(len(ledger.entries), 2)
 
 
 if __name__ == '__main__':
