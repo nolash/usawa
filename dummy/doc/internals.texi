@@ -9,8 +9,6 @@ Signatures are calculated and embedded on three elements individually, while at 
 
 The following describes any transformation applied to the XML. Also, any @code{sig} elements are removed before .
 
-Where expendient, @url{https://dwarfstd.org/doc/Dwarf3.pdf,LEB128s} encoding is used for variable-length integer encoding.
-
 
 @anchor{serialize_attachment}
 @subsection Attachment
@@ -48,6 +46,8 @@ Serialization uses the rencode format, and all individual elements are elements 
 The lookup key descriptions below are enumerated. Each element in the list should be concatenated in order, without intermediate data.
 
 Any optional and undefined elements @emph{must} contain a @emph{null value} in the serialization.
+
+Where expendient, @url{https://dwarfstd.org/doc/Dwarf3.pdf,LEB128s} encoding is used for variable-length integer encoding.
 
 @xref{store,Cache store} for more details.
 
