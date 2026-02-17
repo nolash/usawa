@@ -292,6 +292,10 @@ class Entry:
             asset = Asset.from_tree(v)
             entry.attach(asset)
 
+        o = tree.find('lookup')
+        if o != None:
+            self.lookup_algo = o.get('algo')
+
         for sig in tree.iter(NSPREFIX + 'sig'):
             entry.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
 
@@ -529,7 +533,7 @@ class Entry:
     :returns: XML tree representing the entry.
     :rtype: lxml.etree.Element
     """
-    def to_tree(self, canon=False):
+    def to_tree(self, canon=False, lookup=None):
         #tree = etree.Element('entry', type=self.typ)
         tree = lxml.etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
         data = lxml.etree.Element('data')
@@ -581,8 +585,30 @@ class Entry:
             o.text = self.sigs[k].hex()
             tree.append(o)
 
+        if lookup:
+            v = self.get_lookup(lookup, tree=tree)
+            o = lxml.etree.Element('lookup')
+            o.set('algo', lookup)
+            o.text = v.hex
+            data.append(o)
+
         return tree
 
+    def get_lookup(self, lookup, tree=None):
+        if tree == None:
+            tree = self.to_tree(lookup=False)
+        h = None
+        if lookup == 'sha512':
+            h = hashlib.sha512()
+        elif lookup == 'sha256':
+            h = hashlib.sha256()
+        else:
+            raise ValueError('invalid lookup algo')
+
+        b = lxml.etree.canonicalize(tree, strip_text="True")
+        h.update(b.encode('utf-8'))
+
+        return h.digest().hex()
 
     """Generate canonical XML for signature material.
 
@@ -592,7 +618,7 @@ class Entry:
     """
     def canon(self):
         tree = self.to_tree(canon=True)
-        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
+        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup'])
         return b.encode('utf-8')
 
 
