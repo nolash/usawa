@@ -244,6 +244,7 @@ class Ledger:
         self.running = {}
         self.wallet = None
         self.lookup = None
+        self.lookup_algo = 'sha512'
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -466,13 +467,15 @@ class Ledger:
     """
     def add_entry(self, entry):
         if self.cur != entry.parent:
-            raise ValueError('entry parent does not match ledger state')
+            raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent, self.cur))
         self.check_sigs(entry)
        
         # update the internal state
         self.serial = entry.serial
         oldsum = self.cur
-        self.cur = entry.sum()[0]
+        #self.cur = entry.sum()[0]
+        (k, v) = entry.get_lookup(self.lookup_algo)
+        logg.debug('addentr entry {} {}'.format(k, v))
         entry.parent = oldsum
         self.apply_entryparts(entry)
 
@@ -638,6 +641,7 @@ class Ledger:
             return
         if lookup != None:
             (k, v) = entry.get_lookup(lookup)
+            logg.debug('trunc looup {} {}'.format(k, v))
             self.lookup = k
             self.lookup_algo = lookup
         self.entries = {}

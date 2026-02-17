@@ -204,6 +204,8 @@ class Entry:
         self.description = description
         self.debit = []
         self.credit = []
+        self.lookup = None
+        self.lookup_algo = None
 
 
     """Add an entry part to the entry.
@@ -294,6 +296,7 @@ class Entry:
         o = tree.find('lookup')
         if o != None:
             self.lookup_algo = o.get('algo')
+            self.lookup = o.text
 
         for sig in tree.iter(NSPREFIX + 'sig'):
             entry.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
@@ -619,6 +622,19 @@ class Entry:
         h.update(b.encode('utf-8'))
 
         return (h.digest().hex(), b,)
+
+
+    def tree_sum(self, lookup):
+        tree = self.to_tree()
+        b = lxml.etree.tostring(tree)
+        h = None
+        if lookup == 'sha512':
+            h = hashlib.sha512()
+        elif lookup == 'sha256':
+            h = hashlib.sha256()
+        h.update(b)
+        return h.digest()
+
 
     """Generate canonical XML for signature material.
 

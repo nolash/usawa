@@ -3,7 +3,9 @@ import logging
 
 import hexathon
 
+from usawa import Entry
 from usawa.error import VerifyError
+from usawa.constant import DEFAULTPARENT
 
 logg = logging.getLogger('usawa.resolve')
 
@@ -102,4 +104,21 @@ class BaseResolver:
         if lookup != None:
             (k, v) = entry.get_lookup(lookup)
             self.put(k, v.encode('utf-8'))
+            logg.debug('putentr entry {} {}'.format(k, v))
         return k
+
+
+    def restore_ledger(self, ledger, min=0):
+        lookup = self.get(ledger.lookup)
+        while True:
+            entry = Entry.from_string(lookup, ledger.uidx)
+            if entry.serial == 0 or entry.serial < min:
+                break
+            k = entry.parent
+            if k == DEFAULTPARENT:
+                break
+            logg.debug('getting parent {}'.format(k.hex()))
+            v = self.get(k)
+            entry_nolookup = Entry.from_string(v, ledger.uidx)
+            lookup = self.get(entry_nolookup.lookup)
+

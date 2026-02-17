@@ -63,12 +63,12 @@ class TestResolver(unittest.TestCase):
         ledger = Ledger(uidx, wallet=wallet, topic=bytes.fromhex(hash_of_foo))
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
         src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
-        entry = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, tx_datereg=self.dtreg)
+        entry = Entry(1, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, tx_datereg=self.dtreg)
         entry.add_part(src, debit=True)
         entry.add_part(dst)
         entry.sign(wallet)
-        ledger.add_entry(entry)
         first_entry_key = self.backend.put_entry(entry, 'sha512')
+        ledger.add_entry(entry)
 
         dst = EntryPart('FOO', 'expense', 'bar̈́', 42, debit=True)
         src = EntryPart('FOO', 'liability', 'bar', 42)
@@ -77,23 +77,28 @@ class TestResolver(unittest.TestCase):
         entry.add_part(dst)
         entry.sign(wallet)
         ledger.add_entry(entry)
-        ledger.sign()
         last_entry_key = self.backend.put_entry(entry, 'sha512')
+        ledger.sign()
 
-        tree = ledger.to_tree(lookup='sha512')
-        s = lxml.etree.tostring(tree)
-        ledger = Ledger(uidx, wallet=wallet, topic=bytes.fromhex(hash_of_foo))
+        ledger.truncate(lookup='sha512')
+        logg.debug('after trunc {}'.format(ledger.lookup))
 
-        k = self.backend.get(first_entry_key)
-        first_entry = Entry.from_string(k, uidx)
-        ledger.add_entry(first_entry)
+        self.backend.restore_ledger(ledger)
 
-        k = self.backend.get(last_entry_key)
-        last_entry = Entry.from_string(k, uidx)
-        ledger.add_entry(last_entry)
-        
-        tree = ledger.to_tree(lookup='sha512')
-        s_orig = lxml.etree.tostring(tree)
+#        tree = ledger.to_tree(lookup='sha512')
+#        s = lxml.etree.tostring(tree)
+#        ledger = Ledger(uidx, wallet=wallet, topic=bytes.fromhex(hash_of_foo))
+#
+#        k = self.backend.get(first_entry_key)
+#        first_entry = Entry.from_string(k, uidx)
+#        ledger.add_entry(first_entry)
+#
+#        k = self.backend.get(last_entry_key)
+#        last_entry = Entry.from_string(k, uidx)
+#        ledger.add_entry(last_entry)
+#        
+#        tree = ledger.to_tree(lookup='sha512')
+#        s_orig = lxml.etree.tostring(tree)
 
 
 if __name__ == '__main__':

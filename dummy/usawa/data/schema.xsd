@@ -133,6 +133,13 @@
 		<xs:attribute name="uuid" type="xs:string" />
 	</xs:complexType>
 
+	<xs:complexType name="ParentRef">
+		<xs:sequence>
+			<xs:element name="digest" type="xs:string" />
+			<xs:element name="lookup" type="Lookup" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
 	<xs:complexType name="EntryData">
 		<xs:sequence>
 			<xs:element name="parent" type="xs:string" />
