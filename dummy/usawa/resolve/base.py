@@ -1,8 +1,11 @@
 import hashlib
+import logging
 
 import hexathon
 
 from usawa.error import VerifyError
+
+logg = logging.getLogger('usawa.resolve')
 
 
 """Verifies a key as a sha512 digest, optionally against the given value.
@@ -90,3 +93,13 @@ class BaseResolver:
     """
     def state(self, k):
         raise NotImplementedError()
+
+
+    def put_entry(self, entry, lookup=None):
+        k = None
+        (k, v) = entry.sum()
+        self.put(k, v)
+        if lookup != None:
+            (k, v) = entry.get_lookup(lookup)
+            self.put(k, v.encode('utf-8'))
+        return k

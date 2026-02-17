@@ -94,7 +94,6 @@ class EntryPart:
 
         o = lxml.etree.Element('amount')
         o.text = str(self.amount)
-        logg.debug('tree amount {} {}'.format(self.unit, o.text))
         tree.append(o)
 
         return tree
@@ -301,6 +300,11 @@ class Entry:
 
         return entry
 
+
+    @staticmethod
+    def from_string(s, unitindex, min=0):
+        tree = lxml.etree.fromstring(s)
+        return Entry.from_tree(tree, unitindex, min=min)
 
     """Generate the simple data structure used for rencode serialization.
 
@@ -586,13 +590,19 @@ class Entry:
             tree.append(o)
 
         if lookup:
-            v = self.get_lookup(lookup, tree=tree)
+            (k, v) = self.get_lookup(lookup, tree=tree)
             o = lxml.etree.Element('lookup')
             o.set('algo', lookup)
-            o.text = v.hex
+            o.text = v
             data.append(o)
 
         return tree
+
+
+    def to_string(self, canon=False, lookup=None):
+        tree = self.to_tree(canon=canon, lookup=lookup)
+        return lxml.etree.tostring(tree).decode('utf-8')
+
 
     def get_lookup(self, lookup, tree=None):
         if tree == None:
@@ -605,10 +615,10 @@ class Entry:
         else:
             raise ValueError('invalid lookup algo')
 
-        b = lxml.etree.canonicalize(tree, strip_text="True")
+        b = lxml.etree.canonicalize(tree, strip_text="True", exclude_tags=['lookup'])
         h.update(b.encode('utf-8'))
 
-        return h.digest().hex()
+        return (h.digest().hex(), b,)
 
     """Generate canonical XML for signature material.
 

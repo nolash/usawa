@@ -52,7 +52,7 @@ class FSResolver(BaseResolver):
         fp = os.path.join(self.path, khx)
         f = open(fp, 'wb')
         c = f.write(v)
-        logg.debug('{} bytes written for key {}'.format(c, k))
+        logg.debug('{} bytes written for key {}'.format(c, khx))
         f.close()
         return k
 

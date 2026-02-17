@@ -40,10 +40,10 @@ class Context:
 
     def open(self, output):
         if output == '<stdout>':
-            self.f = sys.stdout.buffer
+            self.f = sys.stdout
             logg.debug('output is stdout')
         else:
-            self.f = open(output, 'wb')
+            self.f = open(output, 'w')
         return self
 
 

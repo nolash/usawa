@@ -60,7 +60,7 @@ class TestResolver(unittest.TestCase):
     def test_resolve_lookup(self):
         uidx = UnitIndex('FOO')
         wallet = DemoWallet()
-        ledger = Ledger(uidx, wallet=wallet, topic=hash_of_foo.encode('utf-8'))
+        ledger = Ledger(uidx, wallet=wallet, topic=bytes.fromhex(hash_of_foo))
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
         src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
         entry = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, tx_datereg=self.dtreg)
@@ -68,6 +68,7 @@ class TestResolver(unittest.TestCase):
         entry.add_part(dst)
         entry.sign(wallet)
         ledger.add_entry(entry)
+        first_entry_key = self.backend.put_entry(entry, 'sha512')
 
         dst = EntryPart('FOO', 'expense', 'bar̈́', 42, debit=True)
         src = EntryPart('FOO', 'liability', 'bar', 42)
@@ -76,18 +77,23 @@ class TestResolver(unittest.TestCase):
         entry.add_part(dst)
         entry.sign(wallet)
         ledger.add_entry(entry)
+        ledger.sign()
+        last_entry_key = self.backend.put_entry(entry, 'sha512')
 
-        #s = lxml.etree.tostring(tree)
-        ledger.truncate(lookup='sha512')
         tree = ledger.to_tree(lookup='sha512')
         s = lxml.etree.tostring(tree)
-        print(s.decode('utf-8'))
+        ledger = Ledger(uidx, wallet=wallet, topic=bytes.fromhex(hash_of_foo))
 
-        for k in ledger.entries.keys():
-            tree = ledger.entries[k].to_tree()
-            s = lxml.etree.tostring(tree)
+        k = self.backend.get(first_entry_key)
+        first_entry = Entry.from_string(k, uidx)
+        ledger.add_entry(first_entry)
 
-        ledger.truncate() 
+        k = self.backend.get(last_entry_key)
+        last_entry = Entry.from_string(k, uidx)
+        ledger.add_entry(last_entry)
+        
+        tree = ledger.to_tree(lookup='sha512')
+        s_orig = lxml.etree.tostring(tree)
 
 
 if __name__ == '__main__':
