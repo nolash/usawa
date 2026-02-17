@@ -29,6 +29,8 @@ class Context:
         self.output = None
         self.f = None
         self.attach = []
+        self.valkey_host = None
+        self.valkey_port = None
 
 
     def close(self):
@@ -71,6 +73,9 @@ class Context:
         for v in args.attachment:
             o = Asset.from_file(v)
             ctx.attach.append(o)
+
+        ctx.valkey_host = args.valkey_host
+        ctx.valkey_port = args.valkey_port
 
         return ctx
 
@@ -129,6 +134,9 @@ argp.add_argument('-d', '--description', dest='description', type=str, help='int
 argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
 argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
+argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
+argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
+
 argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
@@ -140,7 +148,7 @@ ledger_tree = load(arg.ledger_xml_file)
 uidx = UnitIndex.from_tree(ledger_tree)
 ledger = Ledger.from_tree(ledger_tree)
 
-db = ValkeyStore('')
+db = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
 store = LedgerStore(db, ledger)
 pk = store.get_key()
 wallet = DemoWallet(privatekey=pk)

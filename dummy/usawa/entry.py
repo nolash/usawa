@@ -487,7 +487,18 @@ class Entry:
 
         return entry
 
+    
+    """Verify signature on entry.
 
+    At least one signature must be valid for one of the public keys in the wallet or ACL.
+
+    :param wallet: Wallet holding a public key to verify.
+    :type wallet: usawa.Wallet
+    :param acl: A collection of public keys to verify.
+    :type acl: usawa.ACL
+    :raises VerifyError: Invalid signature.
+    :raises ValueError: Neither wallet nor ACL supplied.
+    """
     def verify(self, wallet=None, acl=None):
         if wallet == None and acl == None:
             raise ValueError('verify needs at least one of wallet or acl')

@@ -140,6 +140,7 @@ class RunningTotal:
         return RunningTotal(unit, asset=asset, liability=liability)
 
 
+
     """Generate an XML tree from the current state of the object.
 
     The XML generated can be used as a "real" or "virt" sub-element of the ledger/incoming/ element.
@@ -564,6 +565,16 @@ class Ledger:
         logg.debug('loaded ledger tree last serial {}'.format(ledger.serial))
 
         return ledger.check()
+
+
+    @staticmethod
+    def from_file(filepath):
+        f = open(filepath, 'rb')
+        v = f.read()
+        f.close()
+        tree = lxml.etree.fromstring(v)
+        return Ledger.from_tree(tree)
+
 
 
     """Append all entries from XML tree to ledger.
