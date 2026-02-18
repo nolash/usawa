@@ -185,7 +185,7 @@ class LedgerStore(Interface):
             #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
             entry.attachment[i] = asset
             i += 1
-        entry.verify(acl=acl)
+        #entry.verify(acl=acl)
         return entry
 
 

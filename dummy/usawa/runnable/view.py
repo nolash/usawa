@@ -61,10 +61,11 @@ argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from X
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
 
-ledger = None
-ledger_tree = load(arg.ledger_xml_file)
-uidx = UnitIndex.from_tree(ledger_tree)
-ledger = Ledger.from_tree(ledger_tree)
+#ledger = None
+#ledger_tree = load(arg.ledger_xml_file)
+#uidx = UnitIndex.from_tree(ledger_tree)
+#ledger = Ledger.from_tree(ledger_tree)
+ledger = Ledger.from_file(arg.ledger_xml_file)
 
 storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
 store = LedgerStore(storedb, ledger)

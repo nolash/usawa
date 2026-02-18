@@ -467,16 +467,19 @@ class Ledger:
     """
     def add_entry(self, entry):
         if self.cur != entry.parent:
-            raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent, self.cur))
+            raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
         self.check_sigs(entry)
        
         # update the internal state
         self.serial = entry.serial
-        oldsum = self.cur
+        #oldsum = self.cur
         #self.cur = entry.sum()[0]
         (k, v) = entry.get_lookup(self.lookup_algo)
         logg.debug('addentr entry {} {}'.format(k, v))
-        entry.parent = oldsum
+        #entry.parent = oldsum
+        entry.parent = self.cur
+        self.cur = bytes.fromhex(k)
+        logg.debug('selfcur is now {}'.format(self.cur.hex()))
         self.apply_entryparts(entry)
 
         # Add entry to the ledger object.
@@ -607,11 +610,13 @@ class Ledger:
         i = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             i += 1
-            logg.debug('processing entry {}'.format(v))
+            logg.debug('>>>>>>>>>>>>> processing entry {}'.format(lxml.etree.tostring(v)))
             o = Entry.from_tree(v, self.uidx, min=self.serial)
             self.add_entry(o)
+            (k, v) = o.get_lookup('sha512')
             if o.serial > last:
                 last = o.serial
+            #self.cur = k
         if i > 0:
             self.serial = last
         logg.info('last entry from tree serial ' + str(self.serial))

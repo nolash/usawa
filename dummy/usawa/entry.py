@@ -328,6 +328,7 @@ class Entry:
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
+        logg.debug('serializing with parent {}'.format(self.parent.hex()))
         d = [
                 self.parent,
                 self.serial,
@@ -362,7 +363,8 @@ class Entry:
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
-        parent = v[0].hex()
+        #parent = v[0].hex()
+        parent = v[0]
         serial = v[1]
         ref = v[2].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
@@ -622,18 +624,18 @@ class Entry:
         h.update(b.encode('utf-8'))
 
         return (h.digest().hex(), b,)
-
-
-    def tree_sum(self, lookup):
-        tree = self.to_tree()
-        b = lxml.etree.tostring(tree)
-        h = None
-        if lookup == 'sha512':
-            h = hashlib.sha512()
-        elif lookup == 'sha256':
-            h = hashlib.sha256()
-        h.update(b)
-        return h.digest()
+#
+#
+#    def tree_sum(self, lookup):
+#        tree = self.to_tree()
+#        b = lxml.etree.tostring(tree)
+#        h = None
+#        if lookup == 'sha512':
+#            h = hashlib.sha512()
+#        elif lookup == 'sha256':
+#            h = hashlib.sha256()
+#        h.update(b)
+#        return h.digest()
 
 
     """Generate canonical XML for signature material.
