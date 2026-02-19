@@ -42,7 +42,7 @@ class EntryMapper:
         ref = domain.transaction_ref if domain.transaction_ref else None
 
         entry = Entry(
-            serial= 1,
+            serial= ledger.peek(),
             tx_date=tx_date,
             parent=parent,  
             description=domain.description or "",
