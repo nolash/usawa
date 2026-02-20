@@ -8,7 +8,7 @@ import datetime
 
 import lxml.etree
 
-from usawa import Ledger, UnitIndex, Entry, EntryPart, DemoWallet
+from usawa import Ledger, UnitIndex, Entry, EntryPart, DemoWallet, ACL
 from usawa.resolve.fs import FSResolver
 from usawa.error import VerifyError
 
@@ -64,8 +64,8 @@ class TestResolver(unittest.TestCase):
         dst = EntryPart('FOO', 'asset', 'foo', 1337)
         src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
         entry = Entry(1, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, tx_datereg=self.dtreg)
-        entry.add_part(src, debit=True)
         entry.add_part(dst)
+        entry.add_part(src, debit=True)
         entry.sign(wallet)
         first_entry_key = self.backend.put_entry(entry, 'sha512')
         ledger.add_entry(entry)
@@ -73,8 +73,8 @@ class TestResolver(unittest.TestCase):
         dst = EntryPart('FOO', 'expense', 'bar̈́', 42, debit=True)
         src = EntryPart('FOO', 'liability', 'bar', 42)
         entry = Entry(ledger.peek(), datetime.datetime.now(), parent=ledger.current())
-        entry.add_part(src, debit=True)
         entry.add_part(dst)
+        entry.add_part(src, debit=True)
         entry.sign(wallet)
         ledger.add_entry(entry)
         last_entry_key = self.backend.put_entry(entry, 'sha512')
@@ -82,6 +82,11 @@ class TestResolver(unittest.TestCase):
 
         ledger.truncate(lookup='sha512')
         logg.debug('after trunc {}'.format(ledger.lookup))
+
+        acl = ACL.from_wallet(wallet)
+        s = ledger.to_string(lookup='sha512')
+        logg.debug('ledgerstring {}'.format(s))
+        ledger = ledger.from_string(s, acl=acl)
 
         self.backend.restore_ledger(ledger)
 

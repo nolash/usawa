@@ -109,16 +109,19 @@ class BaseResolver:
 
 
     def restore_ledger(self, ledger, min=0):
-        lookup = self.get(ledger.lookup)
+        lookup = self.get(ledger.current())
         while True:
             entry = Entry.from_string(lookup, ledger.uidx)
             if entry.serial == 0 or entry.serial < min:
                 break
+            logg.debug('restore entry {} {}'.format(str(entry), lookup))
             k = entry.parent
+            ledger.add_entry(entry, check_parent=False)
             if k == DEFAULTPARENT:
                 break
             logg.debug('getting parent {}'.format(k.hex()))
-            v = self.get(k)
-            entry_nolookup = Entry.from_string(v, ledger.uidx)
-            lookup = self.get(entry_nolookup.lookup)
-
+            lookup = self.get(k)
+            #v = self.get(k)
+            #logg.debug('getting parent {} {}'.format(k.hex(), v))
+            #entry_nolookup = Entry.from_string(v, ledger.uidx)
+            #lookup = self.get(entry_nolookup.lookup)

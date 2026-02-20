@@ -286,8 +286,8 @@ class Entry:
         entry = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
         src = EntryPart.from_tree(src_tree, debit=True)
         dst = EntryPart.from_tree(dst_tree)
-        entry.add_part(src, debit=True)
         entry.add_part(dst)
+        entry.add_part(src, debit=True)
 
         for v in o.findall('attachment', namespaces=nsmap()):
             asset = Asset.from_tree(v)
@@ -336,8 +336,8 @@ class Entry:
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
                 self.description,
-                debit,
                 credit,
+                debit,
                 attach,
                 ]
         return d
@@ -371,8 +371,8 @@ class Entry:
         date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
         #unit = v[5].decode('utf-8')
         description = v[5].decode('utf-8')
-        src_data = v[6]
-        dst_data = v[7]
+        dst_data = v[6]
+        src_data = v[7]
         attach_data = v[8]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         for v in src_data:
@@ -606,6 +606,7 @@ class Entry:
 
     def to_string(self, canon=False, lookup=None):
         tree = self.to_tree(canon=canon, lookup=lookup)
+        #return lxml.etree.canonicalize(tree).decode('utf-8')
         return lxml.etree.tostring(tree).decode('utf-8')
 
 

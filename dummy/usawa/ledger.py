@@ -465,8 +465,8 @@ class Ledger:
     :raises ValueError: When entry parent does not match ledger state.
     :raises VerifyError: When entry is missing valid signature.
     """
-    def add_entry(self, entry):
-        if self.cur != entry.parent:
+    def add_entry(self, entry, check_parent=True):
+        if check_parent and self.cur != entry.parent:
             raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
         self.check_sigs(entry)
        
