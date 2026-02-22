@@ -152,11 +152,12 @@ class RunningTotal:
     :rtype: lxml.etree.Element
     """
     def to_tree(self):
-        tag = 'virt'
+        typ = 'virt'
         if self.real:
-            tag = 'real'
-        tree = lxml.etree.XML('<{}></{}>'.format(tag, tag))
+            typ = 'real'
+        tree = lxml.etree.XML('<unit></unit>')
         tree.set('unit', self.sym)
+        tree.set('type', typ)
         o = lxml.etree.SubElement(tree, 'income')
         o.text = str(self.income)
         tree.append(o)
@@ -251,8 +252,8 @@ class Ledger:
                 continue
             logg.debug('add new runningtotal for {}'.format(k))
             self.running[k] = RunningTotal(k, self.uidx)
-            if self.uidx.base == k:
-                self.running[k].set_real()
+            #if self.uidx.base == k:
+            #    self.running[k].set_real()
         self.resolvers = {}
         
         self.base = base
@@ -372,14 +373,8 @@ class Ledger:
         # incoming serial
         incoming.set('serial', str(self.base_serial))
 
-        # incoming base (real) currency balance
-        o = self.running[self.uidx.base].to_tree()
-        incoming.append(o)
-
         # incoming remaining (virt) currency balances
         for k in self.running.keys():
-            if k == self.uidx.base:
-                continue
             o = self.running[k].to_tree()
             incoming.append(o)
 
@@ -562,19 +557,14 @@ class Ledger:
             logg.warning('currently only support for single identity')
             break
 
-        o = part.find('real', namespaces=nsmap())
-        asset = int(o.find('asset', namespaces=nsmap()).text)
-        liability = int(o.find('liability', namespaces=nsmap()).text)
-        ledger.real = RunningTotal(unit, unitindex, asset=asset, liability=liability)
-
-        for v in part.iter(NSPREFIX + 'virt'):
+        for v in part.iter(NSPREFIX + 'unit'):
             income = int(v.find('income', namespaces=nsmap()).text)
             expense = int(v.find('expense', namespaces=nsmap()).text)
             asset = int(v.find('asset', namespaces=nsmap()).text)
             liability = int(v.find('liability', namespaces=nsmap()).text)
             sym = v.get('unit')
+            typ = v.get('type')
             ledger.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
-            logg.debug(r.running[sym])
 
         if ledger.running.get(unit) == None:
             ledger.running[unit] = RunningTotal(unit, unitindex)

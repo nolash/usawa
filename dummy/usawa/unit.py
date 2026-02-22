@@ -13,8 +13,8 @@ logg = logging.getLogger('usawa.unit')
 class UnitIndex:
 
     default_precision = 2
-    default_unit = 'BTC'
-    default_exchange = 1000000000
+#    default_unit = 'BTC'
+#    default_exchange = 1000000000
 
     """UnitIndex holds metadata for units of account.
 
@@ -22,17 +22,16 @@ class UnitIndex:
 
     The index is instantiated with a base unit. All exchange rates are relative to the base unit.
 
-    :param base: The base unit of the index.
-    :type base: str
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
     """
-    def __init__(self, base, precision=None):
-        self.base = base
+#    def __init__(self, base, precision=None):
+    def __init__(self, sym, precision=None):
+#        self.base = base
         if precision == None:
             precision = UnitIndex.default_precision
-        self.detail = {base: precision}
-        self.exchange = {base: UnitIndex.default_exchange}
+        self.detail = {sym: precision}
+#        self.exchange = {base: UnitIndex.default_exchange}
 
 
     """Add a unit to the index.
@@ -43,15 +42,11 @@ class UnitIndex:
     :type sym: str
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
-    :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
-    :type ex: int or float
     """
-    def add(self, sym, precision=2, ex=1000000000):
+    #def add(self, sym, precision=2, ex=1000000000):
+    def add(self, sym, precision=2):
         self.detail[sym] = precision
-        if isinstance(ex, float):
-            ex = int(ex*1000000000) # nano resolution
-        self.exchange[sym] = ex
-
+    
 
     """Create a unit index object from XML.
 
@@ -72,7 +67,6 @@ class UnitIndex:
         for o in tree.iter(NSPREFIX + 'unit'):
             logg.debug('add unit ' + o.get('sym'))
             r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
-            r.exchange[o.get('sym')] = int(o.find('exchange', namespaces=nsmap()).text)
         r.check()
         return r
 
@@ -84,7 +78,6 @@ class UnitIndex:
     :rtype: usawa.UnitIndex
     """
     def check(self):
-        self.get(self.base)
         return self
 
 
@@ -111,20 +104,6 @@ class UnitIndex:
     def sym(self, k):
         _ = self.get(k)
         return k
-
-
-    """Retrieve the exchange rate for the unit.
-
-    The value represents a decimal number with nano precision. For example, a value of 4200000000 corresponds to a float value of 4.2.
-
-    :param k: Unit symbol.
-    :type k: str
-    :raises: KeyError if symbol not found.
-    :returns: Rate
-    :rtype: int
-    """
-    def ex(self, k):
-        return self.exchange[k]
 
 
     """Retrieve a list of all the units in the index.
@@ -221,8 +200,7 @@ class UnitIndex:
         units = []
         for v in syms:
             precision = self.detail[v].to_bytes(1)
-            exchange = self.exchange[v].to_bytes(8, byteorder='big')
-            units.append((v, precision, exchange,))
+            units.append((v, precision,))
         d = [
             self.base,
             units,
@@ -254,16 +232,11 @@ class UnitIndex:
     """
     def to_tree(self):
         tree = lxml.etree.XML('<units></units>')
-        tree.set('base', self.base)
         for k in self.detail.keys():
             unit = lxml.etree.SubElement(tree, 'unit')
             unit.set('sym', k)
             o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.detail[k])
             unit.append(o)
-            o = lxml.etree.SubElement(unit, 'exchange')
-            o.text = str(self.exchange[k])
-            unit.append(o)
             tree.append(unit)
-
         return tree

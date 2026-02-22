@@ -9,7 +9,7 @@ class TestUnit(unittest.TestCase):
         self.uidx_default = UnitIndex('FOO')
         self.uidx_three = UnitIndex('FOO', precision=3)
         self.uidx_none = UnitIndex('FOO', precision=0)
-        self.uidx_default.add('BAR', precision=4, ex=0.2)
+        self.uidx_default.add('BAR', precision=4)
 
 
     def test_tostring(self):

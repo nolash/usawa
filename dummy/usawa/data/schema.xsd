@@ -24,8 +24,7 @@
 
 	<xs:complexType name="Incoming">
 		<xs:sequence>
-			<xs:element name="real" type="Balance" minOccurs="1" maxOccurs="unbounded" />
-			<xs:element name="virt" type="Balance" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="unit" type="Balance" minOccurs="0" maxOccurs="unbounded" />
 			<xs:element name="digest" type="Digest" minOccurs="1" maxOccurs="1"/>
 			<xs:element name="lookup" type="Lookup" minOccurs="0" maxOccurs="unbounded" />
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
@@ -41,13 +40,13 @@
 			<xs:element name="liability" type="xs:integer" />
 		</xs:sequence>
 		<xs:attribute name="unit" type="xs:string" />
+		<xs:attribute name="type" type="xs:string" />
 	</xs:complexType>
 
 	<xs:complexType name="Units">
 		<xs:sequence>
 			<xs:element name="unit" type="Unit" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
-		<xs:attribute name="base" type="xs:string" />
 	</xs:complexType>
 
 	<xs:complexType name="Lookup">
@@ -79,12 +78,6 @@
 	<xs:complexType name="Unit">
 		<xs:sequence>
 			<xs:element name="precision" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-			<xs:choice>
-				<xs:element name="exchange" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-				<xs:sequence>
-					<xs:element name="rate" type="Rate" minOccurs="1" maxOccurs="unbounded" />
-				</xs:sequence>
-			</xs:choice>
 		</xs:sequence>
 		<xs:attribute name="sym" type="xs:string" />
 	</xs:complexType>
