@@ -18,6 +18,7 @@ logg = logging.getLogger()
 class Context:
 
     def __init__(self):
+        self.units = []
         self.unit = None
         self.uidx = None
         self.ref = None
@@ -31,6 +32,14 @@ class Context:
         self.attach = []
         self.valkey_host = None
         self.valkey_port = None
+#        units = os.environ.get('UNITS')
+#        for pair in units.split(','):
+#            precision = UnitIndex.default_precision
+#            r = pair.split(':')
+#            unit = r[0]
+#            if len(r) == 2:
+#                precision = int(r[1])
+#            self.units.append((unit, precision,))
 
 
     def close(self):
@@ -50,8 +59,10 @@ class Context:
     @staticmethod
     def from_args(args):
         ctx = Context()
-        ctx.unit = args.unit
-        ctx.uidx = UnitIndex(ctx.unit, precision=args.unit_precision)
+        ctx.unit = arg.src_unit
+        if ctx.unit == None:
+            ctx.unit = ctx.units[0][0]
+        ctx.uidx = UnitIndex(ctx.unit)
         if args.description != None:
             ctx.description = args.description
         if args.r != None:
@@ -124,6 +135,8 @@ argp.add_argument('-i', action='store_true', help='interactive edit')
 argp.add_argument('-r', type=str, help='external reference')
 argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
 argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
+argp.add_argument('--src-unit', type=str, dest='src_unit', help='Transaction unit for the source')
+argp.add_argument('--dst-unit', type=str, dest='dst_unit', help='Transaction unit for the destination')
 argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
 argp.add_argument('-x', type=str, dest='attachment', default=[], action='append', help='add file attachment')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
@@ -131,9 +144,6 @@ argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, d
 argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
 argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
 # TODO: read default from xml if not defined
-argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
-argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
-argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
 argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
 argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
 
@@ -142,8 +152,6 @@ arg = argp.parse_args()
 ctx = Context.from_args(arg)
 
 ledger = None
-logg.warning('hardcoding unit index default sym, need unitindex xml parser')
-logg.warning('using default sym for all entries for now')
 ledger_tree = load(arg.ledger_xml_file)
 uidx = UnitIndex.from_tree(ledger_tree)
 ledger = Ledger.from_tree(ledger_tree)

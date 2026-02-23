@@ -140,8 +140,6 @@ class RunningTotal:
         return RunningTotal(unit, asset=asset, liability=liability)
 
 
-
-
     """Generate an XML tree from the current state of the object.
 
     The XML generated can be used as a "real" or "virt" sub-element of the ledger/incoming/ element.
@@ -565,6 +563,7 @@ class Ledger:
             sym = v.get('unit')
             typ = v.get('type')
             ledger.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
+            logg.debug('add ledger unit {}'.format(sym))
 
         if ledger.running.get(unit) == None:
             ledger.running[unit] = RunningTotal(unit, unitindex)

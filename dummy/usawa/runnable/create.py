@@ -17,13 +17,20 @@ logg = logging.getLogger()
 class Context:
 
     def __init__(self):
-        self.unit = None
-        self.unit_precision = None
+        self.units = []
         self.uidx = None
         self.topic = None
         self.uri = None
         self.output = None
         self.f = None
+        units = os.environ.get('UNITS')
+        for pair in units.split(','):
+            precision = UnitIndex.default_precision
+            r = pair.split(':')
+            unit = r[0]
+            if len(r) == 2:
+                precision = int(r[1])
+            self.units.append((unit, precision,))
 
 
     def close(self):
@@ -43,9 +50,7 @@ class Context:
     @staticmethod
     def from_args(args):
         ctx = Context()
-        ctx.unit = args.unit
-        ctx.unit_precision = args.unit_precision
-        ctx.uidx = UnitIndex(ctx.unit, precision=ctx.unit_precision)
+        ctx.uidx = UnitIndex(ctx.units[0][0], precision=ctx.units[0][1])
         ctx.topic = args.topic
         if ctx.topic == None:
             ctx.topic = str(uuid.uuid4())
@@ -60,8 +65,8 @@ class Context:
     def validate(self):
         self.topic = parse_topic(self.topic)
         self.uri = parse_uri(self.uri)
-        self.unit = parse_unit(self.unit)
-        self.unit_precision = parse_unit_precision(self.unit_precision)
+        #self.unit = parse_unit(self.unit)
+        #self.unit_precision = parse_unit_precision(self.unit_precision)
         return self
 
 
@@ -109,7 +114,6 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
 argp = argparse.ArgumentParser()
 argp.add_argument('-i', action='store_true', help='interactive edit')
 argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
-argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
 argp.add_argument('--unit-precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
