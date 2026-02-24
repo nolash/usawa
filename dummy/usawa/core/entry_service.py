@@ -1,10 +1,8 @@
 import logging
 from datetime import datetime
-from typing import Optional
 import uuid
 
 from usawa.service import UnixClient
-from usawa.storage.entry_mapper import EntryMapper
 from .models import LedgerEntry
 from usawa.storage.ledger_repository import LedgerRepository
 
@@ -30,10 +28,7 @@ class EntryService:
     
         entry.tx_date = datetime.now()
         entry.date_registered = datetime.now()
-        entry.parent_digest = self._get_parent_digest()
-        entry.unit_index = self._get_unit_index()
         entry.transaction_ref = self._generate_transaction_ref()
-        entry.serial = self.repository.get_next_serial()
         
         is_valid, error_msg = entry.validate()
         if not is_valid:
@@ -42,18 +37,12 @@ class EntryService:
     
         return self.repository.save(entry)
         
+
+
+    def get_all_entries(self):
+        return self.repository.get_all_entries()
     
-    def _get_next_serial(self) -> int:
-        """Get next serial number"""
-        return self.repository.get_max_serial() + 1
-    
-    def _get_parent_digest(self) -> str:
-        """Get digest of previous ledger state"""
-        return self.repository._get_parent_digest()
-    
-    def _get_unit_index(self) -> int:
-        """Get Unix timestamp for unit validation"""
-        return int(datetime.now().timestamp())
+
     
     def _generate_transaction_ref(self) -> str:
         """Generate UUID for transaction"""
