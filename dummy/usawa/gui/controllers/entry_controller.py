@@ -12,6 +12,7 @@ class EntryController:
     """Handles entry creation logic"""
     def __init__(self,entry_service: EntryService):
         self.entry_service = entry_service
+        self._entry_created_listeners = []
        
     def collect_entry_data(self, view) -> Optional[LedgerEntry]:
         """Collect data from the view and create an entry"""
@@ -51,3 +52,14 @@ class EntryController:
         except Exception as e:
             logg.error(f"Failed to save entry: {e}")
             return False
+        
+    def get_all_entries(self):
+        return self.entry_service.get_all_entries()
+    
+
+    def add_entry_created_listener(self, callback):
+        self._entry_created_listeners.append(callback)
+
+    def notify_entry_created(self):
+        for callback in self._entry_created_listeners:
+            callback()
