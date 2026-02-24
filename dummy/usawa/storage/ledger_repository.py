@@ -1,9 +1,13 @@
 import logging
-from typing import Optional, List
+from typing import List
+from usawa.crypto import ACL, DemoWallet
+from usawa.ledger import Ledger
 from usawa.service import UnixClient
-from usawa.store import pfx_entry
+from usawa.store import LedgerStore
 from ..core.models import LedgerEntry
 from .entry_mapper import EntryMapper
+from whee.valkey import ValkeyStore
+from usawa import Ledger, DemoWallet, load
 
 logg = logging.getLogger("storage.ledger_repository")
 
@@ -11,86 +15,64 @@ logg = logging.getLogger("storage.ledger_repository")
 class LedgerRepository:
     """Repository that wraps LedgerStore and handles mapping"""
     
-    def __init__(self, ledger_store,unitindex=None, unix_client: UnixClient = None, wallet=None):
+    def __init__(self,ledger_path = None, unix_client: UnixClient = None):
         """
-        :param ledger_store: Instance of LedgerStore
+        :param ledger_path: path to ledger to import
         :type ledger_store: usawa.LedgerStore
         """
-        self.store = ledger_store
-        self.unitindex = unitindex
+        self.db = ValkeyStore('')
         self.client = unix_client
-        self.wallet = wallet
-        self.mapper = EntryMapper()
+        self.ledger_path = ledger_path
     
+    
+    def _init_store(self) -> tuple[LedgerStore, Ledger, DemoWallet]:
+        """Initialize a fresh LedgerStore, Ledger, and Wallet for each operation."""
+        ledger_tree = load(self.ledger_path)
+        ledger = Ledger.from_tree(ledger_tree)
+        store = LedgerStore(self.db, ledger)
+
+        pk = store.get_key()
+        wallet = DemoWallet(privatekey=pk)
+        logg.debug("wallet pk: %s pubk: %s", wallet.privkey().hex(), wallet.pubkey().hex())
+
+        ledger.set_wallet(wallet)
+        ledger.acl = ACL.from_wallet(wallet)
+        store.load(acl=ledger.acl)
+
+        return store, ledger, wallet
+
     def save(self, domain_entry: LedgerEntry) -> bool:
         """Save a domain entry to storage"""
         try:
-            entry = self.mapper.to_entry(domain_entry, ledger=self.store.ledger)
+            store, ledger, wallet = self._init_store()
+            ledger.truncate()
+
+            logg.debug("serial after load : %s", ledger.serial)
+
+            entry = EntryMapper.to_entry(domain_entry, ledger=ledger)
+            entry.sign(wallet)
             logg.debug(f"Mapped entry - Serial: {entry.serial}, Parent: {entry.parent.hex()}")
-            entry.sign(self.wallet)
-            logg.debug("Ledger current before add_entry: %s", self._get_parent_digest().hex())
-            self.store.add_entry(entry, update_ledger=True)
-            # self.store.ledger.sign()
-            # self.store.load(acl=self.store.ledger.acl)
+
+            store.add_entry(entry, update_ledger=True)
+
+            ledger.truncate()
+            ledger.sign()
+
             logg.debug("Parent digest after add_entry %s", self._get_parent_digest().hex())
-            
             return True
-            
         except Exception:
             logg.exception("Failed to save entry")
             return False
-       
 
-    
-    def  get_by_serial(self, serial: int) -> Optional[LedgerEntry]:
-        """Get entry by serial number"""
-        try:
-            storage_entry = self.store.get_entry(serial)
-            domain_entry = self.mapper.to_domain_entry(storage_entry)
-            
-            return domain_entry
-            
-        except FileNotFoundError:
-            logg.warning(f"Entry #{serial} not found")
-            return None
-        except Exception as e:
-            logg.error(f"Failed to retrieve entry #{serial}: {e}")
-            return None
-        
-
-    def get_next_serial(self) -> int:
-        """
-        Get the next serial number for a new entry
-        
-        This calls ledger.next_serial() which:
-        1. Increments ledger.serial
-        2. Returns the new serial
-        
-        :return: Next serial number
-        :rtype: int
-        """
-        next_serial = self.store.ledger.peek()
-        logg.debug(f"Next serial from ledger.next_serial(): {next_serial}")
-        return next_serial
-
-    def _get_parent_digest(self) -> str:
-        """Get digest of previous ledger state"""
-        return  self.store.ledger.current()
-    
-    def get_all(self) -> List[LedgerEntry]:
+    def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""
         try:
-            self.store.load()
-            domain_entries = []
-            for storage_entry in self.store.ledger.entries:
-                domain_entry = self.mapper.to_domain_entry(storage_entry)
-                domain_entries.append(domain_entry)
-            return domain_entries
-            
+            store, _, _ = self._init_store()
+
+            return [
+                EntryMapper.to_domain_entry(storage_entry)
+                for _, storage_entry in store.ledger.entries.items()
+            ]
         except Exception as e:
             logg.error(f"Failed to retrieve entries: {e}")
             return []
-    
-    def get_max_serial(self) -> int:
-        """Get highest serial number"""
-        return self.store.ledger.serial
