@@ -17,7 +17,7 @@ def create_entry_details_page(entry,nav_view):
     header = _create_header(nav_view)
     main_box.append(header)
         
-    # Scrolled content (your existing content)
+
     scrolled = Gtk.ScrolledWindow()
     scrolled.set_vexpand(True)
     scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -79,7 +79,6 @@ def _create_entry_details_section(entry):
         """Create the entry metadata section"""
         section_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         
-        
         header = Gtk.Label(label="ENTRY DETAILS")
         header.set_halign(Gtk.Align.START)
         header.add_css_class("heading")
@@ -94,9 +93,9 @@ def _create_entry_details_section(entry):
 
         _add_field_to_grid(grid, "Serial number", str(entry.serial), 0, 0)
         _add_field_to_grid(grid, "Transaction reference(uuid)", 
-                               "a3f7c8d9-4e2b-1a5c-9d8e-7f6a5b4c3d2e", 0, 1)
+                               entry.tx_ref, 0, 1)
         _add_field_to_grid(grid, "Transaction date", entry.tx_date, 1, 0)
-        _add_field_to_grid(grid, "Date registered", "2024-02-11 14:31:23 UTC", 1, 1)
+        _add_field_to_grid(grid, "Date registered", entry.tx_date_rg, 1, 1)
 
         parent_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         parent_label = Gtk.Label(label="Parent Digest")
@@ -106,7 +105,7 @@ def _create_entry_details_section(entry):
         parent_box.append(parent_label)
 
         parent_value = Gtk.Label(
-            label="0x7f8e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e"
+            label=entry.parent_digest
         )
         parent_value.set_halign(Gtk.Align.START)
         parent_value.set_selectable(True)  
