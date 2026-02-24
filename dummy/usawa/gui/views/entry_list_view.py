@@ -5,17 +5,19 @@ from usawa.gui.models.entry_item import EntryItem
 from usawa.gui.views.create_entry_view import create_entry_page
 from usawa.gui.views.entry_details_view import create_entry_details_page
 
-logg = logging.getLogger("gui.mainwindow")
+logg = logging.getLogger("gui.entrylist")
 
 class EntryListView(Gtk.Box):
 
     """The entry list view with filters, table, and FAB"""
-    def __init__(self, nav_view,entry_controller, **kwargs):
+    def __init__(self, nav_view,entry_controller,entries = None,refresh_callback=None, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0, **kwargs)
         
         self.nav_view = nav_view  
         self.entry_controller = entry_controller
-        
+        self.entries = entries or []
+        self.refresh_callback = refresh_callback
+
         # Overlay for FAB
         overlay = Gtk.Overlay()
         self.append(overlay)
@@ -300,6 +302,8 @@ class EntryListView(Gtk.Box):
     def on_create_window_closed(self, window):
          # Refresh the entry list
         logg.info("Create entry window closed")
+        if self.refresh_callback:
+           self.refresh_callback()
         return False 
 
 
@@ -375,7 +379,6 @@ class EntryListView(Gtk.Box):
         scrolled.set_child(column_view)
         
         table_box.append(scrolled)
-        self._populate_sample_data()
         
         return table_box
     
@@ -402,7 +405,7 @@ class EntryListView(Gtk.Box):
         entry = list_item.get_item()
         label = list_item.get_child()
         label.set_text(entry.tx_date)
-
+        
     def _on_desc_setup(self, factory, list_item):
         label = Gtk.Label()
         label.set_halign(Gtk.Align.START)
@@ -535,73 +538,30 @@ class EntryListView(Gtk.Box):
         logg.info(f"View entry clicked: {entry.serial}")
         details_page = create_entry_details_page(entry,self.nav_view)
         self.nav_view.push(details_page)
-    
 
-    def _populate_sample_data(self):
-        """Add sample entries to the table"""
-        sample_entries = [
-            EntryItem(
-                serial=0,
-                tx_date="2024-02-11 14:30:00",
-                description="Monthly rent payment",
-                auth_state="trusted",
-                source_unit="BTC",
-                source_type="Expense",
-                source_path="deposit/rent",
-                dest_unit="BTC",
-                dest_type="Asset",
-                dest_path="rent/apartment"
-            ),
-            EntryItem(
-                serial=1,
-                tx_date="2024-02-11 09:15:00",
-                description="Utility deposit",
-                auth_state="not_trusted",
-                source_unit="BTC",
-                source_type="Asset",
-                source_path="bank/saving",
-                dest_unit="BTC",
-                dest_type="Asset",
-                dest_path="deposits/utils"
-            ),
-            EntryItem(
-                serial=2,
-                tx_date="2024-02-11 11:15:00",
-                description="Late payment fine",
-                auth_state="unknown",
-                source_unit="BTC",
-                source_type="Liability",
-                source_path="fees/late-pay",
-                dest_unit="BTC",
-                dest_type="Income",
-                dest_path="bank/checking"
-            ),
-            EntryItem(
-                serial=3,
-                tx_date="2024-02-11 4:15:00",
-                description="Security deposit",
-                auth_state="invalid",
-                source_unit="BTC",
-                source_type="Income",
-                source_path="bank/income",
-                dest_unit="BTC",
-                dest_type="Expense",
-                dest_path="bank/expense"
-            ),
-            EntryItem(
-                serial=4,
-                tx_date="2024-02-11 4:16:00",
-                description="Grocery purchase",
+
+
+    def _load_entries(self):
+        """Populate table with LedgerEntry data"""
+        logg.info("Loading entries into ListStore")
+        self.entries = self.entry_controller.get_all_entries()  
+        self.entry_store.remove_all()                     
+        if not self.entries:
+            return
+        for entry in self.entries:
+            item = EntryItem(
+                serial=entry.serial,
+                parent_digest=entry.parent_digest,
+                tx_date=entry.tx_date,
+                tx_ref=entry.tx_reference,
+                tx_date_rg=entry.date_registered,
+                description=entry.description,
                 auth_state="unsigned",
-                source_unit="BTC",
-                source_type="Asset",
-                source_path="bank/checking",
-                dest_unit="BTC",
-                dest_type="Expense",
-                dest_path="food/groceries"
-            ),
-        ]
-        
-        for entry in sample_entries:
-            self.entry_store.append(entry)
+                source_path=entry.source_path,
+                source_unit=entry.source_unit,
+                dest_path=entry.dest_path,
+                dest_unit=entry.dest_unit,
+            )
+            self.entry_store.append(item)
+
 
