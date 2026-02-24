@@ -26,6 +26,7 @@ class LedgerEntry:
     # Metadata (auto-generated)
     serial: Optional[int] = None
     tx_date: Optional[datetime] = None
+    tx_reference: Optional[str] = None
     date_registered: Optional[datetime] = None
     parent_digest: Optional[str] = None
     unit_index: Optional[int] = None
@@ -57,9 +58,11 @@ class LedgerEntry:
             f"LedgerEntry("
             f"external_reference={self.external_reference!r}, "
             f"description={self.description!r}, "
-             f"serial={self.serial!r}, "
+            f"serial={self.serial!r}, "
+            f"parent_digest={self.parent_digest}, "
             f"amount={self.amount}, "
             f"source_unit={self.source_unit}, "
+            f"tx_ref={self.tx_reference}, "
             f"source_type={self.source_type}, "
             f"dest_unit={self.dest_unit}, "
             f"dest_type={self.dest_type})"
