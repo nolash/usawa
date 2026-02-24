@@ -27,7 +27,6 @@ class CreateEntryView(Gtk.Box):
         
         self.nav_view = nav_view
         self.controller = controller
-        # self.attachment_list = []
         self.attachment_paths: list[str] = []
         
         # Build UI
@@ -510,6 +509,7 @@ class CreateEntryView(Gtk.Box):
         
         success = self.controller.finalize_entry(entry)
         if success:
+            self.controller.notify_entry_created()
             self.nav_view.pop() 
         else:
             self._show_error_dialog("Save Failed", 
