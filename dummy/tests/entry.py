@@ -2,7 +2,6 @@ import logging
 import datetime
 import unittest
 import os
-import copy
 
 from usawa import EntryPart, Entry, DemoWallet, ACL, UnitIndex, Asset
 from usawa.error import ACLError
@@ -29,7 +28,6 @@ class TestEntry(unittest.TestCase):
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src, debit=True)
         o.add_part(dst)
-        oo = copy.deepcopy(o)
 
         s = o.serialize()
         o = Entry.deserialize(s)

@@ -184,7 +184,9 @@ class Asset:
 
         logg.debug('asset read {} bytes from path {} mime {}'.format(c, src, o.mime))
 
-        o.uuid = str(uuid.uuid4())
+        h = hashlib.sha1()
+        h.update(o.digest)
+        #o.uuid = str(uuid.uuid1(h.digest()))
         o.extref = extref
         o.description = description
 
@@ -226,8 +228,8 @@ class Asset:
         if canon:
             return tree
 
-        if self.uuid != None:
-            tree.set('uuid', self.uuid)
+        #if self.uuid != None:
+        #    tree.set('uuid', self.uuid)
 
         if self.extref != None:
             o = lxml.etree.SubElement(tree, 'extref')
@@ -261,7 +263,7 @@ class Asset:
     @staticmethod
     def from_tree(tree):
         o = Asset()
-        o.uuid = tree.get('uuid')
+        #o.uuid = tree.get('uuid')
         o.mime = tree.get('mime')
         v = tree.find('digest', namespaces=nsmap()).text
         o.digest = bytes.fromhex(v)
@@ -293,15 +295,11 @@ class Asset:
     :rtype: list
     """
     def to_list(self):
-        d = [
-                self.mime,
-                self.enc,
-                self.uuid,
-                self.extref,
-                self.slug,
-                self.ext,
-                self.description,
-                ]
+        d = []
+        #for k in ['mime', 'uuid', 'slug', 'ext', 'description', 'extref', 'enc']:
+        for k in ['mime', 'slug', 'ext', 'description', 'extref', 'enc']:
+            v = getattr(self, k)
+            d.append(v)
         return d
 
 
@@ -327,9 +325,12 @@ class Asset:
         o = Asset()
         v = rencode.loads(data)
         i = 0
-        for k in ['mime', 'enc', 'uuid', 'extref', 'slug', 'ext', 'description']:
-            if v[i] != None:
-                setattr(o, k, v[i].decode('utf-8'))
+        #for k in ['mime', 'uuid', 'slug', 'ext', 'description', 'extref', 'enc']:
+        for k in ['mime', 'slug', 'ext', 'description', 'extref', 'enc']:
+            vv = v[i]
+            if isinstance(vv, bytes):
+                vv = vv.decode('utf-8')
+            setattr(o, k, vv)
             i += 1
         if isinstance(digest, str):
             digest = bytes.fromhex(digest)

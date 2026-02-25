@@ -119,5 +119,36 @@ class TestLedger(unittest.TestCase):
         lxml.etree.fromstring(v, parser)
 
 
+    def test_ledger_truncate(self):
+        s = 'FOO'
+        uidx = UnitIndex(s)
+        uidx.add('USD')
+        ledger = Ledger(uidx)
+        store = LedgerStore(self.store, ledger=ledger)
+        store.start()
+    
+        wallet = DemoWallet()
+        ledger.set_wallet(wallet)
+        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
+        y = EntryPart(s, 'asset', 'foo', 1337)
+        v = Entry(ledger.peek(), datetime.datetime.now(), parent=ledger.current())
+        v.add_part(x, debit=True)
+        v.add_part(y)
+        v.sign(wallet)
+        ledger.add_entry(v)
+
+        x = EntryPart(s, 'expense', 'bar̈́', 42, debit=True)
+        y = EntryPart(s, 'liability', 'bar', 42)
+        v = Entry(ledger.peek(), datetime.datetime.now(), parent=ledger.current())
+        v.add_part(x, debit=True)
+        v.add_part(y)
+        v.sign(wallet)
+        ledger.add_entry(v)
+        ledger.sign()
+
+        ledger.truncate()
+        self.assertEqual(ledger.serial, 2)
+ 
+
 if __name__ == '__main__':
     unittest.main()

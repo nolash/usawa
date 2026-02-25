@@ -27,6 +27,7 @@
 			<xs:element name="real" type="Balance" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="virt" type="Balance" minOccurs="0" maxOccurs="unbounded" />
 			<xs:element name="digest" type="Digest" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="lookup" type="Lookup" minOccurs="0" maxOccurs="unbounded" />
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
 		<xs:attribute name="serial" type="xs:nonNegativeInteger" />
@@ -130,6 +131,13 @@
 			<xs:element name="sig" type="Signature" minOccurs="1" maxOccurs="unbounded" />
 		</xs:sequence>
 		<xs:attribute name="uuid" type="xs:string" />
+	</xs:complexType>
+
+	<xs:complexType name="ParentRef">
+		<xs:sequence>
+			<xs:element name="digest" type="xs:string" />
+			<xs:element name="lookup" type="Lookup" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="EntryData">

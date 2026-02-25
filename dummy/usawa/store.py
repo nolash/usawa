@@ -185,7 +185,7 @@ class LedgerStore(Interface):
             #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
             entry.attachment[i] = asset
             i += 1
-        entry.verify(acl=acl)
+        #entry.verify(acl=acl)
         return entry
 
 
@@ -282,3 +282,25 @@ class LedgerStore(Interface):
     """
     def get(self, k):
         return self.__o.get(k)
+
+
+    """Store all entries in the ledger state.
+
+    Errors due to duplicate entry and asset insert attempts will be ignored.
+
+    :param store_assets: Add all attachment assets from each entry.
+    :type store_assets: boolean
+    :raises FileExistsError: If duplicate entry is found.
+    """
+    def put_all(self, store_assets=False):
+        for k in self.ledger.entries.keys():
+            entry = self.ledger.entries[k]
+            try:
+                self.add_entry(entry, update_ledger=False)
+            except FileExistsError as e:
+                logg.info('putall skip duplicate entry {}'.format(entry))
+            for asset in entry.attachment:
+                try:
+                    self.add_asset(asset)
+                except FileExistsError:
+                    logg.info('putall skip duplicate asset {}'.format(asset))

@@ -140,6 +140,8 @@ class RunningTotal:
         return RunningTotal(unit, asset=asset, liability=liability)
 
 
+
+
     """Generate an XML tree from the current state of the object.
 
     The XML generated can be used as a "real" or "virt" sub-element of the ledger/incoming/ element.
@@ -241,6 +243,8 @@ class Ledger:
         self.entries = {}
         self.running = {}
         self.wallet = None
+        self.lookup = None
+        self.lookup_algo = 'sha512'
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -325,9 +329,9 @@ class Ledger:
     :todo: enable use of multiple "real" elements
     :todo: deduplicate signature from wallet identity if already exists
     """
-    def to_tree(self):
-        self.serial = self.base_serial
-        self.cur = self.base
+    def to_tree(self, lookup=None):
+        #self.serial = self.base_serial
+        #self.cur = self.base
         tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
 
         # generate topic
@@ -358,14 +362,15 @@ class Ledger:
         tree.append(units_tree)
        
         # identity entry for the key signing the ledger state.
-        o = self.wallet.to_tree()
-        tree.append(o)
+        if self.wallet != None:
+            o = self.wallet.to_tree()
+            tree.append(o)
         
         # incoming state
         incoming = lxml.etree.SubElement(tree, 'incoming')
 
         # incoming serial
-        incoming.set('serial', str(self.serial))
+        incoming.set('serial', str(self.base_serial))
 
         # incoming base (real) currency balance
         o = self.running[self.uidx.base].to_tree()
@@ -382,6 +387,13 @@ class Ledger:
         o = lxml.etree.SubElement(incoming, 'digest')
         o.attrib['algo'] = 'sha512'
         o.text = self.base.hex()
+        incoming.append(o)
+
+        if self.lookup != None:
+            o = lxml.etree.SubElement(incoming, 'lookup')
+            o.attrib['algo'] = self.lookup_algo
+            o.text = self.lookup
+            incoming.append(o)
 
         # incoming signatures
         # sign the ledger if it has no signatures
@@ -391,6 +403,8 @@ class Ledger:
         # apply all already existing signatures (e.g. from import)
         for k in self.sigs.keys():
             sig = self.sigs[k]
+            if len(sig) == 0:
+                continue
             o = lxml.etree.SubElement(incoming, 'sig')
             o.set('keyid', k.hex())
             o.set('type', 'ed25519')
@@ -400,7 +414,7 @@ class Ledger:
         # apply all entries in object state
         for k in self.entries.keys():
             v = self.entries[k]
-            entry_tree = v.to_tree()
+            entry_tree = v.to_tree(lookup=lookup)
             tree.append(entry_tree)
 
         return tree
@@ -451,16 +465,21 @@ class Ledger:
     :raises ValueError: When entry parent does not match ledger state.
     :raises VerifyError: When entry is missing valid signature.
     """
-    def add_entry(self, entry):
-        if self.cur != entry.parent:
-            raise ValueError('entry parent does not match ledger state')
+    def add_entry(self, entry, check_parent=True):
+        if check_parent and self.cur != entry.parent:
+            raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
         self.check_sigs(entry)
        
         # update the internal state
         self.serial = entry.serial
-        oldsum = self.cur
-        self.cur = entry.sum()[0]
-        entry.parent = oldsum
+        #oldsum = self.cur
+        #self.cur = entry.sum()[0]
+        (k, v) = entry.get_lookup(self.lookup_algo)
+        logg.debug('addentr entry {} {}'.format(k, v))
+        #entry.parent = oldsum
+        entry.parent = self.cur
+        self.cur = bytes.fromhex(k)
+        logg.debug('selfcur is now {}'.format(self.cur.hex()))
         self.apply_entryparts(entry)
 
         # Add entry to the ledger object.
@@ -540,7 +559,7 @@ class Ledger:
             public_key = bytes.fromhex(keyid)
             wallet = DemoWallet(publickey=public_key)
             ledger.set_wallet(wallet)
-            logg.warn('currently only support for single identity')
+            logg.warning('currently only support for single identity')
             break
 
         o = part.find('real', namespaces=nsmap())
@@ -560,10 +579,24 @@ class Ledger:
         if ledger.running.get(unit) == None:
             ledger.running[unit] = RunningTotal(unit, unitindex)
 
+        o = part.find('lookup', namespaces=nsmap())
+        if o != None:
+            ledger.lookup = o.text
+            ledger.lookup_algo = o.get('algo')
+
         ledger.apply_entries(tree)
         logg.debug('loaded ledger tree last serial {}'.format(ledger.serial))
 
         return ledger.check()
+
+
+    @staticmethod
+    def from_file(filepath, acl=None):
+        f = open(filepath, 'rb')
+        v = f.read()
+        f.close()
+        return Ledger.from_string(v, acl=acl)
+
 
 
     """Append all entries from XML tree to ledger.
@@ -577,23 +610,45 @@ class Ledger:
         i = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             i += 1
-            logg.debug('processing entry {}'.format(v))
+            logg.debug('>>>>>>>>>>>>> processing entry {}'.format(lxml.etree.tostring(v)))
             o = Entry.from_tree(v, self.uidx, min=self.serial)
             self.add_entry(o)
+            (k, v) = o.get_lookup('sha512')
             if o.serial > last:
                 last = o.serial
+            #self.cur = k
         if i > 0:
             self.serial = last
         logg.info('last entry from tree serial ' + str(self.serial))
+
+
+    def last_entry(self):
+        serial = -1
+        digest = None
+        for i in self.entries.keys():
+            if i > serial:
+                serial = i
+        return self.entries[serial]
 
 
     """Calculate and apply ledger state from current entries in the object, and remove entries.
 
     After this call, the XML export will not contain any entry elements, and will have digest and serial from the last entry that existed in the ledger.
     """
-    def truncate(self):
+    def truncate(self, lookup=None):
         self.base = self.cur
         self.base_serial = self.serial
+        logg.debug('base serial now {}'.format(self.base_serial))
+        try:
+            entry = self.last_entry()
+        except KeyError: # if no entries
+            self.entries = {}
+            return
+        if lookup != None:
+            (k, v) = entry.get_lookup(lookup)
+            logg.debug('trunc looup {} {}'.format(k, v))
+            self.lookup = k
+            self.lookup_algo = lookup
         self.entries = {}
 
 
@@ -610,9 +665,15 @@ class Ledger:
     :return: XML document in UTF-8 format.
     :rtype: str
     """
-    def to_string(self):
-        tree = self.to_tree()
-        return lxml.etree.tostring(tree)
+    def to_string(self, lookup=None):
+        tree = self.to_tree(lookup=lookup)
+        return lxml.etree.tostring(tree).decode('utf-8')
+
+    
+    @staticmethod
+    def from_string(s, acl=None):
+        tree = lxml.etree.fromstring(s)
+        return Ledger.from_tree(tree, acl=acl)
 
 
     """Returns the digest of the current state of the ledger.
@@ -634,7 +695,7 @@ class Ledger:
     :rtype: str
     """
     def canon(self):
-        tree = self.to_tree()
+        tree = self.to_tree(lookup=False)
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
         return b.encode('utf-8')
 

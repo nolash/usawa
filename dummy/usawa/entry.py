@@ -94,7 +94,6 @@ class EntryPart:
 
         o = lxml.etree.Element('amount')
         o.text = str(self.amount)
-        logg.debug('tree amount {} {}'.format(self.unit, o.text))
         tree.append(o)
 
         return tree
@@ -205,6 +204,8 @@ class Entry:
         self.description = description
         self.debit = []
         self.credit = []
+        self.lookup = None
+        self.lookup_algo = None
 
 
     """Add an entry part to the entry.
@@ -285,18 +286,28 @@ class Entry:
         entry = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
         src = EntryPart.from_tree(src_tree, debit=True)
         dst = EntryPart.from_tree(dst_tree)
-        entry.add_part(src, debit=True)
         entry.add_part(dst)
+        entry.add_part(src, debit=True)
 
         for v in o.findall('attachment', namespaces=nsmap()):
             asset = Asset.from_tree(v)
             entry.attach(asset)
+
+        o = tree.find('lookup')
+        if o != None:
+            self.lookup_algo = o.get('algo')
+            self.lookup = o.text
 
         for sig in tree.iter(NSPREFIX + 'sig'):
             entry.add_signature(sig.get('keyid'), bytes.fromhex(sig.text))
 
         return entry
 
+
+    @staticmethod
+    def from_string(s, unitindex, min=0):
+        tree = lxml.etree.fromstring(s)
+        return Entry.from_tree(tree, unitindex, min=min)
 
     """Generate the simple data structure used for rencode serialization.
 
@@ -317,6 +328,7 @@ class Entry:
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
+        logg.debug('serializing with parent {}'.format(self.parent.hex()))
         d = [
                 self.parent,
                 self.serial,
@@ -324,8 +336,8 @@ class Entry:
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
                 self.dt.strftime('%Y%m%d'),
                 self.description,
-                debit,
                 credit,
+                debit,
                 attach,
                 ]
         return d
@@ -351,15 +363,16 @@ class Entry:
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
-        parent = v[0].hex()
+        #parent = v[0].hex()
+        parent = v[0]
         serial = v[1]
         ref = v[2].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
         #unit = v[5].decode('utf-8')
         description = v[5].decode('utf-8')
-        src_data = v[6]
-        dst_data = v[7]
+        dst_data = v[6]
+        src_data = v[7]
         attach_data = v[8]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         for v in src_data:
@@ -487,7 +500,18 @@ class Entry:
 
         return entry
 
+    
+    """Verify signature on entry.
 
+    At least one signature must be valid for one of the public keys in the wallet or ACL.
+
+    :param wallet: Wallet holding a public key to verify.
+    :type wallet: usawa.Wallet
+    :param acl: A collection of public keys to verify.
+    :type acl: usawa.ACL
+    :raises VerifyError: Invalid signature.
+    :raises ValueError: Neither wallet nor ACL supplied.
+    """
     def verify(self, wallet=None, acl=None):
         if wallet == None and acl == None:
             raise ValueError('verify needs at least one of wallet or acl')
@@ -518,7 +542,7 @@ class Entry:
     :returns: XML tree representing the entry.
     :rtype: lxml.etree.Element
     """
-    def to_tree(self, canon=False):
+    def to_tree(self, canon=False, lookup=None):
         #tree = etree.Element('entry', type=self.typ)
         tree = lxml.etree.Element(NSPREFIX + 'entry', nsmap=nsmap())
         data = lxml.etree.Element('data')
@@ -570,7 +594,49 @@ class Entry:
             o.text = self.sigs[k].hex()
             tree.append(o)
 
+        if lookup:
+            (k, v) = self.get_lookup(lookup, tree=tree)
+            o = lxml.etree.Element('lookup')
+            o.set('algo', lookup)
+            o.text = v
+            data.append(o)
+
         return tree
+
+
+    def to_string(self, canon=False, lookup=None):
+        tree = self.to_tree(canon=canon, lookup=lookup)
+        #return lxml.etree.canonicalize(tree).decode('utf-8')
+        return lxml.etree.tostring(tree).decode('utf-8')
+
+
+    def get_lookup(self, lookup, tree=None):
+        if tree == None:
+            tree = self.to_tree(lookup=False)
+        h = None
+        if lookup == 'sha512':
+            h = hashlib.sha512()
+        elif lookup == 'sha256':
+            h = hashlib.sha256()
+        else:
+            raise ValueError('invalid lookup algo')
+
+        b = lxml.etree.canonicalize(tree, strip_text="True", exclude_tags=['lookup'])
+        h.update(b.encode('utf-8'))
+
+        return (h.digest().hex(), b,)
+#
+#
+#    def tree_sum(self, lookup):
+#        tree = self.to_tree()
+#        b = lxml.etree.tostring(tree)
+#        h = None
+#        if lookup == 'sha512':
+#            h = hashlib.sha512()
+#        elif lookup == 'sha256':
+#            h = hashlib.sha256()
+#        h.update(b)
+#        return h.digest()
 
 
     """Generate canonical XML for signature material.
@@ -581,7 +647,7 @@ class Entry:
     """
     def canon(self):
         tree = self.to_tree(canon=True)
-        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig'])
+        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup'])
         return b.encode('utf-8')
 
 

@@ -6,7 +6,7 @@ import argparse
 import uuid
 import datetime
 
-from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
+from usawa import Ledger, Entry, EntryPart, DemoWallet, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
@@ -61,16 +61,13 @@ argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from X
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
 
-#ledger = None
-#ledger_tree = load(arg.ledger_xml_file)
-#uidx = UnitIndex.from_tree(ledger_tree)
-#ledger = Ledger.from_tree(ledger_tree)
 ledger = Ledger.from_file(arg.ledger_xml_file)
 
 storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
 store = LedgerStore(storedb, ledger)
-pk = store.get_key()
-wallet = DemoWallet(privatekey=pk)
-acl = ACL.from_wallet(wallet)
-store.load(acl=acl)
+#pk = store.get_key()
+#wallet = DemoWallet(privatekey=pk)
+#acl = ACL.from_wallet(wallet)
+#store.load(acl=acl)
+store.put_all(store_assets=True)
 sys.stdout.write(ledger.to_string())
