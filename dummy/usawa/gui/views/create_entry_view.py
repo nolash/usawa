@@ -500,7 +500,7 @@ class CreateEntryView(Gtk.Box):
     def _on_finalize(self, button):
         """Handle finalize button - delegates to controller"""
         entry = self.controller.collect_entry_data(self)
-        # entry.attachments.extend(self.attachment_paths)
+        entry.attachments.extend(self.attachment_paths)
         
         if entry is None:
             self._show_error_dialog("Invalid Input", 

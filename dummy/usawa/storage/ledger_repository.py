@@ -57,8 +57,7 @@ class LedgerRepository:
 
             ledger.truncate()
             ledger.sign()
-
-            logg.debug("Parent digest after add_entry %s", self._get_parent_digest().hex())
+            logg.debug("Parent digest after add_entry %s", ledger.parent.hex())
             return True
         except Exception:
             logg.exception("Failed to save entry")

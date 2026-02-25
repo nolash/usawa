@@ -61,6 +61,12 @@ class EntryMapper:
 
         dest_part = EntryPart("BTC", domain.dest_type.lower(), domain.dest_path, dest_amount, debit=False)
         entry.add_part(dest_part, debit=False)
+
+        for attachment in domain.attachments:
+            logg.debug(f"Attachment in entry: {attachment}")
+            asset = Asset.from_file(attachment)
+            logg.debug('asset {}'.format(asset))
+            entry.attach(asset=asset)
     
         return entry
     
