@@ -63,3 +63,13 @@ class EntryController:
     def notify_entry_created(self):
         for callback in self._entry_created_listeners:
             callback()
+
+
+    def next_serial(self, entries: list | None = None) -> int:
+        if entries is None:
+            entries = self.get_all_entries()
+        return len(entries) + 1
+    
+
+    def get_asset_bytes(self, digest: bytes) -> bytes:
+        return self.entry_service.get_asset_bytes(digest=digest)
