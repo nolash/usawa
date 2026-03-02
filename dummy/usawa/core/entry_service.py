@@ -47,3 +47,8 @@ class EntryService:
     def _generate_transaction_ref(self) -> str:
         """Generate UUID for transaction"""
         return str(uuid.uuid4())
+    
+    
+    def get_asset_bytes(self, digest: bytes) -> bytes:
+        return self.repository.get_asset_bytes(digest=digest)
+        
