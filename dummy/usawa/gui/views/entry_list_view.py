@@ -1,5 +1,5 @@
 import logging
-from gi.repository import Adw, Gtk, Gio,Pango
+from gi.repository import Gtk, Gio,Pango
 
 from usawa.gui.models.entry_item import EntryItem
 from usawa.gui.views.create_entry_view import create_entry_page
@@ -17,12 +17,12 @@ class EntryListView(Gtk.Box):
         self.entry_controller = entry_controller
         self.entries = entries or []
         self.refresh_callback = refresh_callback
+        self.active_filter = None 
 
-        # Overlay for FAB
         overlay = Gtk.Overlay()
         self.append(overlay)
         
-        # Main content
+    
         content = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
@@ -83,7 +83,6 @@ class EntryListView(Gtk.Box):
         self.sort_datetime_btn.connect("toggled", self.on_sort_changed, "datetime")
         button_container.append(self.sort_datetime_btn)
         
-        # Group the toggle buttons so only one can be active
         self.sort_serial_btn.set_group(self.sort_datetime_btn)
         
         sort_box.append(button_container)
@@ -94,13 +93,11 @@ class EntryListView(Gtk.Box):
         """Create the Filter section with account type, keyword, and date range"""
         filter_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         
-        # Label
         filter_label = Gtk.Label(label="Filter")
         filter_label.set_halign(Gtk.Align.START)
         filter_label.add_css_class("heading")
         filter_box.append(filter_label)
         
-        # Filter container with card styling
         filter_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
         filter_container.set_margin_top(8)
         filter_container.set_margin_bottom(8)
@@ -108,7 +105,6 @@ class EntryListView(Gtk.Box):
         filter_container.set_margin_end(8)
         filter_container.add_css_class("card")
         
-        # Account Type Column
         account_type_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         account_type_box.set_hexpand(True)
         account_type_box.set_margin_start(8)
@@ -119,7 +115,6 @@ class EntryListView(Gtk.Box):
         account_type_box.set_margin_bottom(4)
         account_type_box.append(account_type_label)
         
-        # Dropdown for account type
         account_types = Gtk.StringList()
         account_types.append("All types")
         account_types.append("Asset")
@@ -128,13 +123,12 @@ class EntryListView(Gtk.Box):
         account_types.append("Expense")
         
         self.account_type_dropdown = Gtk.DropDown(model=account_types)
-        self.account_type_dropdown.set_selected(1)  # Default to "Asset"
+        self.account_type_dropdown.set_selected(0)  
         self.account_type_dropdown.connect("notify::selected", self.on_filter_changed)
         account_type_box.append(self.account_type_dropdown)
         
         filter_container.append(account_type_box)
         
-        # Keyword or Account Path Column
         keyword_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         keyword_box.set_hexpand(True)
         
@@ -154,7 +148,6 @@ class EntryListView(Gtk.Box):
         
         filter_container.append(keyword_box)
         
-        # Date Range Column
         date_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         date_box.set_hexpand(True)
         
@@ -165,7 +158,7 @@ class EntryListView(Gtk.Box):
         date_box.set_margin_bottom(4)
         date_box.append(date_label)
         
-        # Date range container
+
         date_range_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         
         self.date_start_entry = Gtk.Entry()
@@ -201,23 +194,20 @@ class EntryListView(Gtk.Box):
         return filter_box
     
     def on_filter_changed(self, widget, *args):
-        """Handle filter changes"""
-        logg.info("Filter changed")
-        # Get current filter values
-        account_type_idx = self.account_type_dropdown.get_selected()
-        keyword = self.keyword_entry.get_text()
-        date_start = self.date_start_entry.get_text()
-        date_end = self.date_end_entry.get_text()
-        
-        logg.debug(f"Filters - Type: {account_type_idx}, Keyword: {keyword}, "
-                f"Dates: {date_start} to {date_end}")
+        """Handle filter changes - track which filter was last updated"""
+        if widget == self.account_type_dropdown:
+            self.active_filter = "account_type"
+        elif widget == self.keyword_entry:
+            self.active_filter = "keyword"
+        elif widget in (self.date_start_entry, self.date_end_entry):
+            self.active_filter = "date"
+
         self.refresh_data()
 
     def on_calendar_clicked(self, button):
         """Show calendar popup for date range selection"""
         logg.info("Calendar button clicked - showing date range picker")
         
-        # Create the dialog
         dialog = Gtk.Dialog(transient_for=self, modal=True)
         dialog.set_title("Select Date Range")
         dialog.set_default_size(400, 450)
@@ -283,24 +273,56 @@ class EntryListView(Gtk.Box):
         """Handle sort option changes"""
         if button.get_active():
             logg.info(f"Sort changed to: {sort_type}")
+            self._sort_and_reload(sort_type)
 
     def on_fab_clicked(self, button):
         logg.info("FAB clicked - opening create entry window")
-        # create_page = create_entry_page(self.nav_view)
-        create_page = create_entry_page(self.nav_view, self.entry_controller)
         
-        # Push onto navigation stack
+        create_page = create_entry_page(self.nav_view, self.entry_controller)
         self.nav_view.push(create_page)
 
 
     def refresh_data(self):
-        """Refresh the entry list based on current sort and filter settings"""
-        # TODO: Implement actual data refresh logic
-        logg.info("Refreshing data with current sort/filter settings")
+        filtered = list(self.entries)
+
+        if self.active_filter == "account_type":
+            account_type_idx = self.account_type_dropdown.get_selected()
+            account_type = self.account_type_dropdown.get_model().get_string(account_type_idx)
+            if account_type != "All types":
+                filtered = [
+                    e for e in filtered
+                    if e.source_type.lower() == account_type.lower()
+                    or e.dest_type.lower() == account_type.lower()
+                ]
+
+        elif self.active_filter == "keyword":
+            keyword = self.keyword_entry.get_text().strip().lower()
+            if keyword:
+                filtered = [
+                    e for e in filtered
+                    if keyword in (e.description or "").lower()
+                    or keyword in (e.source_path or "").lower()
+                    or keyword in (e.dest_path or "").lower()
+                ]
+
+        elif self.active_filter == "date":
+            date_start = self.date_start_entry.get_text().strip()
+            date_end = self.date_end_entry.get_text().strip()
+            if date_start:
+                filtered = [e for e in filtered if str(e.tx_date)[5:10] >= date_start]
+            if date_end:
+                filtered = [e for e in filtered if str(e.tx_date)[5:10] <= date_end]
+
+        sort_type = "serial" if self.sort_serial_btn.get_active() else "datetime"
+        if sort_type == "serial":
+            filtered = sorted(filtered, key=lambda e: e.serial)
+        else:
+            filtered = sorted(filtered, key=lambda e: (e.tx_date, e.serial), reverse=True)
+
+        self._reload_store(filtered)
 
 
     def on_create_window_closed(self, window):
-         # Refresh the entry list
         logg.info("Create entry window closed")
         if self.refresh_callback:
            self.refresh_callback()
@@ -326,15 +348,13 @@ class EntryListView(Gtk.Box):
         serial_col.set_fixed_width(70)  
         column_view.append_column(serial_col)
         
-        # Transaction date column - FIXED
         date_factory = Gtk.SignalListItemFactory()
         date_factory.connect("setup", self._on_date_setup)
         date_factory.connect("bind", self._on_date_bind)
         date_col = Gtk.ColumnViewColumn(title="Transaction date", factory=date_factory)
-        date_col.set_fixed_width(140)  
+        date_col.set_fixed_width(100)  
         column_view.append_column(date_col)
         
-        # Description column - EXPAND (flexible)
         desc_factory = Gtk.SignalListItemFactory()
         desc_factory.connect("setup", self._on_desc_setup)
         desc_factory.connect("bind", self._on_desc_bind)
@@ -349,7 +369,7 @@ class EntryListView(Gtk.Box):
         auth_col.set_fixed_width(120)  
         column_view.append_column(auth_col)
         
-        # Source column -(flexible)
+
         source_factory = Gtk.SignalListItemFactory()
         source_factory.connect("setup", self._on_source_setup)
         source_factory.connect("bind", self._on_source_bind)
@@ -357,7 +377,6 @@ class EntryListView(Gtk.Box):
         source_col.set_expand(True)  
         column_view.append_column(source_col)
         
-        # Destination column - (flexible)
         dest_factory = Gtk.SignalListItemFactory()
         dest_factory.connect("setup", self._on_dest_setup)
         dest_factory.connect("bind", self._on_dest_bind)
@@ -404,7 +423,8 @@ class EntryListView(Gtk.Box):
     def _on_date_bind(self, factory, list_item):
         entry = list_item.get_item()
         label = list_item.get_child()
-        label.set_text(entry.tx_date)
+        date_only = str(entry.tx_date)[:10]
+        label.set_label(date_only)
         
     def _on_desc_setup(self, factory, list_item):
         label = Gtk.Label()
@@ -421,7 +441,6 @@ class EntryListView(Gtk.Box):
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         box.set_halign(Gtk.Align.CENTER)
         
-        # Badge container
         badge = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         badge.set_margin_top(4)
         badge.set_margin_bottom(4)
@@ -454,7 +473,6 @@ class EntryListView(Gtk.Box):
         icon_label = badge.get_first_child()
         text_label = icon_label.get_next_sibling()
         
-        # Set content based on auth state
         auth_state = entry.auth_state
         if auth_state == "trusted":
             badge.add_css_class("auth-trusted")
@@ -472,7 +490,7 @@ class EntryListView(Gtk.Box):
             badge.add_css_class("auth-invalid")
             icon_label.set_text("✗")
             text_label.set_text("Invalid")
-        else:  # unsigned
+        else:  
             badge.add_css_class("auth-unsigned")
             icon_label.set_text("○")
             text_label.set_text("No Key")
@@ -536,32 +554,55 @@ class EntryListView(Gtk.Box):
     def _on_view_entry(self, button, entry):
         """Handle view button click"""
         logg.info(f"View entry clicked: {entry.serial}")
-        details_page = create_entry_details_page(entry,self.nav_view)
+        details_page = create_entry_details_page(entry,self.nav_view,self.entry_controller.get_asset_bytes)
         self.nav_view.push(details_page)
 
 
 
-    def _load_entries(self):
-        """Populate table with LedgerEntry data"""
-        logg.info("Loading entries into ListStore")
-        self.entries = self.entry_controller.get_all_entries()  
-        self.entry_store.remove_all()                     
-        if not self.entries:
-            return
-        for entry in self.entries:
-            item = EntryItem(
+    def format_attachments(self,assets):
+        if not assets:
+            return ""
+
+        return ", ".join(
+            a.slug or a.uuid or (a.digest.hex()[:8] if a.digest else "unknown")
+            for a in assets
+        )
+    
+    def _make_entry_item(self, entry) -> EntryItem:
+        return EntryItem(
                 serial=entry.serial,
                 parent_digest=entry.parent_digest,
                 tx_date=entry.tx_date,
                 tx_ref=entry.tx_reference,
                 tx_date_rg=entry.date_registered,
                 description=entry.description,
-                auth_state="unsigned",
+                auth_state="trusted",
+                amount=entry.amount,
                 source_path=entry.source_path,
+                source_type= entry.source_type,
                 source_unit=entry.source_unit,
                 dest_path=entry.dest_path,
                 dest_unit=entry.dest_unit,
-            )
-            self.entry_store.append(item)
+                dest_type=entry.dest_type,
+                attachments=self.format_attachments(entry.attachments),
+                attachments_raw=entry.attachments
+        )
+
+    def _reload_store(self, entries):
+        self.entry_store.remove_all()
+        for entry in entries:
+            self.entry_store.append(self._make_entry_item(entry))
+
+    def _load_entries(self):
+        self.entries = self.entry_controller.get_all_entries()
+        self._sort_and_reload("serial")
+
+    
+    def _sort_and_reload(self, sort_type):
+        if sort_type == "serial":
+            sorted_entries = sorted(self.entries, key=lambda e: e.serial)
+        elif sort_type == "datetime":
+            sorted_entries = sorted(self.entries, key=lambda e: (e.tx_date, e.serial), reverse=True)
+        self._reload_store(sorted_entries)
 
 
