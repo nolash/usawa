@@ -29,7 +29,6 @@ class CreateEntryView(Gtk.Box):
         self.controller = controller
         self.attachment_paths: list[str] = []
         
-        # Build UI
         self._build_ui(nav_view)
     
     def _build_ui(self,nav_view):
@@ -63,7 +62,6 @@ class CreateEntryView(Gtk.Box):
         scrolled.set_child(content)
         self.append(scrolled)
         
-        # Action bar
         action_bar = self._create_action_bar()
         self.append(action_bar)
 
@@ -86,7 +84,7 @@ class CreateEntryView(Gtk.Box):
         title.add_css_class("title-2")
         header_box.append(title)
         
-        serial_badge = Gtk.Label(label="Next Serial: #0002")
+        serial_badge = Gtk.Label(label=f"Next Serial: #{self.controller.next_serial():04d}")
         serial_badge.add_css_class("caption")
         serial_badge.add_css_class("accent")
         serial_badge.set_margin_start(8)
@@ -225,14 +223,11 @@ class CreateEntryView(Gtk.Box):
         row.set_margin_start(4)
         row.set_margin_end(4)
         
-        # Store file path as data
         row.file_path = file_path
         
-        # File icon based on MIME type
         icon = self._get_icon_for_file(filename, metadata)
         row.append(icon)
         
-        # File info
         info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         info_box.set_hexpand(True)
         
@@ -280,8 +275,7 @@ class CreateEntryView(Gtk.Box):
         fields.set_margin_start(8)
         fields.set_margin_end(8)
         fields.set_margin_bottom(8)
-        
-        # Unit dropdown
+              
         unit_label = Gtk.Label(label="Unit")
         unit_label.set_halign(Gtk.Align.START)
         unit_label.add_css_class("caption")
@@ -296,7 +290,6 @@ class CreateEntryView(Gtk.Box):
         unit_dropdown.set_selected(0 if is_source else 1)  
         fields.append(unit_dropdown)
         
-        # Account Type dropdown
         type_label = Gtk.Label(label="Account type")
         type_label.set_halign(Gtk.Align.START)
         type_label.add_css_class("caption")
@@ -380,7 +373,6 @@ class CreateEntryView(Gtk.Box):
         
         return action_bar
     
-    # Helper methods to get dropdown values
     def get_source_unit(self) -> str:
         """Get selected source unit"""
         selected_idx = self.source_unit_dropdown.get_selected()
@@ -405,7 +397,6 @@ class CreateEntryView(Gtk.Box):
         model = self.dest_type_dropdown.get_model()
         return model.get_string(selected_idx)
     
-    # Event handlers
     def _on_discard(self, button):
         """Handle discard button"""
         self.nav_view.pop()
@@ -415,7 +406,6 @@ class CreateEntryView(Gtk.Box):
         """Handle add attachment button - multiple files"""
         logg.info("Add attachment clicked")
         
-        # Create file chooser dialog
         file_dialog = Gtk.FileDialog()
         file_dialog.set_title("Select Attachments")
         
@@ -470,7 +460,6 @@ class CreateEntryView(Gtk.Box):
     def _add_attachment_to_list(self, file_path: str):
         path = Path(file_path)
 
-        # Get file metadata
         filename = path.name
         file_size = path.stat().st_size
         mime_type, _ = mimetypes.guess_type(file_path)
@@ -500,11 +489,11 @@ class CreateEntryView(Gtk.Box):
     def _on_finalize(self, button):
         """Handle finalize button - delegates to controller"""
         entry = self.controller.collect_entry_data(self)
-        entry.attachments.extend(self.attachment_paths)
+        if self.attachment_paths:
+           entry.attachments.extend(self.attachment_paths)
         
         if entry is None:
-            self._show_error_dialog("Invalid Input", 
-                                   "Please check your entries and try again.")
+            self._show_error_dialog("Invalid Input", "Please check your entries and try again.")
             return
         
         success = self.controller.finalize_entry(entry)
