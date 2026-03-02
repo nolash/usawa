@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, date
 
-from usawa.asset import Asset
 from usawa.entry import Entry, EntryPart
 from usawa.unit import UnitIndex
 from ..core.models import LedgerEntry
@@ -61,12 +60,6 @@ class EntryMapper:
 
         dest_part = EntryPart("BTC", domain.dest_type.lower(), domain.dest_path, dest_amount, debit=False)
         entry.add_part(dest_part, debit=False)
-
-        for attachment in domain.attachments:
-            logg.debug(f"Attachment in entry: {attachment}")
-            asset = Asset.from_file(attachment)
-            logg.debug('asset {}'.format(asset))
-            entry.attach(asset=asset)
     
         return entry
     
@@ -80,28 +73,35 @@ class EntryMapper:
         source_unit = ""
         source_type = ""
         source_path = ""
-        amount = 0.0
-
-        if storage_entry.debit:
-            debit_part = storage_entry.debit[0]
-
-            source_unit = getattr(debit_part, "unit", "")
-            source_type = getattr(debit_part, "category", "")
-            source_path = getattr(debit_part, "account", "")
-            amount = abs(float(getattr(debit_part, "value", 0.0)))
+        amount = 0.0      
 
         dest_unit = ""
         dest_type = ""
         dest_path = ""
+        if storage_entry.debit:
+            debit_part = storage_entry.debit[0]  
+            source_unit = debit_part.unit
+            source_type = debit_part.typ
+            source_path = debit_part.account
+            amount = abs(float(debit_part.amount))
+            is_debit = debit_part.isdebit
+        else:
+            source_unit = source_type = source_path = ""
+            amount = 0.0
+            is_debit = None
 
+        
         if storage_entry.credit:
             credit_part = storage_entry.credit[0]
+            dest_unit = credit_part.unit
+            dest_type = credit_part.typ
+            dest_path = credit_part.account
+            is_credit = credit_part.isdebit
+        else:
+            dest_unit = dest_type = dest_path = ""
+            is_credit = None
 
-            dest_unit = getattr(credit_part, "unit", "")
-            dest_type = getattr(credit_part, "category", "")
-            dest_path = getattr(credit_part, "account", "")
-
-
+    
         parent_digest =  parent_digest = storage_entry.parent.hex()
 
         tx_date = storage_entry.dt
@@ -110,9 +110,7 @@ class EntryMapper:
 
      
         transaction_ref = str(storage_entry.ref) if storage_entry.ref else None
-        external_ref = None  
-
-        
+        external_ref = None      
         domain = LedgerEntry(
             external_reference=external_ref,
             description=storage_entry.description,
