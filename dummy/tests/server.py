@@ -21,6 +21,8 @@ logg = logging.getLogger()
 
 testdir = os.path.realpath(os.path.dirname(__file__))
 
+hash_of_foo = b'7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7'
+
 
 def zero_handler(v):
     logg.debug('zero handler arg 0x{}'.format(v.hex()))
@@ -89,6 +91,22 @@ class TestSocket(unittest.TestCase):
         client.close()
         srv.stop()
         th.join()
+
+
+    def test_socket_entry_getnotfound(self):
+        s = str(uuid.uuid4())
+        srv_path = os.path.join(self.workdir, s)
+        srv = UnixServer(self.db, self.ledger, path=srv_path)
+        th = threading.Thread(target=self.serve, args=(srv,))
+        th.start()
+        client = UnixClient(path=srv_path)
+
+        with self.assertRaises(FileNotFoundError):
+            client.get(hash_of_foo)
+        client.close()
+        srv.stop()
+        th.join()
+
 
 
     def test_socket_entry_putget(self):
