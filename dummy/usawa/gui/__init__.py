@@ -6,6 +6,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw,Gio
 from .main_window import UsawaMainWindow
+from usawa.config import load as load_config
 logg = logging.getLogger("gui.app")
 
 class Usawa(Adw.Application):
@@ -13,6 +14,7 @@ class Usawa(Adw.Application):
         super().__init__(flags= Gio.ApplicationFlags.HANDLES_COMMAND_LINE,*args, **kwargs)
         self.win = None
         self.ledger_file = None
+        self.cfg = None
         self.connect('activate', self.on_activate)
         signal.signal(signal.SIGINT, self._handle_sigint)
 
@@ -32,5 +34,8 @@ class Usawa(Adw.Application):
         if len(args) > 1:
            self.ledger_file = args[1]
 
+        self.cfg = load_config()
+        for k in self.cfg.all():
+            logg.debug("config {} => {}".format(k, self.cfg.get(k)))
         self.activate()
         return 0
