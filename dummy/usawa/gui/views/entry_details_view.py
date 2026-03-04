@@ -82,7 +82,7 @@ class EntryDetailsView(Gtk.Box):
         _add_field_to_grid(grid, "Serial number", str(self.entry.serial), 0, 0)
         _add_field_to_grid(grid, "Transaction reference(uuid)", self.entry.tx_ref, 0, 1)
         _add_field_to_grid(grid, "Transaction date", self.entry.tx_date, 1, 0)
-        _add_field_to_grid(grid, "Date registered", self.entry.tx_date_rg, 1, 1)
+        _add_field_to_grid(grid, "Date registered", self.entry.tx_date_rg.strftime("%Y-%m-%d %H:%M:%S") if self.entry.tx_date_rg else "", 1, 1)
 
         parent_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         parent_label = Gtk.Label(label="Parent Digest")
