@@ -22,7 +22,8 @@ class UsawaMainWindow(Gtk.ApplicationWindow):
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.set_child(main_box)
 
-        self.client = UnixClient(path="")
+        cfg = self.get_application().cfg
+        self.client = UnixClient(path=cfg.get("SERVER_SOCKET_FILE_PATH"))
         repository = LedgerRepository(ledger_path=ledger_path,unix_client=self.client)
 
         entry_service = EntryService(repository=repository,unixClient= self.client)
