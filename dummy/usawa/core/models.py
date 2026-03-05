@@ -20,10 +20,12 @@ class LedgerEntry:
     dest_type: str = ""
     dest_path: str = "general"
 
-    # Attachmentments
+    # Attachments
     attachments: List[str] = field(default_factory=list)
+
+    # Signers (public keys)
+    signer_pubkeys: List[str] = field(default_factory=list)
     
-    # Metadata (auto-generated)
     serial: Optional[int] = None
     tx_date: Optional[datetime] = None
     tx_reference: Optional[str] = None
