@@ -40,40 +40,56 @@ def sha256_verify(k, v=None):
 class LedgerRepository:
     """Repository that wraps LedgerStore and handles mapping"""
     
-    def __init__(self,ledger_path = None, unix_client: UnixClient = None):
+    def __init__(self,ledger_path = None, unix_client: UnixClient = None,fs_path: str="./assets"):
         """
-        :param ledger_path: path to ledger to import
-        :type ledger_store: usawa.LedgerStore
+        Initialize the LedgerRepository.
+
+        :param ledger_path: Path to the ledger definition file to import.
+        :type ledger_path: str | None
+
+        :param unix_client: Unix socket client used to communicate with the storage service.
+        :type unix_client: usawa.UnixClient
+
+        :param fs_path: Path to the directory where FSResolver stores assets.
+        :type fs_path: str
         """
-        # self.db = ValkeyStore('')
-        self.db = unix_client
-        self.client = unix_client
+        self.valkey_store = ValkeyStore('')
+        self.unix_client = unix_client
+        self._wallet = None
+        self._store = None
         self.ledger_path = ledger_path
-        self.resolver = FSResolver("./assets",verifier=sha256_verify)
-    
-    
-    def _init_store(self) -> tuple[LedgerStore, Ledger, DemoWallet]:
-        """Initialize a fresh LedgerStore, Ledger, and Wallet for each operation."""
+        self.resolver = FSResolver(fs_path,verifier=sha256_verify)
+
+
+
+    def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, DemoWallet]:
         ledger_tree = load(self.ledger_path)
         ledger = Ledger.from_tree(ledger_tree)
-        store = LedgerStore(self.db, ledger)
         
-        pk = store.get_key()
-        wallet = DemoWallet(privatekey=pk)
-        # store.add_key(wallet=wallet,acl=ledger.acl)
+        if write:
+            logg.debug("init store for write")
+            self.store = LedgerStore(self.valkey_store, ledger)
+            if self._wallet is None:
+                pk = self.store.get_key()
+                self._wallet = DemoWallet(privatekey=pk)
+        else:
+            logg.debug("init store for read")
+            self.store = LedgerStore(self.valkey_store, ledger)
+            if self._wallet is None:
+                pk = self.store.get_key()
+                self._wallet = DemoWallet(privatekey=pk)
 
-        logg.debug("wallet pk: %s pubk: %s", wallet.privkey().hex(), wallet.pubkey().hex())
-        ledger.set_wallet(wallet)
-        ledger.acl = ACL.from_wallet(wallet)
-        store.load(acl=ledger.acl)
-
-        return store, ledger, wallet
+        logg.debug("wallet pk: %s pubk: %s", self._wallet.privkey().hex(), self._wallet.pubkey().hex())
+        ledger.set_wallet(self._wallet)
+        ledger.acl = ACL.from_wallet(self._wallet)
+        self.store.load(acl=ledger.acl)
+        return self.store, ledger, self._wallet
+    
 
     def save(self, domain_entry: LedgerEntry) -> bool:
         """Save a domain entry to storage"""
         try:
-            store, ledger, wallet = self._init_store()
-            ledger.truncate()
+            store, ledger, wallet = self._init_store(write=True)
 
             entry = EntryMapper.to_entry(domain_entry, ledger=ledger)
             entry.sign(wallet)
@@ -92,7 +108,6 @@ class LedgerRepository:
             store.add_entry(entry, update_ledger=True)
             ledger.truncate()
             ledger.sign()
-            logg.debug("Parent digest after add_entry %s", ledger.parent.hex())
             return True
         except Exception:
             logg.exception("Failed to save entry")
