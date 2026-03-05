@@ -17,16 +17,15 @@ class UsawaMainWindow(Gtk.ApplicationWindow):
         
         self.set_title("Usawa")
         self.set_default_size(1000, 600)
-        
         # Main box
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.set_child(main_box)
 
         cfg = self.get_application().cfg
         self.client = UnixClient(path=cfg.get("SERVER_SOCKET_FILE_PATH"))
-        repository = LedgerRepository(ledger_path=ledger_path,unix_client=self.client)
+        repository = LedgerRepository(ledger_path=ledger_path,unix_client=self.client,fs_path=cfg.get("FS_RESOLVER_STORE_PATH"))
 
-        entry_service = EntryService(repository=repository,unixClient= self.client)
+        entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(entry_service=entry_service)
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
 
