@@ -22,4 +22,10 @@ def load():
         default_public_key = save_data_path("usawa")
         cfg.add(default_public_key, "SIGS_DEFAULT_PUBLIC_KEY")
 
+    if "FS_RESOLVER_STORE_PATH" in cfg.store:
+        fs_resolver_store_path = cfg.get("FS_RESOLVER_STORE_PATH")
+    else:
+        fs_resolver_store_path = save_data_path("usawa")
+        cfg.add(fs_resolver_store_path, "FS_RESOLVER_STORE_PATH")
+
     return cfg
