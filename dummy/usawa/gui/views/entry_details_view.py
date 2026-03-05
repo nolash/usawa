@@ -101,7 +101,48 @@ class EntryDetailsView(Gtk.Box):
         parent_box.append(parent_value)
 
         grid.attach(parent_box, 0, 2, 2, 1)
-        _add_field_to_grid(grid, "Unix Index", "1707665400", 3, 0)
+        signer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        signer_label = Gtk.Label(label="Signers")
+        signer_label.set_halign(Gtk.Align.START)
+        signer_label.add_css_class("dim-label")
+        signer_label.add_css_class("caption")
+        signer_box.append(signer_label)
+
+        signers = self.entry.signers_raw
+
+        if len(signers) == 1:
+            pubkey = signers[0]
+            short_key = f"{pubkey[:8]}...{pubkey[-6:]}"
+            
+            signer_value = Gtk.Label(label=short_key)
+            signer_value.set_halign(Gtk.Align.START)
+            signer_value.set_selectable(True)
+            signer_value.set_tooltip_text(pubkey)
+            signer_value.add_css_class("monospace")
+            
+            signer_box.append(signer_value)
+
+        elif len(signers) > 1:
+            expander = Gtk.Expander(label=f"{len(signers)} signers")
+
+            key_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+
+            for pubkey in signers:
+                short_key = f"{pubkey[:8]}...{pubkey[-6:]}"
+                key_label = Gtk.Label(label=short_key)
+                key_label.set_halign(Gtk.Align.START)
+                key_label.set_selectable(True)
+                key_label.set_tooltip_text(pubkey)
+                key_label.add_css_class("monospace")
+                key_list.append(key_label)
+
+            expander.set_child(key_list)
+            signer_box.append(expander)
+        else:
+              none_label = Gtk.Label(label="No signatures")
+              none_label.set_halign(Gtk.Align.START)
+              signer_box.append(none_label)
+        grid.attach(signer_box, 0, 3, 1, 1)
 
         auth_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         auth_label = Gtk.Label(label="Authentication State")
@@ -350,7 +391,12 @@ def _create_attachment_card(filename, metadata, on_click=None):
 def _open_attachment_viewer(parent_window, asset, fetch_fn):
     """Fetch bytes in a background thread then open the appropriate viewer."""
 
+
     def on_fetched(bytes_data):
+        if bytes_data is None:
+            _show_error_dialog(parent_window, "Failed to load attachment", "Could not retrieve asset data for {}.".format(asset.slug))
+            return
+
         mime = asset.mime or ""
         if mime.startswith("image/"):
             _show_image_viewer(parent_window, asset.slug, bytes_data)
@@ -415,3 +461,18 @@ def _show_unsupported_dialog(parent, filename, mime):
     dialog.set_detail(f"No viewer available for type: {mime}")
     dialog.show(parent)
 
+def _show_error_dialog(parent_window, title, message):
+    dialog = Gtk.Dialog(transient_for=parent_window, modal=True)
+    dialog.set_title(title)
+    content = dialog.get_content_area()
+    content.set_spacing(12)
+    content.set_margin_top(12)
+    content.set_margin_bottom(12)
+    content.set_margin_start(12)
+    content.set_margin_end(12)
+    label = Gtk.Label(label=message)
+    label.set_wrap(True)
+    content.append(label)
+    dialog.add_button("OK", Gtk.ResponseType.OK)
+    dialog.connect("response", lambda d, _: d.destroy())
+    dialog.present()
