@@ -109,7 +109,11 @@ class EntryMapper:
 
      
         transaction_ref = str(storage_entry.ref) if storage_entry.ref else None
-        external_ref = None      
+        external_ref = None   
+
+        signer_pubkeys = list(storage_entry.sigs.keys())
+
+
         domain = LedgerEntry(
             external_reference=external_ref,
             description=storage_entry.description,
@@ -125,8 +129,9 @@ class EntryMapper:
             tx_date=tx_date,
             tx_reference=storage_entry.ref,
             date_registered=date_registered,
+            signer_pubkeys=signer_pubkeys,
             parent_digest=parent_digest,
-            unit_index=storage_entry.uidx
+            unit_index=storage_entry.uidx 
         )
 
         return domain
