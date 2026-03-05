@@ -13,16 +13,18 @@ class EntryItem(GObject.Object):
     auth_state = GObject.Property(type=str, default="")
     amount = GObject.Property(type=str, default="")
     source_unit = GObject.Property(type=str, default="")
+    unit_index = GObject.Property(type=str, default="")
     source_type = GObject.Property(type=str, default="")
     source_path = GObject.Property(type=str, default="")
     dest_unit = GObject.Property(type=str, default="")
     dest_type = GObject.Property(type=str, default="")
     dest_path = GObject.Property(type=str, default="")
     attachments = GObject.Property(type=str, default="") 
+    signers = GObject.Property(type=str, default="")  
     
     def __init__(self, serial=0,parent_digest = "",tx_date="",tx_date_rg= "",tx_ref ="" ,description="", auth_state="unsigned",
-                 amount = "",source_unit="", source_type="", source_path="",
-                 dest_unit="", dest_type="", dest_path="",attachments = "",attachments_raw= None):
+                 amount = "",source_unit="", unit_index = "",source_type="", source_path="",
+                 dest_unit="", dest_type="", dest_path="",attachments = "",attachments_raw= None,signers="", signers_raw=None):
         super().__init__()
         self.serial = serial
         self.parent_digest = parent_digest
@@ -32,6 +34,7 @@ class EntryItem(GObject.Object):
         self.description = description
         self.auth_state = auth_state
         self.amount = amount
+        self.unit_index = unit_index
         self.source_unit = source_unit
         self.source_type = source_type
         self.source_path = source_path
@@ -40,6 +43,8 @@ class EntryItem(GObject.Object):
         self.dest_path = dest_path
         self.attachments = attachments
         self.attachments_raw = attachments_raw or []
+        self.signers = signers
+        self.signers_raw = signers_raw or []
 
 
 
