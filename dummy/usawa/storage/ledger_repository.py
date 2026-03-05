@@ -98,7 +98,12 @@ class LedgerRepository:
             for attachment in domain_entry.attachments:
                 info = self.get_file_info(attachment)
                 asset = Asset.from_file(attachment,slug=info["slug"], description= info["description"],mimetype= info["mimetype"])
-                store.add_asset(asset)
+                try:
+                    store.add_asset(asset)
+                except Exception as e:
+                    logg.exception("Failed to add asset for attachment %s: %s", attachment, e)
+                    return False
+
                 entry.attach(asset)
 
                 with open(attachment, "rb") as f:
@@ -127,10 +132,13 @@ class LedgerRepository:
             return []
         
 
-
     def get_asset_bytes(self, digest: str):
-        logg.debug(f"Getting asset for digest:{digest}")
-        return self.resolver.get(digest)
+        logg.debug(f"Getting asset for digest: {digest}")
+        try:
+            return self.resolver.get(digest)
+        except Exception as e:
+            logg.exception("Failed to get asset for digest %s: %s", digest, e)
+            return None
 
 
     def get_file_info(self,file_path: str) -> dict:
