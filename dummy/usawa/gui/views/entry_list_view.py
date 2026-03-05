@@ -584,6 +584,8 @@ class EntryListView(Gtk.Box):
         )
     
     def _make_entry_item(self, entry) -> EntryItem:
+        signers_raw = entry.signer_pubkeys
+        signers_display = ", ".join([f"{k[:8]}...{k[-6:]}" for k in signers_raw])
         return EntryItem(
                 serial=entry.serial,
                 parent_digest=entry.parent_digest,
@@ -596,6 +598,9 @@ class EntryListView(Gtk.Box):
                 source_path=entry.source_path,
                 source_type= entry.source_type,
                 source_unit=entry.source_unit,
+                unit_index=entry.unit_index,
+                signers=signers_display,
+                signers_raw=signers_raw,
                 dest_path=entry.dest_path,
                 dest_unit=entry.dest_unit,
                 dest_type=entry.dest_type,
