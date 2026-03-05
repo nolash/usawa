@@ -105,7 +105,6 @@ class EntryMapper:
         parent_digest =  parent_digest = storage_entry.parent.hex()
 
         tx_date = storage_entry.dt
-        logg.debug('storage entry #%s tx_date: %s type: %s', storage_entry.serial, tx_date, type(tx_date))
         date_registered = storage_entry.dtreg
 
      
