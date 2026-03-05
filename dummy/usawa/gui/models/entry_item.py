@@ -10,7 +10,7 @@ class EntryItem(GObject.Object):
     tx_ref = GObject.Property(type=str, default="")
     tx_date_ref = GObject.Property(type=str, default="")
     description = GObject.Property(type=str, default="")
-    auth_state = GObject.Property(type=str, default="unsigned")
+    auth_state = GObject.Property(type=str, default="")
     amount = GObject.Property(type=str, default="")
     source_unit = GObject.Property(type=str, default="")
     source_type = GObject.Property(type=str, default="")
