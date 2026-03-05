@@ -12,10 +12,9 @@ logg = logging.getLogger("core.entry_service")
 class EntryService:
     """Business logic for ledger entries"""
     
-    def __init__(self, repository: LedgerRepository,unixClient: UnixClient):
+    def __init__(self, repository: LedgerRepository):
         self.repository = repository
-        self.unix_client = unixClient
-    
+       
     def save_entry(self, entry: LedgerEntry) -> bool:
         """
         Save entry with business logic
