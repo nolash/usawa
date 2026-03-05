@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from gi.repository import Gtk, Gio,Pango
 
@@ -205,70 +206,83 @@ class EntryListView(Gtk.Box):
         self.refresh_data()
 
     def on_calendar_clicked(self, button):
-        """Show calendar popup for date range selection"""
         logg.info("Calendar button clicked - showing date range picker")
-        
-        dialog = Gtk.Dialog(transient_for=self, modal=True)
+        self._start_date = None
+        self._end_date = None
+
+        dialog = Gtk.Dialog(transient_for=self.get_root(), modal=True)
         dialog.set_title("Select Date Range")
         dialog.set_default_size(400, 450)
-        
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Apply", Gtk.ResponseType.OK)
+
         content = dialog.get_content_area()
         content.set_spacing(16)
         content.set_margin_top(12)
         content.set_margin_bottom(12)
         content.set_margin_start(12)
         content.set_margin_end(12)
-        
 
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         content.append(main_box)
-        
-        instruction = Gtk.Label(label="Click to select start date, then click again for end date")
+
+        instruction = Gtk.Label(label="Click once for start date, click again for end date")
         instruction.add_css_class("dim-label")
         instruction.set_wrap(True)
         instruction.set_halign(Gtk.Align.START)
         main_box.append(instruction)
-        
-        calendar_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        calendar_card.add_css_class("card")
-        calendar_card.set_margin_top(8)
-        calendar_card.set_margin_bottom(8)
-        
-        calendar = Gtk.Calendar()
-        calendar.set_margin_start(12)
-        calendar.set_margin_end(12)
-        calendar.set_margin_top(8)
-        calendar.set_margin_bottom(8)
-        calendar_card.append(calendar)
-        
-        main_box.append(calendar_card)
-        
+
+        self._calendar = Gtk.Calendar()
+        self._calendar.set_margin_start(12)
+        self._calendar.set_margin_end(12)
+        self._calendar.set_margin_top(8)
+        self._calendar.set_margin_bottom(8)
+        main_box.append(self._calendar)
+
         selection_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         selection_box.set_halign(Gtk.Align.CENTER)
-        selection_box.add_css_class("card")
-        selection_box.set_margin_top(8)
-        selection_box.set_margin_bottom(8)
-        selection_box.set_margin_start(12)
-        selection_box.set_margin_end(12)
-        
-        start_label = Gtk.Label()
-        start_label.set_markup("<b>Start:</b> --")
-        selection_box.append(start_label)
-        
-        arrow_label = Gtk.Label(label="→")
-        selection_box.append(arrow_label)
-        
-        end_label = Gtk.Label()
-        end_label.set_markup("<b>End:</b> --")
-        selection_box.append(end_label)
-        
         main_box.append(selection_box)
-        dialog.present()
-    
-  
-    
 
-        
+        self._start_label = Gtk.Label()
+        self._start_label.set_markup("<b>Start:</b> --")
+        selection_box.append(self._start_label)
+        selection_box.append(Gtk.Label(label="→"))
+        self._end_label = Gtk.Label()
+        self._end_label.set_markup("<b>End:</b> --")
+        selection_box.append(self._end_label)
+
+        self._calendar.connect("day-selected", self._on_calendar_day_selected)
+        dialog.connect("response", self._on_calendar_response)
+        dialog.present()
+
+    def _on_calendar_day_selected(self, cal):
+        date = cal.get_date()
+        date_str = "{}-{:02d}-{:02d}".format(date.get_year(), date.get_month(), date.get_day_of_month())
+        if self._start_date is None or self._end_date is not None:
+            self._start_date = date_str
+            self._end_date = None
+            self._start_label.set_markup("<b>Start:</b> {}".format(date_str))
+            self._end_label.set_markup("<b>End:</b> --")
+            self._calendar.mark_day(date.get_day_of_month())
+        else:
+            self._end_date = date_str
+            self._end_label.set_markup("<b>End:</b> {}".format(date_str))
+            self._calendar.mark_day(date.get_day_of_month())
+
+    def _on_calendar_response(self, dialog, response):
+        if response == Gtk.ResponseType.OK and self._start_date and self._end_date:
+            logg.info("Date range selected: {} to {}".format(self._start_date, self._end_date))
+            start = datetime.strptime(self._start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(self._end_date, "%Y-%m-%d").date()
+            filtered = [
+                e for e in self.entries
+                if e.tx_date and start <= e.tx_date.date() <= end
+            ]
+            self._reload_store(filtered)
+        self._calendar.unmark_day(self._calendar.get_date().get_day_of_month())
+        dialog.destroy()
+
+    
     def on_sort_changed(self, button, sort_type):
         """Handle sort option changes"""
         if button.get_active():
@@ -308,6 +322,7 @@ class EntryListView(Gtk.Box):
         elif self.active_filter == "date":
             date_start = self.date_start_entry.get_text().strip()
             date_end = self.date_end_entry.get_text().strip()
+            logg.info("Date range selected: {} to {}".format(date_start, date_end))
             if date_start:
                 filtered = [e for e in filtered if str(e.tx_date)[5:10] >= date_start]
             if date_end:
