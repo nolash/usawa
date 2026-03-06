@@ -461,18 +461,15 @@ def _show_unsupported_dialog(parent, filename, mime):
     dialog.set_detail(f"No viewer available for type: {mime}")
     dialog.show(parent)
 
-def _show_error_dialog(parent_window, title, message):
-    dialog = Gtk.Dialog(transient_for=parent_window, modal=True)
-    dialog.set_title(title)
-    content = dialog.get_content_area()
-    content.set_spacing(12)
-    content.set_margin_top(12)
-    content.set_margin_bottom(12)
-    content.set_margin_start(12)
-    content.set_margin_end(12)
-    label = Gtk.Label(label=message)
-    label.set_wrap(True)
-    content.append(label)
-    dialog.add_button("OK", Gtk.ResponseType.OK)
-    dialog.connect("response", lambda d, _: d.destroy())
+
+def _show_error_dialog(self, title, message):
+    dialog = Adw.MessageDialog(
+        transient_for=self.get_root(),
+        heading=title,
+        body=message
+    )
+    dialog.add_response("ok", "OK")
+    dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
+    dialog.connect("response", lambda d, response: d.close())
+    
     dialog.present()

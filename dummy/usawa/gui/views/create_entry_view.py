@@ -518,11 +518,13 @@ class CreateEntryView(Gtk.Box):
     
 
     def _show_error_dialog(self, title, message):
-        """Show error dialog"""
         dialog = Adw.MessageDialog(
             transient_for=self.get_root(),
             heading=title,
             body=message
         )
         dialog.add_response("ok", "OK")
+        dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.connect("response", lambda d, response: d.close())
+        
         dialog.present()
