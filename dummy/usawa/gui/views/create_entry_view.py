@@ -500,7 +500,6 @@ class CreateEntryView(Gtk.Box):
         
         if entry.attachments:
             for attachment_path in entry.attachments:
-                from pathlib import Path
                 if not Path(attachment_path).exists():
                     self._show_error_dialog(
                         "Attachment Missing",
