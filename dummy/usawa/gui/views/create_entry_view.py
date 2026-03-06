@@ -283,11 +283,10 @@ class CreateEntryView(Gtk.Box):
         
         units = Gtk.StringList()
         units.append("Bitcoin(BTC)")
-        units.append("USD")
-        units.append("EUR")
+       
         
         unit_dropdown = Gtk.DropDown(model=units)
-        unit_dropdown.set_selected(0 if is_source else 1)  
+        unit_dropdown.set_selected(0)  
         fields.append(unit_dropdown)
         
         type_label = Gtk.Label(label="Account type")
@@ -310,7 +309,7 @@ class CreateEntryView(Gtk.Box):
         type_dropdown = Gtk.DropDown(model=types)
         fields.append(type_dropdown)
         
-        # Account Path entry
+        
         path_label = Gtk.Label(label="Account path")
         path_label.set_halign(Gtk.Align.START)
         path_label.add_css_class("caption")
@@ -322,7 +321,7 @@ class CreateEntryView(Gtk.Box):
         
         card.append(fields)
         
-        # Store references
+        
         if is_source:
             self.source_unit_dropdown = unit_dropdown
             self.source_type_dropdown = type_dropdown
