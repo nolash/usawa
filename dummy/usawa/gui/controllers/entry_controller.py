@@ -39,19 +39,15 @@ class EntryController:
             logg.error(f"Failed to collect entry data: {e}")
             return None
     
-    def finalize_entry(self, entry: LedgerEntry) -> bool:
-        """Save the entry to the ledger"""
-        try:
-            logg.debug("Entry: %s", entry)
-            success = self.entry_service.save_entry(entry)
-            if success:
-                logg.info(f"Entry saved successfully")
-            else:
-                logg.error("Failed to save entry")
-            return True
-        except Exception as e:
-            logg.error(f"Failed to save entry: {e}")
-            return False
+        
+    def finalize_entry(self, entry: LedgerEntry) -> tuple[bool, str]:
+        logg.debug("Finalizing entry: %s", entry)
+        success, error_msg = self.entry_service.save_entry(entry)
+        
+        if success:
+            return True, ""
+        else:
+            return False, error_msg
         
     def get_all_entries(self):
         return self.entry_service.get_all_entries()

@@ -440,7 +440,7 @@ class CreateEntryView(Gtk.Box):
 
     def _get_icon_for_file(self, filename: str, metadata: str):
         """Get appropriate icon for file type"""
-        icon_name = "text-x-generic-symbolic"  # Default
+        icon_name = "text-x-generic-symbolic"  
         
         if "pdf" in metadata.lower():
             icon_name = "application-pdf-symbolic"
@@ -486,23 +486,38 @@ class CreateEntryView(Gtk.Box):
         return f"{size_bytes:.1f} TB"
 
     def _on_finalize(self, button):
-        """Handle finalize button - delegates to controller"""
         entry = self.controller.collect_entry_data(self)
-        if self.attachment_paths:
-           entry.attachments.extend(self.attachment_paths)
         
         if entry is None:
-            self._show_error_dialog("Invalid Input", "Please check your entries and try again.")
+            self._show_error_dialog(
+                "Invalid Input",
+                "Please check your entries and try again."
+            )
             return
         
-        success = self.controller.finalize_entry(entry)
+        if self.attachment_paths:
+            entry.add_attachment(self.attachment_paths) 
+        
+        if entry.attachments:
+            for attachment_path in entry.attachments:
+                from pathlib import Path
+                if not Path(attachment_path).exists():
+                    self._show_error_dialog(
+                        "Attachment Missing",
+                        f"Attachment file not found: {Path(attachment_path).name}"
+                    )
+                    return
+        
+        success, error_msg = self.controller.finalize_entry(entry)
+        
         if success:
             self.controller.notify_entry_created()
-            self.nav_view.pop() 
+            logg.info("Entry saved successfully, returning to list")
+            self.nav_view.pop()
         else:
-            self._show_error_dialog("Save Failed", 
-                                   "Could not save the entry. Please try again.")
+            self._show_error_dialog("Save Failed", error_msg)
     
+
     def _show_error_dialog(self, title, message):
         """Show error dialog"""
         dialog = Adw.MessageDialog(

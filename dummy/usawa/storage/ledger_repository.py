@@ -86,37 +86,65 @@ class LedgerRepository:
         return self.store, ledger, self._wallet
     
 
-    def save(self, domain_entry: LedgerEntry) -> bool:
-        """Save a domain entry to storage"""
+    def save(self, domain_entry: LedgerEntry) -> None:
+        """
+        Save a domain entry to storage
+        
+        :param domain_entry: Entry to save
+        :type domain_entry: LedgerEntry
+        :raises ValueError: If validation fails
+        :raises FileExistsError: If attachment already exists in the store
+        :raises IOError: If file operations fail
+        :raises Exception: For other storage errors
+        """
         try:
             store, ledger, wallet = self._init_store(write=True)
-
+            
             entry = EntryMapper.to_entry(domain_entry, ledger=ledger)
             entry.sign(wallet)
-            logg.debug(f"Mapped entry - Serial: {entry.serial}, Parent: {entry.parent.hex()}, Attachments: {entry.attachment}")
-
+    
+            logg.debug("Mapped entry - Serial: %s, Parent: %s, Attachments: %s",entry.serial,entry.parent.hex(),entry.attachment)
+            
             for attachment in domain_entry.attachments:
-                info = self.get_file_info(attachment)
-                asset = Asset.from_file(attachment,slug=info["slug"], description= info["description"],mimetype= info["mimetype"])
                 try:
+                    info = self.get_file_info(attachment)
+                    asset = Asset.from_file(
+                        attachment,
+                        slug=info["slug"],
+                        description=info["description"],
+                        mimetype=info["mimetype"]
+                    )
                     store.add_asset(asset)
-                except Exception as e:
-                    logg.exception("Failed to add asset for attachment %s: %s", attachment, e)
-                    return False
-
-                entry.attach(asset)
-
-                with open(attachment, "rb") as f:
-                    data = f.read()
-                self.resolver.put(asset.get_digest(binary=True), data)
-
+                    entry.attach(asset)
+                    
+                
+                    with open(attachment, "rb") as f:
+                        data = f.read()
+                    self.resolver.put(asset.get_digest(binary=True), data)
+                    
+                except FileNotFoundError as e:
+                    raise IOError(f"Attachment file not found: {attachment}") from e
+                except PermissionError as e:
+                    raise IOError(f"Cannot read attachment file: {attachment}") from e
+            
             store.add_entry(entry, update_ledger=True)
+            
             ledger.truncate()
             ledger.sign()
-            return True
-        except Exception:
-            logg.exception("Failed to save entry")
-            return False
+            logg.info(f"Successfully saved entry #{entry.serial}")
+            
+        except FileExistsError as e:
+            logg.debug(f"Entry fileinfo already exists: {e}")
+            raise  
+        except ValueError as e:
+            logg.debug(f"Validation error: {e}")
+            raise 
+        except IOError as e:
+            logg.debug(f"File operation failed: {e}")
+            raise 
+        except Exception as e:
+            logg.debug(f"Failed to save entry: {e}", exc_info=True)
+            raise  
 
     def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""
