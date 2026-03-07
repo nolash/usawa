@@ -4,7 +4,6 @@ import uuid
 
 from .models import LedgerEntry
 from usawa.storage.ledger_repository import LedgerRepository
-import lxml.etree as ET
 
 logg = logging.getLogger("core.entry_service")
 
