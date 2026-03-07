@@ -112,6 +112,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             entry_controller=self.entry_controller,
             entries=entries,
             refresh_callback=self.refresh_entries,
+            toast_overlay=self.toast_overlay,
         )
         self.entry_list_view._load_entries()
         page.set_child(self.entry_list_view)
