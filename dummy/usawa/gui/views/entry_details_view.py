@@ -72,9 +72,9 @@ class EntryDetailsView(Gtk.Box):
         header_box.append(spacer)
 
         export_btn = Gtk.Button()
-        export_btn.set_icon_name("document-save-symbolic")
-        export_btn.set_tooltip_text("Export this entry")
-        export_btn.add_css_class("flat")
+        export_btn.set_label("Export")
+        export_btn.set_tooltip_text("Export this entry to XML")
+        export_btn.add_css_class("suggested-action")
         export_btn.connect("clicked", self._on_export_clicked)
         header_box.append(export_btn)
 
