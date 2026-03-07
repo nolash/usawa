@@ -1,21 +1,22 @@
 import logging
 import threading
-from gi.repository import Gtk, Adw,Pango,Gdk,GdkPixbuf,GLib
+from gi.repository import Gtk, Adw, Pango, Gdk, GdkPixbuf, GLib, Gio
 import threading
 import tempfile
 import subprocess
 import logging
+from datetime import datetime
+
 
 logg = logging.getLogger("gui.entry_details_view")
 
 
-def create_entry_details_page(entry, nav_view,fetch_fn):
+def create_entry_details_page(
+    entry, nav_view, entry_controller, toast_overlay, fetch_fn
+):
     """Create an entry details page for the navigation stack"""
-    page = Adw.NavigationPage(
-        title="Entry Details",
-        tag=f"entry-{entry.serial}"
-    )
-    view = EntryDetailsView(entry, nav_view,fetch_fn)
+    page = Adw.NavigationPage(title="Entry Details", tag=f"entry-{entry.serial}")
+    view = EntryDetailsView(entry, nav_view, entry_controller, toast_overlay, fetch_fn)
     page.set_child(view)
     return page
 
@@ -23,11 +24,13 @@ def create_entry_details_page(entry, nav_view,fetch_fn):
 class EntryDetailsView(Gtk.Box):
     """Entry details view"""
 
-    def __init__(self, entry, nav_view,fetch_fn):
+    def __init__(self, entry, nav_view, entry_controller, toast_overlay, fetch_fn):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.entry = entry
         self.nav_view = nav_view
-        self.fetch_fn = fetch_fn 
+        self.entry_controller = entry_controller
+        self.toast_overlay = toast_overlay
+        self.fetch_fn = fetch_fn
         self._build_ui()
 
     def _build_ui(self):
@@ -64,6 +67,17 @@ class EntryDetailsView(Gtk.Box):
         back_btn.connect("clicked", lambda b: self.nav_view.pop())
         header_box.append(back_btn)
 
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        header_box.append(spacer)
+
+        export_btn = Gtk.Button()
+        export_btn.set_icon_name("document-save-symbolic")
+        export_btn.set_tooltip_text("Export this entry")
+        export_btn.add_css_class("flat")
+        export_btn.connect("clicked", self._on_export_clicked)
+        header_box.append(export_btn)
+
         return header_box
 
     def _create_entry_details_section(self):
@@ -82,7 +96,17 @@ class EntryDetailsView(Gtk.Box):
         _add_field_to_grid(grid, "Serial number", str(self.entry.serial), 0, 0)
         _add_field_to_grid(grid, "Transaction reference(uuid)", self.entry.tx_ref, 0, 1)
         _add_field_to_grid(grid, "Transaction date", self.entry.tx_date, 1, 0)
-        _add_field_to_grid(grid, "Date registered", self.entry.tx_date_rg.strftime("%Y-%m-%d %H:%M:%S") if self.entry.tx_date_rg else "", 1, 1)
+        _add_field_to_grid(
+            grid,
+            "Date registered",
+            (
+                self.entry.tx_date_rg.strftime("%Y-%m-%d %H:%M:%S")
+                if self.entry.tx_date_rg
+                else ""
+            ),
+            1,
+            1,
+        )
 
         parent_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         parent_label = Gtk.Label(label="Parent Digest")
@@ -113,13 +137,13 @@ class EntryDetailsView(Gtk.Box):
         if len(signers) == 1:
             pubkey = signers[0]
             short_key = f"{pubkey[:8]}...{pubkey[-6:]}"
-            
+
             signer_value = Gtk.Label(label=short_key)
             signer_value.set_halign(Gtk.Align.START)
             signer_value.set_selectable(True)
             signer_value.set_tooltip_text(pubkey)
             signer_value.add_css_class("monospace")
-            
+
             signer_box.append(signer_value)
 
         elif len(signers) > 1:
@@ -139,9 +163,9 @@ class EntryDetailsView(Gtk.Box):
             expander.set_child(key_list)
             signer_box.append(expander)
         else:
-              none_label = Gtk.Label(label="No signatures")
-              none_label.set_halign(Gtk.Align.START)
-              signer_box.append(none_label)
+            none_label = Gtk.Label(label="No signatures")
+            none_label.set_halign(Gtk.Align.START)
+            signer_box.append(none_label)
         grid.attach(signer_box, 0, 3, 1, 1)
 
         auth_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -198,20 +222,24 @@ class EntryDetailsView(Gtk.Box):
 
         logg.debug("Created EntryItem in TX Section: %s", self.entry)
 
-        ledger_box.append(_create_ledger_card(
-            "Source",
-            self.entry.source_unit,
-            self.entry.source_type,
-            self.entry.source_path,
-            is_source=True
-        ))
-        ledger_box.append(_create_ledger_card(
-            "Destination",
-            self.entry.dest_unit,
-            self.entry.dest_type,
-            self.entry.dest_path,
-            is_source=False
-        ))
+        ledger_box.append(
+            _create_ledger_card(
+                "Source",
+                self.entry.source_unit,
+                self.entry.source_type,
+                self.entry.source_path,
+                is_source=True,
+            )
+        )
+        ledger_box.append(
+            _create_ledger_card(
+                "Destination",
+                self.entry.dest_unit,
+                self.entry.dest_type,
+                self.entry.dest_path,
+                is_source=False,
+            )
+        )
 
         section_box.append(ledger_box)
         return section_box
@@ -232,15 +260,69 @@ class EntryDetailsView(Gtk.Box):
                     asset.slug or "Unnamed",
                     asset.mime or "unknown",
                     on_click=lambda f, a=asset: _open_attachment_viewer(
-                        self.get_root(),
-                        a,
-                        fetch_fn=self.fetch_fn
-                    )
+                        self.get_root(), a, fetch_fn=self.fetch_fn
+                    ),
                 )
                 attachments_box.append(attach_card)
 
         section_box.append(attachments_box)
         return section_box
+
+    def _on_export_clicked(self, button):
+        """Handle export button click"""
+        logg.info(f"Export entry #{self.entry.serial} clicked")
+
+        file_dialog = Gtk.FileDialog()
+        file_dialog.set_title(f"Export Entry #{self.entry.serial}")
+
+        default_name = f"entry_{self.entry.serial:05d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
+        file_dialog.set_initial_name(default_name)
+
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+
+        xml_filter = Gtk.FileFilter()
+        xml_filter.set_name("XML Files")
+        xml_filter.add_pattern("*.xml")
+        filters.append(xml_filter)
+
+        all_filter = Gtk.FileFilter()
+        all_filter.set_name("All Files")
+        all_filter.add_pattern("*")
+        filters.append(all_filter)
+
+        file_dialog.set_filters(filters)
+        file_dialog.set_default_filter(xml_filter)
+
+        file_dialog.save(parent=self.get_root(), callback=self._on_export_file_selected)
+
+    def _on_export_file_selected(self, dialog, result):
+        """Handle file selection for entry export"""
+        try:
+            file = dialog.save_finish(result)
+
+            if file:
+                file_path = file.get_path()
+                logg.info(f"Exporting entry #{self.entry.serial} to: {file_path}")
+
+                success, error_msg = self.entry_controller.export_entry(
+                    self.entry.serial, file_path
+                )
+
+                if success:
+                    self._show_success_toast(
+                        f"Entry #{self.entry.serial} exported to {file_path}"
+                    )
+                else:
+                    self._show_error_dialog("Export Failed", error_msg)
+
+        except Exception as e:
+            logg.debug(f"Export cancelled or failed: {e}")
+
+    def _show_success_toast(self, message):
+        """Show success toast notification"""
+        toast = Adw.Toast.new(message)
+        toast.set_timeout(3)
+        self.toast_overlay.add_toast(toast)
 
 
 def _add_field_to_grid(grid, label_text, value_text, row, col):
@@ -388,28 +470,43 @@ def _create_attachment_card(filename, metadata, on_click=None):
 
     return card
 
+
+def _on_attachment_fetched(parent_window, asset, bytes_data):
+    """Handle fetched attachment data and open appropriate viewer"""
+    if bytes_data is None:
+        _show_error_dialog(
+            parent_window,
+            "Failed to load attachment",
+            "Could not retrieve asset data for {}.".format(asset.slug),
+        )
+        return
+
+    mime = asset.mime or ""
+    if mime.startswith("image/"):
+        _show_image_viewer(parent_window, asset.slug, bytes_data)
+    elif mime == "application/pdf":
+        _show_pdf_viewer(parent_window, asset.slug, bytes_data)
+    elif mime.startswith("text/") or mime in (
+        "application/json",
+        "application/xml",
+    ):
+        _show_text_viewer(parent_window, asset.slug, bytes_data)
+    else:
+        _show_unsupported_dialog(parent_window, asset.slug, mime)
+
+
+def _fetch_attachment_data(parent_window, asset, fetch_fn):
+    """Fetch data and schedule callback on main thread"""
+    bytes_data = fetch_fn(asset.digest)
+    GLib.idle_add(_on_attachment_fetched, parent_window, asset, bytes_data)
+
+
 def _open_attachment_viewer(parent_window, asset, fetch_fn):
     """Fetch bytes in a background thread then open the appropriate viewer."""
-
-
-    def on_fetched(bytes_data):
-        if bytes_data is None:
-            _show_error_dialog(parent_window, "Failed to load attachment", "Could not retrieve asset data for {}.".format(asset.slug))
-            return
-
-        mime = asset.mime or ""
-        if mime.startswith("image/"):
-            _show_image_viewer(parent_window, asset.slug, bytes_data)
-        elif mime == "application/pdf":
-            _show_pdf_viewer(parent_window, asset.slug, bytes_data)
-        elif mime.startswith("text/") or mime in ("application/json", "application/xml"):
-            _show_text_viewer(parent_window, asset.slug, bytes_data)
-        else:
-            _show_unsupported_dialog(parent_window, asset.slug, mime)
-
     threading.Thread(
-        target=lambda: GLib.idle_add(on_fetched, fetch_fn(asset.digest)),
-        daemon=True
+        target=_fetch_attachment_data,
+        args=(parent_window, asset, fetch_fn),
+        daemon=True,
     ).start()
 
 
@@ -464,12 +561,10 @@ def _show_unsupported_dialog(parent, filename, mime):
 
 def _show_error_dialog(self, title, message):
     dialog = Adw.MessageDialog(
-        transient_for=self.get_root(),
-        heading=title,
-        body=message
+        transient_for=self.get_root(), heading=title, body=message
     )
     dialog.add_response("ok", "OK")
     dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
     dialog.connect("response", lambda d, response: d.close())
-    
+
     dialog.present()
