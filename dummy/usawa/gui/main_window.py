@@ -7,6 +7,7 @@ from gi.repository import Adw, Gtk, Gio
 from usawa.gui.controllers.entry_controller import EntryController
 from usawa.gui.views.entry_list_view import EntryListView
 from datetime import datetime
+from whee.valkey import ValkeyStore
 
 logg = logging.getLogger("gui.mainwindow")
 
@@ -34,10 +35,15 @@ class UsawaMainWindow(Adw.ApplicationWindow):
 
         cfg = self.get_application().cfg
         self.client = UnixClient(path=cfg.get("SERVER_SOCKET_FILE_PATH"))
+        self.valkey_store = ValkeyStore(
+            "", host=cfg.get("VALKEY_HOST"), port=cfg.get("VALKEY_PORT")
+        )
+
         repository = LedgerRepository(
             ledger_path=ledger_path,
             unix_client=self.client,
-            fs_path=cfg.get("FS_RESOLVER_STORE_PATH"),
+            valkey_store=self.valkey_store,
+            cfg=cfg,
         )
         entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(entry_service=entry_service)
