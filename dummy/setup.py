@@ -14,7 +14,6 @@ setup(
             "confini~=0.6.5",
             "lxml~=6.0.2",
             "PyNaCl~=1.6.0",
-            "python-gnupg~=0.4.9",
             "rencode~=1.0.8",
             "hexathon~=0.1.7",
             "varints@file://" + varints_dir,

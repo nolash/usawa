@@ -100,6 +100,7 @@ class BaseResolver:
     def put_entry(self, entry, lookup=None):
         k = None
         (k, v) = entry.sum()
+        logg.debug('putting entry {}'.format(v.decode('utf-8')))
         self.put(k, v)
         if lookup != None:
             (k, v) = entry.get_lookup(lookup)

@@ -245,6 +245,7 @@ class Ledger:
         self.wallet = None
         self.lookup = None
         self.lookup_algo = 'sha512'
+        self.entry_cb = []
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -296,6 +297,17 @@ class Ledger:
         except KeyError:
             pass
         self.sigs[pubkey] = b''
+
+
+    """Add callback to be invoked for each entry added to the ledger.
+
+    Callback will be passed entry as the sole argument.
+
+    :param fn: Callback function
+    :type fn: function
+    """
+    def register_callback(self, fn):
+        self.entry_cb.append(fn)
 
 
     """Retrieve the serial that will be assigned to the next entry, without incrementing it in the object state.
@@ -475,7 +487,7 @@ class Ledger:
         #oldsum = self.cur
         #self.cur = entry.sum()[0]
         (k, v) = entry.get_lookup(self.lookup_algo)
-        logg.debug('addentr entry {} {}'.format(k, v))
+        logg.debug('addentr entry for algo {}: {} {}'.format(self.lookup_algo, k, v))
         #entry.parent = oldsum
         entry.parent = self.cur
         self.cur = bytes.fromhex(k)
@@ -484,6 +496,9 @@ class Ledger:
 
         # Add entry to the ledger object.
         self.entries[entry.serial] = entry
+
+        for fn in self.entry_cb:
+            fn(entry)
 
     
     """Update running total according to the entry.
