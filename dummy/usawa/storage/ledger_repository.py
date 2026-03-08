@@ -49,7 +49,8 @@ class LedgerRepository:
         self,
         ledger_path=None,
         unix_client: UnixClient = None,
-        fs_path: str = "./assets",
+        valkey_store: ValkeyStore = None,
+        cfg=None,
     ):
         """
         Initialize the LedgerRepository.
@@ -60,32 +61,56 @@ class LedgerRepository:
         :param unix_client: Unix socket client used to communicate with the storage service.
         :type unix_client: usawa.UnixClient
 
-        :param fs_path: Path to the directory where FSResolver stores assets.
-        :type fs_path: str
         """
-        self.valkey_store = ValkeyStore("")
+        self.valkey_store = valkey_store
         self.unix_client = unix_client
         self._wallet = None
         self._store = None
         self.ledger_path = ledger_path
-        self.resolver = FSResolver(fs_path, verifier=sha256_verify)
+        self.cfg = cfg
+        self.resolver = FSResolver(
+            self.cfg.get("FS_RESOLVER_STORE_PATH"), verifier=sha256_verify
+        )
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, DemoWallet]:
         ledger_tree = load(self.ledger_path)
         ledger = Ledger.from_tree(ledger_tree)
 
         if write:
-            logg.debug("init store for write")
+            logg.info("init store for write")
             self.store = LedgerStore(self.valkey_store, ledger)
             if self._wallet is None:
                 pk = self.store.get_key()
+                if pk is None:
+                    raise ValueError("No private key found in store")
                 self._wallet = DemoWallet(privatekey=pk)
         else:
-            logg.debug("init store for read")
+            logg.info("init store for read")
             self.store = LedgerStore(self.valkey_store, ledger)
             if self._wallet is None:
-                pk = self.store.get_key()
-                self._wallet = DemoWallet(privatekey=pk)
+                try:
+                    pk = self.store.get_key()
+                    self._wallet = DemoWallet(privatekey=pk)
+                    logg.info(
+                        f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}..."
+                    )
+
+                except FileNotFoundError:
+                    logg.warning("No private key found in store, generating new wallet")
+                    privkey = bytes.fromhex(self.cfg.get("SIGS_DEFAULT_PRIVATE_KEY"))
+                    self._wallet = DemoWallet(privatekey=privkey)
+
+                    # Add key to store
+                    try:
+                        self.store.add_key(wallet=self._wallet)
+                        logg.info("Stored new private key successfully")
+                    except Exception as e:
+                        logg.warning(f"Could not store new key: {e}")
+
+                except Exception as e:
+                    raise ValueError(
+                        f"Could not retrieve or create private key: {e}"
+                    ) from e
 
         logg.debug(
             "wallet pk: %s pubk: %s",
