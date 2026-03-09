@@ -1,3 +1,4 @@
+import enum
 import os
 import datetime
 
@@ -18,6 +19,10 @@ from .error import VerifyError
 
 logg = logging.getLogger('usawa.ledger')
 
+
+class CallbackType(enum.Enum):
+    PRE = 'PRE'
+    POST = 'POST'
 
 
 class RunningTotal:
@@ -245,7 +250,8 @@ class Ledger:
         self.wallet = None
         self.lookup = None
         self.lookup_algo = 'sha512'
-        self.entry_cb = []
+        self.pre_cb = []
+        self.post_cb = []
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -306,8 +312,13 @@ class Ledger:
     :param fn: Callback function
     :type fn: function
     """
-    def register_callback(self, fn):
-        self.entry_cb.append(fn)
+    def register_callback(self, fn, typ=CallbackType.POST):
+        if typ == CallbackType.PRE:
+            self.pre_cb.append(fn)
+        elif typ == CallbackType.POST:
+            self.post_cb.append(fn)
+        else:
+            raise ValueError('invalid callback type')
 
 
     """Retrieve the serial that will be assigned to the next entry, without incrementing it in the object state.
@@ -481,7 +492,11 @@ class Ledger:
         if check_parent and self.cur != entry.parent:
             raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
         self.check_sigs(entry)
-       
+
+        for fn in self.pre_cb:
+            if not fn(entry):
+                raise VerifyError('entry pre callback not passed')
+
         # update the internal state
         self.serial = entry.serial
         #oldsum = self.cur
@@ -497,10 +512,11 @@ class Ledger:
         # Add entry to the ledger object.
         self.entries[entry.serial] = entry
 
-        for fn in self.entry_cb:
-            fn(entry)
+        for fn in self.post_cb:
+            if not fn(entry):
+                raise VerifyError('entry post callback not passed')
 
-    
+
     """Update running total according to the entry.
 
     Object does not keep track of which entries have been applied to the running total. Caller must take care not to call this more than once for each entry.

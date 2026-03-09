@@ -8,12 +8,22 @@ import lxml.etree
 from whee.mem import MemStore
 
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, ACL, schema_path
+from usawa.ledger import CallbackType
 from usawa.store import LedgerStore
+from usawa.error import VerifyError
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 testdir = os.path.realpath(os.path.dirname(__file__))
+
+
+def cb_no(self):
+    return False
+
+
+def cb_yes(self):
+    return True
 
 
 class TestLedger(unittest.TestCase):
@@ -148,7 +158,37 @@ class TestLedger(unittest.TestCase):
 
         ledger.truncate()
         self.assertEqual(ledger.serial, 2)
- 
+
+
+    def test_ledger_callback(self):
+        s = 'FOO'
+        uidx = UnitIndex(s)
+        uidx.add('USD')
+        ledger = Ledger(uidx)
+        ledger.register_callback(cb_yes)
+        ledger.register_callback(cb_yes, CallbackType.PRE)
+        store = LedgerStore(self.store, ledger=ledger)
+        store.start()
+    
+        wallet = DemoWallet()
+        ledger.set_wallet(wallet)
+        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
+        y = EntryPart(s, 'asset', 'foo', 1337)
+        v = Entry(ledger.peek(), datetime.datetime.now(), parent=ledger.current())
+        v.add_part(x, debit=True)
+        v.add_part(y)
+        v.sign(wallet)
+        ledger.add_entry(v)
+
+        ledger.register_callback(cb_no, CallbackType.POST)
+        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
+        y = EntryPart(s, 'asset', 'foo', 1337)
+        v = Entry(ledger.peek(), datetime.datetime.now(), parent=ledger.current())
+        v.add_part(x, debit=True)
+        v.add_part(y)
+        v.sign(wallet)
+        with self.assertRaises(VerifyError):
+            ledger.add_entry(v)
 
 if __name__ == '__main__':
     unittest.main()
