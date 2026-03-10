@@ -7,3 +7,4 @@ python-gnupg==0.4.9
 rencode==1.0.8
 wheepy[valkey]~=0.0.3
 filemagic~=1.6
+PyGObject~=3.52.3

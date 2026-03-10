@@ -3,3 +3,5 @@ __pycache__
 *.egg-info
 .state
 _build
+.venv
+/dummy/build
