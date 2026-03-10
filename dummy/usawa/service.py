@@ -154,6 +154,9 @@ class Handler:
             raise ValueError()
         logg.debug('handling cmd {} arg 0x{} rest buffer 0x{}'.format(self.cmd, self.r.hex(), self.buf.hex()))
         r = fn(self.r)
+        if r == None:
+            self.state = 5
+            return 1
         self.v = b'\x00'
         l = len(r)
         self.v += l.to_bytes(3, byteorder='big')
@@ -167,7 +170,9 @@ class Handler:
         if self.state < 3:
             raise AttributeError('processing not complete')
         if self.state == 4:
-            raise AttributeError('processing failed, no data available.')
+            raise AttributeError('processing failed unexpectedly, no data available.')
+        if self.state == 5:
+            raise ValueError('no data')
         self.state = 0
         return self.v
 
@@ -244,8 +249,22 @@ class SocketServer:
                     logg.warning('connection reset')
                 sckc.close()
                 break
-        
-    
+
+
+    """Implements whee.Interface
+
+    Executes the underlying db get, but catches file not found exception
+    """
+    def get(self, k):
+        r = None
+        try:
+            r = self.store.get(k)
+        except FileNotFoundError:
+            logg.debug('key not found: {}'.format(k.hex()))
+            pass
+        return r
+   
+
     """Implements whee.Interface
 
     Splits the content of the command to its individual key and value parts.
@@ -275,7 +294,8 @@ class SocketServer:
         c = 0
         data = bytearray()
         handler = Handler()
-        handler.register(0, self.store.get)
+        #handler.register(0, self.store.get)
+        handler.register(0, self.get)
         handler.register(1, self.put)
         while True:
             r = -1
@@ -286,11 +306,14 @@ class SocketServer:
             try:
                 r = handler.scan(b)
             except Exception as e:
-                logg.warning('socket cmd fail: ' + str(type(e)))
+                logg.warning('socket cmd fail {}: {}' + str(type(e.__class__)), e)
             if r == -1:
                 sckc.sendall(b'\x02')
                 break
-            v = handler.harvest()
+            try:
+                v = handler.harvest()
+            except ValueError:
+                v = b'\x01'
             logg.debug('harvest {}'.format(v.hex()))
             sckc.sendall(v)
 
@@ -418,7 +441,11 @@ class SocketClient(Interface):
         self.sck.sendall(b)
         r = self.sck.recv(4)
         if r[:1] != b'\x00':
-            raise SocketError()
+            if r[:1] == b'\x01':
+                raise FileNotFoundError(k.hex())
+            else:
+                logg.debug('error get value: {}'.format(r.hex()))
+                raise SocketError()
         l = int.from_bytes(r[1:], byteorder='big')
         logg.debug('recv data len {} {}'.format(l, r))
 

@@ -162,6 +162,10 @@ class Wallet:
         return o
 
 
+    def __str__(self):
+        return self.did_uri()
+
+
 class DemoWallet(Wallet):
     """DemoWallet is an unsafe wallet implementation used during development. It implements the Wallet interface class.
 

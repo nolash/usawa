@@ -12,3 +12,7 @@ class ValidateError(Exception):
 
 class SocketError(Exception):
     pass
+
+
+class AccountError(Exception):
+    pass

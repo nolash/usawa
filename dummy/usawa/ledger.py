@@ -1,3 +1,4 @@
+import enum
 import os
 import datetime
 
@@ -18,6 +19,10 @@ from .error import VerifyError
 
 logg = logging.getLogger('usawa.ledger')
 
+
+class CallbackType(enum.Enum):
+    PRE = 'PRE'
+    POST = 'POST'
 
 
 class RunningTotal:
@@ -244,6 +249,8 @@ class Ledger:
         self.wallet = None
         self.lookup = None
         self.lookup_algo = 'sha512'
+        self.pre_cb = []
+        self.post_cb = []
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -295,6 +302,22 @@ class Ledger:
         except KeyError:
             pass
         self.sigs[pubkey] = b''
+
+
+    """Add callback to be invoked for each entry added to the ledger.
+
+    Callback will be passed entry as the sole argument.
+
+    :param fn: Callback function
+    :type fn: function
+    """
+    def register_callback(self, fn, typ=CallbackType.POST):
+        if typ == CallbackType.PRE:
+            self.pre_cb.append(fn)
+        elif typ == CallbackType.POST:
+            self.post_cb.append(fn)
+        else:
+            raise ValueError('invalid callback type')
 
 
     """Retrieve the serial that will be assigned to the next entry, without incrementing it in the object state.
@@ -462,13 +485,17 @@ class Ledger:
         if check_parent and self.cur != entry.parent:
             raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
         self.check_sigs(entry)
-       
+
+        for fn in self.pre_cb:
+            if not fn(entry):
+                raise VerifyError('entry pre callback not passed')
+
         # update the internal state
         self.serial = entry.serial
         #oldsum = self.cur
         #self.cur = entry.sum()[0]
         (k, v) = entry.get_lookup(self.lookup_algo)
-        logg.debug('addentr entry {} {}'.format(k, v))
+        logg.debug('addentr entry for algo {}: {} {}'.format(self.lookup_algo, k, v))
         #entry.parent = oldsum
         entry.parent = self.cur
         self.cur = bytes.fromhex(k)
@@ -478,7 +505,11 @@ class Ledger:
         # Add entry to the ledger object.
         self.entries[entry.serial] = entry
 
-    
+        for fn in self.post_cb:
+            if not fn(entry):
+                raise VerifyError('entry post callback not passed')
+
+
     """Update running total according to the entry.
 
     Object does not keep track of which entries have been applied to the running total. Caller must take care not to call this more than once for each entry.
