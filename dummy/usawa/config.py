@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def load():
-    cfg = confini.Config(__datadir)
+    cfg = confini.Config(__datadir, env_prefix='USAWA')
     cfg.process()
 
     if "VALKEY_HOST" in cfg.store:
