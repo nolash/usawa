@@ -210,11 +210,9 @@ class LedgerStore(Interface):
         return Asset.deserialize(v, digest)
 
 
-    """Flush ledger and load all entries from store.
+    """Load all entries from store, oldest to newest.
 
-    The existing state will always be lost.
-
-    If the load fails, the ledger will be reset before returning.
+    Must be called on an unused ledger instance. Using with a ledger that contains or has contains entries is undefined.
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
@@ -227,6 +225,25 @@ class LedgerStore(Interface):
             except FileNotFoundError:
                 break
             self.ledger.add_entry(o)
+
+
+    """Load all entries from store, newest to oldest.
+
+    Must be called on an unused ledger instance. Using with a ledger that contains or has contains entries is undefined.
+
+    :raises FileNotFoundError: If an entry cannot be found.
+    """
+    def restore(self, until=0, acl=None):
+        logg.debug('restore ledger from store {}'.format(self.ledger))
+        i = self.ledger.current_serial()
+        while i > until: 
+            logg.debug('get entry serial {} ledger {}'.format(i, self.ledger))
+            #try:
+            o = self.get_entry(i, acl=acl)
+            #except FileNotFoundError:
+            #    break
+            self.ledger.add_entry(o, check_parent=False)
+            i -= 1
 
 
     """Add signing key to the store.

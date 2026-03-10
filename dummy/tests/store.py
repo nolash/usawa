@@ -121,5 +121,41 @@ class TestStore(unittest.TestCase):
         self.assertEqual(len(ledger.entries), 2)
 
 
+    def test_store_restore(self):
+        uidx = UnitIndex('FOO')
+        wallet = DemoWallet()
+        acl = ACL.from_wallet(wallet)
+        ledger = Ledger(uidx, base=self.parent, acl=acl, wallet=wallet)
+        store = LedgerStore(self.store, ledger)
+
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(ledger.next_serial(), datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+        o.sign(wallet)
+        store.add_entry(o)
+    
+        ref = str(uuid.uuid4())
+        parent = o.sum()[0]
+        description = 'barbarbar'
+        dtreg = datetime.datetime.now()
+        dst = EntryPart('FOO', 'expense', 'bar', 4200)
+        src = EntryPart('FOO', 'liability', 'bar', 4200, debit=True)
+        o = Entry(ledger.next_serial(), datetime.datetime.strptime('2025-11-12', '%Y-%m-%d'), parent=parent, ref=ref, description=description, tx_datereg=dtreg, unitindex=uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst)
+        o.sign(wallet)
+        store.add_entry(o)
+
+        ledger.truncate()
+        s = ledger.to_string() 
+        ledger = Ledger.from_string(s)
+        store = LedgerStore(self.store, ledger)
+        store.restore()
+       
+        self.assertEqual(len(ledger.entries), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
