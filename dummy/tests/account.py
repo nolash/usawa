@@ -20,21 +20,24 @@ class TestAccount(unittest.TestCase):
 
     def test_account_lock(self):
         idx = AccountIndex(self.uidx)
-        idx.add('FOO', 'bar.baz')
-        idx.add('FOO', 'bar.baz')
+        # missing account type
+        with self.assertRaises(AttributeError):
+            idx.add('bar/baz', sym='FOO')
+        idx.add('liability/bar/baz', sym='FOO')
+        idx.add('liability/bar/baz', sym='FOO')
         with self.assertRaises(AccountError):
-            idx.add('FOO', 'bar.baz-')
+            idx.add('asset/bar/baz-', sym='FOO')
         with self.assertRaises(AccountError):
-            idx.add('BAZ', 'foo.bar')
-        self.assertFalse(idx.check('BAR', 'foo.baz'))
-        self.assertTrue(idx.check('FOO', 'bar.baz'))
+            idx.add('asset/foo/bar', sym='BAZ')
+        self.assertFalse(idx.check('BAR', 'liability/foo/baz'))
+        self.assertTrue(idx.check('FOO', 'liability/bar/baz'))
 
 
     def test_account_list(self):
         idx = AccountIndex(self.uidx)
-        idx.add('FOO', 'bar.bar')
-        idx.add('FOO', 'bar.baz')
-        idx.add('BAR', 'foo.baz')
+        idx.add('asset/bar/bar', sym='FOO')
+        idx.add('liability/bar/baz', sym='FOO')
+        idx.add('asset/foo/baz', sym='BAR')
         v = list(idx)
         logg.debug('results {}'.format(v))
         self.assertEqual(len(v), 3)
