@@ -7,6 +7,7 @@ import datetime
 import uuid
 
 from usawa import Ledger, DemoWallet, UnitIndex, ACL
+import usawa.config
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
 
@@ -142,12 +143,15 @@ pk = None
 wallet = None
 dt = datetime.datetime.now()
 
+cfg = usawa.config.load()
+
 try:
-    pk = store.get_key()
+    #pk = store.get_key()
+    wallet = store.get_key(DemoWallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
 except FileNotFoundError:
     logg.info('no default key found')
     wallet = DemoWallet()
-    store.add_key(wallet)
+    store.add_key(wallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
 if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))

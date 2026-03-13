@@ -259,7 +259,7 @@ class LedgerStore(Interface):
     :todo: Currently the signing key is stored literally. It needs encryption!
     :todo: Implement the ACL lookup
     """
-    def add_key(self, wallet, acl=None, default=False):
+    def add_key(self, wallet, acl=None, default=False, passphrase=None):
         k = pfx_key()
         try:
             self.__o.get(k)
@@ -269,7 +269,8 @@ class LedgerStore(Interface):
         if default:
             self.__o.put(k, pubkey, exist_ok=True)
         k = pfx_key(pubkey=pubkey)
-        self.__o.put(k, wallet.privkey())
+        v = wallet.export(passphrase=passphrase)
+        self.__o.put(k, v)
 
 
     """Get corresponding private key from the store.
@@ -281,12 +282,14 @@ class LedgerStore(Interface):
     :return: Resulting key
     :rtype: bytes
     """
-    def get_key(self, pubkey=None):
+    def get_key(self, wallet_class, pubkey=None, passphrase=None):
         if pubkey == None:
             k = pfx_key()
             pubkey = self.__o.get(k)
         k = pfx_key(pubkey=pubkey)
-        return self.__o.get(k)
+        #return self.__o.get(k)
+        r = self.__o.get(k)
+        return wallet_class.from_export(r, passphrase=passphrase)
 
 
     """Implements whee.Interface.put

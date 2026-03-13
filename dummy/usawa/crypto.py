@@ -48,6 +48,21 @@ class DID:
         return 'did:' + self.m + ':' + self.v
 
 
+def key_from_export(v, passphrase='', did=None):
+        if passphrase == None:
+            passphrase = b''
+        if isinstance(passphrase, str):
+            passphrase = passphrase.encode('utf-8')
+        h = hashlib.sha256()
+        h.update(passphrase)
+        z = h.digest()
+        o = nacl.secret.SecretBox(z)
+        r = None
+        try:
+            r = o.decrypt(v)
+        except nacl.exceptions.CryptoError:
+            raise VerifyError('decrypt fail')
+        return r
 
 class Wallet:
     """Wallet is an unimplemented class defining the interface for wallet operations.
@@ -151,13 +166,26 @@ class Wallet:
 
 
     def export(self, passphrase=None):
-        raise NotImplementedError()
+        if passphrase == None:
+            passphrase = b''
+        elif isinstance(passphrase, str):
+            passphrase = passphrase.encode('utf-8')
+        if len(passphrase) == 0:
+            logg.warning('exporting key with no passphrase')
+        h = hashlib.sha256()
+        h.update(passphrase)
+        z = h.digest()
+        o = nacl.secret.SecretBox(z)
+        k = self.privkey()
+        r = o.encrypt(k)
+        if len(r) != len(k) + o.NONCE_SIZE + o.MACBYTES:
+            raise VerifyError()
+        return r
 
-    
+
     @staticmethod
     def from_export(v, passphrase=None):
         raise NotImplementedError()
-
 
 
     """Generate an identity XML tree entry from the wallet.
@@ -252,34 +280,10 @@ class DemoWallet(Wallet):
         return r
 
 
-    def export(self, passphrase=''):
-        if isinstance(passphrase, str):
-            passphrase = passphrase.encode('utf-8')
-        h = hashlib.sha256()
-        h.update(passphrase)
-        z = h.digest()
-        o = nacl.secret.SecretBox(z)
-        k = self.privkey()
-        r = o.encrypt(k)
-        if len(r) != len(k) + o.NONCE_SIZE + o.MACBYTES:
-            raise VerifyError()
-        return r
-
-
     @staticmethod
-    def from_export(v, passphrase='', did=None):
-        if isinstance(passphrase, str):
-            passphrase = passphrase.encode('utf-8')
-        h = hashlib.sha256()
-        h.update(passphrase)
-        z = h.digest()
-        o = nacl.secret.SecretBox(z)
-        r = None
-        try:
-            r = o.decrypt(v)
-        except nacl.exceptions.CryptoError:
-            raise VerifyError('decrypt fail')
-        return DemoWallet(privatekey=r, did=did)
+    def from_export(v, passphrase=None):
+        k = key_from_export(v, passphrase=passphrase)
+        return DemoWallet(privatekey=k)
 
 
 class ACL:

@@ -6,6 +6,7 @@ import argparse
 import uuid
 import datetime
 
+import usawa.config
 from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
@@ -67,10 +68,12 @@ ctx = Context.from_args(arg)
 #ledger = Ledger.from_tree(ledger_tree)
 ledger = Ledger.from_file(arg.ledger_xml_file)
 
+cfg = usawa.config.load()
 storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
 store = LedgerStore(storedb, ledger)
-pk = store.get_key()
-wallet = DemoWallet(privatekey=pk)
+#pk = store.get_key()
+#wallet = DemoWallet(privatekey=pk)
+wallet = store.get_key(DemoWallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
 acl = ACL.from_wallet(wallet)
 store.load(acl=acl)
 resolve = FSResolver(ctx.output)
