@@ -1,8 +1,10 @@
 import logging
+from usawa.core.usawa_wallet import UsawaWallet
+from usawa.gui.components.wallet_setup import ImportWalletDialog
 from usawa.service import UnixClient
 from usawa.core.entry_service import EntryService
 from usawa.storage.ledger_repository import LedgerRepository
-from gi.repository import Adw, Gtk, Gio
+from gi.repository import Adw, Gtk, Gio, GLib
 
 from usawa.gui.controllers.entry_controller import EntryController
 from usawa.gui.views.entry_list_view import EntryListView
@@ -33,29 +35,18 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.toast_overlay = Adw.ToastOverlay()
         toolbar_view.set_content(self.toast_overlay)
 
-        cfg = self.get_application().cfg
-        self.client = UnixClient(path=cfg.get("SERVER_SOCKET_FILE_PATH"))
+        self.cfg = self.get_application().cfg
+        self.client = UnixClient(path=self.cfg.get("SERVER_SOCKET_FILE_PATH"))
         self.valkey_store = ValkeyStore(
-            "", host=cfg.get("VALKEY_HOST"), port=cfg.get("VALKEY_PORT")
+            "", host=self.cfg.get("VALKEY_HOST"), port=self.cfg.get("VALKEY_PORT")
         )
-
-        repository = LedgerRepository(
-            ledger_path=ledger_path,
-            unix_client=self.client,
-            valkey_store=self.valkey_store,
-            cfg=cfg,
-        )
-        entry_service = EntryService(repository=repository)
-        self.entry_controller = EntryController(entry_service=entry_service)
-        self.entry_controller.add_entry_created_listener(self.refresh_entries)
+        self.ledger_path = ledger_path
 
         self.nav_view = Adw.NavigationView()
         self.toast_overlay.set_child(self.nav_view)
 
-        entry_list_page = self._create_entry_list_page()
-        self.nav_view.add(entry_list_page)
-
         self._setup_actions()
+        GLib.idle_add(self._show_import_dialog)
 
     def _create_menu_button(self):
         menu = Gio.Menu()
@@ -128,3 +119,24 @@ class UsawaMainWindow(Adw.ApplicationWindow):
     def refresh_entries(self):
         logg.info("MainWindow refreshing entries")
         self.entry_list_view._load_entries()
+
+    def _show_import_dialog(self):
+        dialog = ImportWalletDialog(self)
+        dialog.present(self)
+
+    def _init_with_wallet(self, wallet):
+        """Called after wallet is successfully imported."""
+        self.wallet = wallet
+        repository = LedgerRepository(
+            ledger_path=self.ledger_path,
+            unix_client=self.client,
+            valkey_store=self.valkey_store,
+            cfg=self.cfg,
+            wallet=self.wallet,
+        )
+        entry_service = EntryService(repository=repository)
+        self.entry_controller = EntryController(entry_service=entry_service)
+        self.entry_controller.add_entry_created_listener(self.refresh_entries)
+
+        entry_list_page = self._create_entry_list_page()
+        self.nav_view.add(entry_list_page)
