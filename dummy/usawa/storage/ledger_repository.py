@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from typing import List
+from usawa.core.usawa_wallet import UsawaWallet
 import hexathon
 from usawa.storage.xml_utils import (
     _build_export_root,
@@ -59,6 +60,7 @@ class LedgerRepository:
         unix_client: UnixClient = None,
         valkey_store: ValkeyStore = None,
         cfg=None,
+        wallet=None,
     ):
         """
         Initialize the LedgerRepository.
@@ -72,57 +74,36 @@ class LedgerRepository:
         """
         self.valkey_store = valkey_store
         self.unix_client = unix_client
-        self._wallet = None
+        self._wallet = wallet
         self._store = None
         self.ledger_path = ledger_path
         self.cfg = cfg
-        self.resolver = FSResolver(
-            self.cfg.get("FS_RESOLVER_STORE_PATH"), verifier=sha256_verify
-        )
+        self.resolver = FSResolver(self.cfg.get("FS_RESOLVER_STORE_PATH"))
+        logg.info("Initailized wallet, pubkey: %s", self._wallet.pubkey().hex())
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, DemoWallet]:
         ledger_tree = load(self.ledger_path)
         ledger = Ledger.from_tree(ledger_tree)
 
+        ledger.set_wallet(self._wallet)
+
         if write:
             logg.info("init store for write")
             self.store = LedgerStore(self.valkey_store, ledger)
 
-            if self._wallet is None:
-                pk = self.store.get_key()
-                if pk is None:
-                    raise ValueError("No private key found in store")
-                self._wallet = DemoWallet(privatekey=pk)
         else:
             logg.info("init store for read")
             self.store = LedgerStore(self.valkey_store, ledger)
-
-            if self._wallet is None:
-                try:
-                    pk = self.store.get_key()
-                    self._wallet = DemoWallet(privatekey=pk)
-                    logg.info(
-                        f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}..."
-                    )
-
-                except FileNotFoundError:
-                    logg.warning(
-                        "No private key found in store, initializing a a default one"
-                    )
-                    privkey = bytes.fromhex(self.cfg.get("SIGS_DEFAULT_PRIVATE_KEY"))
-                    self._wallet = DemoWallet(privatekey=privkey)
-
-                    # Add key to store
-                    try:
-                        self.store.add_key(wallet=self._wallet)
-                        logg.info("Stored new private key successfully")
-                    except Exception as e:
-                        logg.warning(f"Could not store new key: {e}")
-
-                except Exception as e:
-                    raise ValueError(
-                        f"Could not retrieve or create private key: {e}"
-                    ) from e
+        try:
+            _ = self.store.get_key()
+            logg.info(f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}...")
+        except FileNotFoundError:
+            logg.warning("No private key found in store, initializing a a default one")
+            try:
+                self.store.add_key(wallet=self._wallet)
+                logg.info("Stored new private key successfully")
+            except Exception as e:
+                logg.warning(f"Could not store new key: {e}")
 
         logg.debug(
             "wallet pk: %s pubk: %s",
@@ -286,6 +267,11 @@ class LedgerRepository:
             incoming = _build_incoming_element(ns_uri, target_entry, xml_tree)
             root = _build_export_root(xml_tree, ns_uri, target_entry, incoming)
             _write_xml_to_file(root, output_path)
+            self.store.ledger.truncate()
+            logg.debug(
+                "Ledger entries after truncate: %d", len(self.store.ledger.entries)
+            )
+            self.resolver.put_entry(entry=storage_entry, lookup="sha512")
 
             logg.info(f"Successfully exported entry #{serial} -> {output_path}")
             return True, ""
