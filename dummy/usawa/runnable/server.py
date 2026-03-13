@@ -3,6 +3,7 @@ import argparse
 import signal
 #import threading
 
+import usawa.config
 from usawa import Ledger, Entry, EntryPart, DemoWallet, ACL, UnitIndex, load
 from usawa.context import Context
 from usawa.service import Handler, UnixServer

@@ -1,6 +1,7 @@
 import logging
 import socket
 import os
+import threading
 
 from whee import Interface
 from usawa.store import LedgerStore
@@ -241,14 +242,8 @@ class SocketServer:
                 break
             if sckc != None:
                 logg.info('connect: {}'.format(address))
-                #th = threading.Thread(target=self.receive, args=(sckc, address))
-                #th.start()
-                try:
-                    self.receive(sckc, address)
-                except ConnectionResetError:
-                    logg.warning('connection reset')
-                sckc.close()
-                break
+                th = threading.Thread(target=self.receive, args=(sckc, address))
+                th.start()
 
 
     """Implements whee.Interface
@@ -316,6 +311,7 @@ class SocketServer:
                 v = b'\x01'
             logg.debug('harvest {}'.format(v.hex()))
             sckc.sendall(v)
+        sckc.close()
 
 
     def __str__(self):

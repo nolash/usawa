@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 def load():
     cfg = confini.Config(__datadir, env_prefix='USAWA')
+    cfg.censor('SIGS_KEY_PASSPHRASE')
+    cfg.censor('SIGS_DEFAULT_PRIVATE_KEY')
     cfg.process()
 
     if "VALKEY_HOST" in cfg.store:

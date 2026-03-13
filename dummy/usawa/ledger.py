@@ -720,6 +720,15 @@ class Ledger:
         return self.cur
 
 
+    """Returns the serial of the latest entry added to the ledger.
+
+    :return: Serial.
+    :rtype: int
+    """
+    def current_serial(self):
+        return self.serial
+
+
     """Generate canonical XML for signature material.
 
     :return: Signature material.
