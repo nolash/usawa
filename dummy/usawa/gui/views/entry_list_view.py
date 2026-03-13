@@ -83,14 +83,14 @@ class EntryListView(Gtk.Box):
         button_container.set_margin_end(8)
         button_container.add_css_class("card")
 
-        self.sort_serial_btn = Gtk.ToggleButton(label="Serial Number")
-        self.sort_serial_btn.set_active(True)
-        self.sort_serial_btn.connect("toggled", self.on_sort_changed, "serial")
-        button_container.append(self.sort_serial_btn)
-
         self.sort_datetime_btn = Gtk.ToggleButton(label="Transaction Datetime")
+        self.sort_datetime_btn.set_active(True)
         self.sort_datetime_btn.connect("toggled", self.on_sort_changed, "datetime")
         button_container.append(self.sort_datetime_btn)
+
+        self.sort_serial_btn = Gtk.ToggleButton(label="Serial Number")
+        self.sort_serial_btn.connect("toggled", self.on_sort_changed, "serial")
+        button_container.append(self.sort_serial_btn)
 
         self.sort_serial_btn.set_group(self.sort_datetime_btn)
 
@@ -150,7 +150,7 @@ class EntryListView(Gtk.Box):
 
         self.keyword_entry = Gtk.Entry()
         self.keyword_entry.set_placeholder_text("Search in description or path...")
-        self.keyword_entry.set_text("rent/apartment")
+        self.keyword_entry.set_text("")
         self.keyword_entry.connect("changed", self.on_filter_changed)
         keyword_label.set_margin_top(4)
         keyword_box.append(self.keyword_entry)
@@ -630,7 +630,7 @@ class EntryListView(Gtk.Box):
 
     def _load_entries(self):
         self.entries = self.entry_controller.get_all_entries()
-        self._sort_and_reload("serial")
+        self._sort_and_reload("datetime")
 
     def _sort_and_reload(self, sort_type):
         if sort_type == "serial":
