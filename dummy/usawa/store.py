@@ -256,7 +256,8 @@ class LedgerStore(Interface):
     :type acl: usawa.ACL
     :param default: If True, this key will be set as default key.
     :type default: bool
-    :todo: Currently the signing key is stored literally. It needs encryption!
+    :param passphrase: Passphrase to encrypt the key with.
+    :type passphrase: bytes
     :todo: Implement the ACL lookup
     """
     def add_key(self, wallet, acl=None, default=False, passphrase=None):
@@ -273,14 +274,20 @@ class LedgerStore(Interface):
         self.__o.put(k, v)
 
 
-    """Get corresponding private key from the store.
+    """Get a newly instantiated wallet object from a private key in the store.
     
     If public key is not supplied, will retrieve the default private key.
 
+    :param wallet_class: Wallet class to use to instantiate a Wallet object from private key material.
+    :type: usawa.crypto.Wallet
     :param pubkey: Public key to retrieve private key for.
     :type pubkey: bytes
-    :return: Resulting key
-    :rtype: bytes
+    :param passphrase: Passphrase to decrypt the key with.
+    :type passphrase: bytes
+    :raises FileNotFoundError: No key exists.
+    :raises usawa.error.VerifyError: Key decryption failed.
+    :return: Resulting wallet
+    :rtype: usawa.crypto.Wallet
     """
     def get_key(self, wallet_class, pubkey=None, passphrase=None):
         if pubkey == None:
