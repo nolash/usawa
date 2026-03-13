@@ -1,10 +1,14 @@
 import logging
+import hashlib
 
 import rencode
 import lxml.etree
 
 import nacl.signing
+import nacl.secret
 import nacl.exceptions
+
+from usawa.error import VerifyError
 
 AXX_ALL = 0xffffffff
 AXX_ANY = 0x01
@@ -146,6 +150,16 @@ class Wallet:
         raise NotImplementedError
 
 
+    def export(self, passphrase=None):
+        raise NotImplementedError()
+
+    
+    @staticmethod
+    def from_export(v, passphrase=None):
+        raise NotImplementedError()
+
+
+
     """Generate an identity XML tree entry from the wallet.
 
     The element generated is valid to be inserted as an identity sub-element in the ledger element.
@@ -202,6 +216,8 @@ class DemoWallet(Wallet):
             publickey = nacl.signing.VerifyKey(publickey)
         self.pubk = publickey
         self.didval = DID(v=self.pubkey().hex())
+        logg.debug('wallet created {}'.format(self.pubkey().hex()))
+
   
     """Implements usawa.Wallet.sign
     """
@@ -234,6 +250,36 @@ class DemoWallet(Wallet):
         except nacl.exceptions.BadSignatureError:
             pass
         return r
+
+
+    def export(self, passphrase=''):
+        if isinstance(passphrase, str):
+            passphrase = passphrase.encode('utf-8')
+        h = hashlib.sha256()
+        h.update(passphrase)
+        z = h.digest()
+        o = nacl.secret.SecretBox(z)
+        k = self.privkey()
+        r = o.encrypt(k)
+        if len(r) != len(k) + o.NONCE_SIZE + o.MACBYTES:
+            raise VerifyError()
+        return r
+
+
+    @staticmethod
+    def from_export(v, passphrase='', did=None):
+        if isinstance(passphrase, str):
+            passphrase = passphrase.encode('utf-8')
+        h = hashlib.sha256()
+        h.update(passphrase)
+        z = h.digest()
+        o = nacl.secret.SecretBox(z)
+        r = None
+        try:
+            r = o.decrypt(v)
+        except nacl.exceptions.CryptoError:
+            raise VerifyError('decrypt fail')
+        return DemoWallet(privatekey=r, did=did)
 
 
 class ACL:
