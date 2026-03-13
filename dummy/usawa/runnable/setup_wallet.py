@@ -57,26 +57,22 @@ def _generate_gpg_key(gpg_dir, name, email, passphrase=None):
 
 
 def setup_wallet():
-    # Step 1 - Create gnupg dir
     gpg_dir = os.path.abspath(GNUPG_DIR)
     os.makedirs(gpg_dir, mode=0o700, exist_ok=True)
     logg.debug("gpg directory: %s", gpg_dir)
 
     env = {**os.environ, "GNUPGHOME": gpg_dir}
 
-    # Step 2 - Prompt user
     name = input("Enter your name: ")
     email = input("Enter your email: ")
     passphrase = getpass.getpass("Enter wallet passphrase: ")
 
-    # Step 3 - Generate keypair via subprocess
     fingerprint = _generate_gpg_key(gpg_dir, name, email, passphrase)
     if not fingerprint:
         logg.error("key generation failed")
         return 1
     logg.info("generated key fingerprint: %s", fingerprint)
 
-    # Step 4 - Generate privatekey.asc (32 random bytes encrypted to GPG key)
     random_bytes = os.urandom(32)
     result = subprocess.run(
         [
@@ -101,14 +97,12 @@ def setup_wallet():
         f.write(result.stdout)
     logg.info("private key material saved to: %s", PRIVATEKEY_FILE)
 
-    # Step 5 - Derive public key
     sk = SigningKey(random_bytes)
     pk = sk.verify_key
     with open(PUBLICKEY_FILE, "wb") as f:
         f.write(pk.encode())
     logg.info("public key saved to: %s", PUBLICKEY_FILE)
 
-    # Step 6 - Config summary
     logg.info("setup complete. add the following to your config:")
     logg.info("    gpg_dir = %s", gpg_dir)
     logg.info("public key (hex): %s", pk.encode().hex())

@@ -2,7 +2,7 @@ import logging
 import signal
 import gi
 
-from usawa.core.setup_wallet import setup_wallet
+from usawa.runnable.setup_wallet import setup_wallet
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
