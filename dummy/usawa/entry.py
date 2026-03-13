@@ -403,6 +403,7 @@ class Entry:
         b = self.canon()
         h = hashlib.new(self.digest_algo)
         h.update(b)
+        logg.debug('summing entry {}'.format(b))
         return (h.digest(), b)
 
 

@@ -4,7 +4,7 @@ import unittest
 import os
 
 from usawa import UnitIndex
-from usawa.account import AccountIndex
+from usawa.account import AccountIndex, Account
 from usawa.error import AccountError
 
 logging.basicConfig(level=logging.DEBUG)
@@ -17,6 +17,19 @@ class TestAccount(unittest.TestCase):
     def setUp(self):
         self.uidx = UnitIndex('FOO')
         self.uidx.add('BAR')
+
+
+    def test_account_path(self):
+        Account.from_path('FOO.liability/foo/bar/baz')
+        Account.from_path('FOO.liability/foo')
+        Account.from_path('FOO.liability')
+        with self.assertRaises(ValueError):
+            Account.from_path('liability/foo/bar/baz')
+        with self.assertRaises(ValueError):
+            Account.from_path('FOO.liability.foo/bar/baz')
+        with self.assertRaises(AttributeError):
+            Account.from_path('FOO.bar')
+
 
     def test_account_lock(self):
         idx = AccountIndex(self.uidx)

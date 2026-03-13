@@ -11,7 +11,6 @@ def check_path_parts(path):
     for v in parts:
         if not v.isalnum():
             raise AccountError('invalid part: ' + v)
-    #return True
     typ = getattr(AccountType, parts[0].lower())
     return (typ, parts,)
 

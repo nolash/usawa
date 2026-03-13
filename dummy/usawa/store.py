@@ -220,9 +220,11 @@ class LedgerStore(Interface):
         logg.debug('load ledger from store {}'.format(self.ledger))
         while True:
             o = None
+            serial = self.ledger.next_serial()
             try:
-                o = self.get_entry(self.ledger.next_serial(), acl=acl)
-            except FileNotFoundError:
+                o = self.get_entry(serial, acl=acl)
+            except FileNotFoundError as e:
+                logg.debug('getting serial {} failed: {}'.format(serial, e))
                 break
             self.ledger.add_entry(o)
 
