@@ -33,22 +33,22 @@ from copy import deepcopy
 logg = logging.getLogger("storage.ledger_repository")
 
 
-def sha256_verify(k, v=None):
-    if isinstance(k, str):
-        k = bytes.fromhex(k)
+# def sha256_verify(k, v=None):
+#     if isinstance(k, str):
+#         k = bytes.fromhex(k)
 
-    if len(k) != 32:
-        raise ValueError("expect 256 bit key")
+#     if len(k) != 32:
+#         raise ValueError("expect 256 bit key")
 
-    khx = hexathon.uniform(k.hex())
+#     khx = hexathon.uniform(k.hex())
 
-    if v is not None:
-        h = hashlib.sha256()
-        h.update(v)
-        if k != h.digest():
-            raise VerifyError(khx)
+#     if v is not None:
+#         h = hashlib.sha256()
+#         h.update(v)
+#         if k != h.digest():
+#             raise VerifyError(khx)
 
-    return khx
+#     return khx
 
 
 class LedgerRepository:
@@ -76,55 +76,32 @@ class LedgerRepository:
         """
         self.valkey_store = valkey_store
         self.unix_client = unix_client
-        self._wallet = wallet
+        self._wallet = None
+        self._wallet_class = wallet
         self._store = None
         self.ledger_path = ledger_path
         self.cfg = cfg
         self.resolver = FSResolver(self.cfg.get("FS_RESOLVER_STORE_PATH"))
-        logg.info("Initailized wallet, pubkey: %s", self._wallet.pubkey().hex())
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, Wallet]:
         ledger_tree = load(self.ledger_path)
         ledger = Ledger.from_tree(ledger_tree)
-
-        ledger.set_wallet(self._wallet)
 
         if write:
             logg.info("init store for write")
             self.store = LedgerStore(self.valkey_store, ledger)
 
             if self._wallet is None:
-                #                pk = self.store.get_key()
-                #                if pk is None:
-                #                    raise ValueError("No private key found in store")
-                #                self._wallet = DemoWallet(privatekey=pk)
-                self._wallet = self.store.get_key(wallet_class)
+                self._wallet = self.store.get_key(wallet_class=self._wallet_class)
         else:
             logg.info("init store for read")
             self.store = LedgerStore(self.valkey_store, ledger)
 
             if self._wallet is None:
-                try:
-                    # pk = self.store.get_key()
-                    # self._wallet = DemoWallet(privatekey=pk)
-                    self._wallet = self.store.get_key(wallet_class)
-                    logg.info(
-                        f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}..."
-                    )
-
-                except FileNotFoundError:
-                    logg.warning(
-                        "No private key found in store, initializing a a default one"
-                    )
-                    privkey = bytes.fromhex(self.cfg.get("SIGS_DEFAULT_PRIVATE_KEY"))
-                    self._wallet = DemoWallet(privatekey=privkey)
-
-                    # Add key to store
-                    try:
-                        self.store.add_key(wallet=self._wallet)
-                        logg.info("Stored new private key successfully")
-                    except Exception as e:
-                        logg.warning(f"Could not store new key: {e}")
+                self._wallet = self.store.get_key(wallet_class=self._wallet_class)
+                logg.info(
+                    f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}..."
+                )
 
         logg.debug(
             "wallet pk: %s pubk: %s",
