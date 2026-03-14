@@ -51,6 +51,9 @@ class EntryService:
             logg.error(f"Unexpected error: {e}", exc_info=True)
             return False, error_msg
 
+    def save_wallet(self, wallet):
+        return self.repository.save_wallet(wallet=wallet)
+
     def get_all_entries(self):
         return self.repository.get_all_entries()
 
