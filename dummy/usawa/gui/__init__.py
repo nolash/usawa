@@ -37,7 +37,8 @@ class Usawa(Adw.Application):
 
         if len(args) > 1:
             if args[1] == "setup-wallet":
-                setup_wallet()
+                wallet_dir = args[2] if len(args) > 2 else None
+                setup_wallet(wallet_dir=wallet_dir)
                 return 0
             self.ledger_file = args[1]
 
