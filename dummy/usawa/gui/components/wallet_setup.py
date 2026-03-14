@@ -42,9 +42,7 @@ class ImportWalletDialog(Adw.Dialog):
         title.add_css_class("title-2")
         box.append(title)
 
-        subtitle = Gtk.Label(
-            label="Select your privatekey.asc file to unlock your wallet"
-        )
+        subtitle = Gtk.Label(label="Select your wallet file to unlock your wallet")
         subtitle.set_wrap(True)
         subtitle.set_justify(Gtk.Justification.CENTER)
         subtitle.add_css_class("dim-label")
@@ -67,7 +65,7 @@ class ImportWalletDialog(Adw.Dialog):
         button_row.set_halign(Gtk.Align.CENTER)
         box.append(button_row)
 
-        self.browse_btn = Gtk.Button(label="Select privatekey.asc")
+        self.browse_btn = Gtk.Button(label="Select wallet file")
         self.browse_btn.add_css_class("pill")
         self.browse_btn.connect("clicked", self._on_browse_clicked)
         button_row.append(self.browse_btn)
@@ -83,13 +81,24 @@ class ImportWalletDialog(Adw.Dialog):
 
     def _on_browse_clicked(self, btn):
         file_dialog = Gtk.FileDialog()
-        file_dialog.set_title("Select privatekey.asc")
-        filter_asc = Gtk.FileFilter()
-        filter_asc.set_name("ASC files")
-        filter_asc.add_pattern("*.asc")
+        file_dialog.set_title("Select wallet file")
+
+        # Filter for .box files
+        filter_box = Gtk.FileFilter()
+        filter_box.set_name("Wallet files (*.box)")
+        filter_box.add_pattern("*.box")
+
+        # Allow all files as fallback
+        filter_all = Gtk.FileFilter()
+        filter_all.set_name("All files")
+        filter_all.add_pattern("*")
+
         filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(filter_asc)
+        filters.append(filter_box)
+        filters.append(filter_all)
+
         file_dialog.set_filters(filters)
+        file_dialog.set_default_filter(filter_box)
         file_dialog.open(self.parent, None, self._on_file_selected)
 
     def _on_file_selected(self, dialog, result):
@@ -112,21 +121,16 @@ class ImportWalletDialog(Adw.Dialog):
 
         passphrase = self.passphrase_row.get_text()
 
-        cfg = self.parent.get_application().cfg
-        gpg_dir = cfg.get("MAIN_GPG_DIR")
-
         threading.Thread(
             target=self._run_decrypt,
-            args=(self.privatekey_path, gpg_dir, passphrase),
+            args=(self.privatekey_path, passphrase),
             daemon=True,
         ).start()
 
-    def _run_decrypt(self, privatekey_path, gpg_dir, passphrase):
+    def _run_decrypt(self, privatekey_path, passphrase):
         logg.info("running decrypt")
         try:
-            wallet = UsawaWallet(
-                keyfile=privatekey_path, gpgdir=gpg_dir, passphrase=passphrase
-            )
+            wallet = UsawaWallet(keyfile=privatekey_path, passphrase=passphrase)
             GLib.idle_add(self._on_success, wallet)
         except Exception as e:
             logg.error("wallet decrypt failed: %s", e)
@@ -136,10 +140,7 @@ class ImportWalletDialog(Adw.Dialog):
         self.spinner.stop()
         # Store wallet on main window for access anywhere in the app
         self.parent.wallet = wallet
-        logg.debug(
-            "wallet ready, key_id: %s",
-            wallet.gpg.list_keys()[0]["keyid"] if wallet else None,
-        )
+        logg.debug("wallet ready, public key: %s", wallet.pubkey().hex())
         toast = Adw.Toast.new("Wallet imported successfully")
         toast.set_timeout(3)
         self.parent.toast_overlay.add_toast(toast)
