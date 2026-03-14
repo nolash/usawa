@@ -1,110 +1,64 @@
 import getpass
 import logging
 import os
-import subprocess
+from pathlib import Path
 from nacl.signing import SigningKey
-
+from nacl.secret import SecretBox
+from nacl.pwhash import argon2i
 
 logg = logging.getLogger("core.setup_wallet")
 
-GNUPG_DIR = "gnupg"
-PRIVATEKEY_FILE = "privatekey.asc"
+PRIVATEKEY_FILE = "privatekey.box"
 PUBLICKEY_FILE = "publickey.bin"
 
+DEFAULT_WALLET_DIR = (
+    Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "usawa"
+)
 
-def _generate_gpg_key(gpg_dir, name, email, passphrase=None):
-    env = {**os.environ, "GNUPGHOME": gpg_dir}
 
-    subprocess.run(
-        ["gpg-agent", "--homedir", gpg_dir, "--daemon"],
-        capture_output=True,
-        env=env,
+def encrypt_seed(seed: bytes, passphrase: str) -> bytes:
+    salt = os.urandom(argon2i.SALTBYTES)
+    key = argon2i.kdf(
+        SecretBox.KEY_SIZE,
+        passphrase.encode(),
+        salt,
     )
+    box = SecretBox(key)
+    encrypted = box.encrypt(seed)
 
-    batch_input = "\n".join(
-        [
-            "Key-Type: EdDSA",
-            "Key-Curve: ed25519",
-            "Subkey-Type: ECDH",
-            "Subkey-Curve: cv25519",
-            f"Name-Real: {name}",
-            f"Name-Email: {email}",
-            f"Passphrase: {passphrase}" if passphrase else "%no-protection",
-            "%commit",
-            "",
-        ]
-    )
-
-    result = subprocess.run(
-        ["gpg", "--homedir", gpg_dir, "--batch", "--gen-key"],
-        input=batch_input.encode(),
-        capture_output=True,
-        env=env,
-    )
-    if result.returncode != 0:
-        logg.error("key generation failed: %s", result.stderr.decode())
-        return None
-
-    list_result = subprocess.run(
-        ["gpg", "--homedir", gpg_dir, "--with-colons", "--fingerprint", email],
-        capture_output=True,
-        env=env,
-    )
-    for line in list_result.stdout.decode().splitlines():
-        if line.startswith("fpr"):
-            return line.split(":")[9]
-    return None
+    # Prepend salt so we can re-derive the key on decrypt
+    return salt + encrypted
 
 
-def setup_wallet():
-    gpg_dir = os.path.abspath(GNUPG_DIR)
-    os.makedirs(gpg_dir, mode=0o700, exist_ok=True)
-    logg.debug("gpg directory: %s", gpg_dir)
+def setup_wallet(wallet_dir=None):
+    wallet_dir = Path(wallet_dir) if wallet_dir else DEFAULT_WALLET_DIR
+    wallet_dir.mkdir(parents=True, exist_ok=True)
+    logg.info("wallet directory: %s", wallet_dir)
 
-    env = {**os.environ, "GNUPGHOME": gpg_dir}
+    privatekey_path = wallet_dir / PRIVATEKEY_FILE
+    publickey_path = wallet_dir / PUBLICKEY_FILE
 
-    name = input("Enter your name: ")
-    email = input("Enter your email: ")
     passphrase = getpass.getpass("Enter wallet passphrase: ")
-
-    fingerprint = _generate_gpg_key(gpg_dir, name, email, passphrase)
-    if not fingerprint:
-        logg.error("key generation failed")
+    passphrase_confirm = getpass.getpass("Confirm wallet passphrase: ")
+    if passphrase != passphrase_confirm:
+        logg.error("passphrases do not match")
         return 1
-    logg.info("generated key fingerprint: %s", fingerprint)
 
     random_bytes = os.urandom(32)
-    result = subprocess.run(
-        [
-            "gpg",
-            "--homedir",
-            gpg_dir,
-            "--armor",
-            "--encrypt",
-            "--trust-model",
-            "always",
-            "-r",
-            fingerprint,
-        ],
-        input=random_bytes,
-        capture_output=True,
-        env=env,
-    )
-    if result.returncode != 0:
-        logg.error("encryption failed: %s", result.stderr.decode())
-        return 1
-    with open(PRIVATEKEY_FILE, "wb") as f:
-        f.write(result.stdout)
-    logg.info("private key material saved to: %s", PRIVATEKEY_FILE)
+    logg.debug("generated 32-byte seed")
+
+    encrypted = encrypt_seed(random_bytes, passphrase)
+    with open(privatekey_path, "wb") as f:
+        f.write(encrypted)
+    logg.info("encrypted key material saved to: %s", privatekey_path)
 
     sk = SigningKey(random_bytes)
     pk = sk.verify_key
-    with open(PUBLICKEY_FILE, "wb") as f:
+    with open(publickey_path, "wb") as f:
         f.write(pk.encode())
-    logg.info("public key saved to: %s", PUBLICKEY_FILE)
+    logg.info("public key saved to: %s", publickey_path)
 
-    logg.info("setup complete. add the following to your config:")
-    logg.info("    gpg_dir = %s", gpg_dir)
-    logg.info("public key (hex): %s", pk.encode().hex())
+    logg.info("setup complete.")
+    logg.info("your 32-byte public key (hex): %s", pk.encode().hex())
 
     return 0
