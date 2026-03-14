@@ -76,8 +76,7 @@ class LedgerRepository:
         """
         self.valkey_store = valkey_store
         self.unix_client = unix_client
-        self._wallet = None
-        self._wallet_class = wallet
+        self._wallet = wallet
         self._store = None
         self.ledger_path = ledger_path
         self.cfg = cfg
@@ -90,24 +89,35 @@ class LedgerRepository:
         if write:
             logg.info("init store for write")
             self.store = LedgerStore(self.valkey_store, ledger)
-
-            if self._wallet is None:
-                self._wallet = self.store.get_key(wallet_class=self._wallet_class)
+            if self._wallet is not None:
+                try:
+                    self.store.get_key(wallet_class=UsawaWallet)
+                    logg.info("wallet already in store, skipping add_key")
+                except FileNotFoundError:
+                    logg.info("persisting wallet to store")
+                    self.store.add_key(self._wallet)
+            else:
+                try:
+                    logg.info("retrieving wallet from store")
+                    self._wallet = self.store.get_key(wallet_class=UsawaWallet)
+                    logg.info(
+                        "wallet ready, pubkey: %s...", self._wallet.pubkey().hex()[:16]
+                    )
+                except FileNotFoundError:
+                    logg.warning("no wallet found in store — import required")
+                    self._wallet = None
         else:
             logg.info("init store for read")
             self.store = LedgerStore(self.valkey_store, ledger)
+            if self._wallet is not None:
+                try:
+                    self.store.get_key(wallet_class=UsawaWallet)
+                except FileNotFoundError:
+                    logg.info("persisting wallet to store")
+                    self.store.add_key(self._wallet)
 
-            if self._wallet is None:
-                self._wallet = self.store.get_key(wallet_class=self._wallet_class)
-                logg.info(
-                    f"Loaded wallet, pubkey: {self._wallet.pubkey().hex()[:16]}..."
-                )
+        logg.info("wallet ready, pubkey: %s...", self._wallet.pubkey().hex()[:16])
 
-        logg.debug(
-            "wallet pk: %s pubk: %s",
-            self._wallet.privkey().hex(),
-            self._wallet.pubkey().hex(),
-        )
         ledger.set_wallet(self._wallet)
         ledger.acl = ACL.from_wallet(self._wallet)
         self.store.load(acl=ledger.acl)
@@ -177,6 +187,16 @@ class LedgerRepository:
             logg.debug(f"Failed to save entry: {e}", exc_info=True)
             raise
 
+    def save_wallet(self, wallet):
+        """Persist wallet to store so it can be retrieved on subsequent launches."""
+        ledger_tree = load(self.ledger_path)
+        ledger = Ledger.from_tree(ledger_tree)
+        self.store = LedgerStore(self.valkey_store, ledger)
+        self.store.add_key(wallet)
+        logg.info(
+            "wallet persisted to store, pubkey: %s...", wallet.pubkey().hex()[:16]
+        )
+
     def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""
         try:
@@ -187,7 +207,8 @@ class LedgerRepository:
                 for _, storage_entry in store.ledger.entries.items()
             ]
         except Exception as e:
-            logg.error(f"Failed to retrieve entries: {e}")
+            # logg.error(f"Failed to retrieve entries: {e}")
+            logg.error("failed to map entries: %s", e, exc_info=True)
             return []
 
     def get_asset_bytes(self, digest: str):
