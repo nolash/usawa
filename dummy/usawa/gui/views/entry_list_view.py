@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 import logging
-from gi.repository import Gtk, Gio, Pango
+from gi.repository import Gtk, Gio, Pango, GLib
 
 from usawa.gui.models.entry_item import EntryItem
 from usawa.gui.views.create_entry_view import create_entry_page
@@ -169,9 +169,15 @@ class EntryListView(Gtk.Box):
 
         date_range_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
 
+        today = date.today()
+        try:
+            one_month_ago = today.replace(month=today.month - 1)
+        except ValueError:
+            one_month_ago = today.replace(year=today.year - 1, month=12)
+
         self.date_start_entry = Gtk.Entry()
         self.date_start_entry.set_placeholder_text("MM-DD")
-        self.date_start_entry.set_text("02-10")
+        self.date_start_entry.set_text(one_month_ago.strftime("%m-%d"))
         self.date_start_entry.set_max_width_chars(10)
         self.date_start_entry.connect("changed", self.on_filter_changed)
         date_range_box.append(self.date_start_entry)
@@ -182,7 +188,7 @@ class EntryListView(Gtk.Box):
 
         self.date_end_entry = Gtk.Entry()
         self.date_end_entry.set_placeholder_text("MM-DD")
-        self.date_end_entry.set_text("02-11")
+        self.date_end_entry.set_text(today.strftime("%m-%d"))
         self.date_end_entry.set_max_width_chars(10)
         self.date_end_entry.connect("changed", self.on_filter_changed)
         date_range_box.append(self.date_end_entry)
@@ -214,25 +220,29 @@ class EntryListView(Gtk.Box):
 
     def on_calendar_clicked(self, button):
         logg.info("Calendar button clicked - showing date range picker")
-        self._start_date = None
-        self._end_date = None
+
+        today = date.today()
+        try:
+            one_month_ago = today.replace(month=today.month - 1)
+        except ValueError:
+            one_month_ago = today.replace(year=today.year - 1, month=12)
+
+        self._start_date = one_month_ago.strftime("%Y-%m-%d")
+        self._end_date = today.strftime("%Y-%m-%d")
 
         dialog = Gtk.Dialog(transient_for=self.get_root(), modal=True)
         dialog.set_title("Select Date Range")
         dialog.set_default_size(400, 450)
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
         dialog.add_button("Apply", Gtk.ResponseType.OK)
-
         content = dialog.get_content_area()
         content.set_spacing(16)
         content.set_margin_top(12)
         content.set_margin_bottom(12)
         content.set_margin_start(12)
         content.set_margin_end(12)
-
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         content.append(main_box)
-
         instruction = Gtk.Label(
             label="Click once for start date, click again for end date"
         )
@@ -240,25 +250,29 @@ class EntryListView(Gtk.Box):
         instruction.set_wrap(True)
         instruction.set_halign(Gtk.Align.START)
         main_box.append(instruction)
-
         self._calendar = Gtk.Calendar()
         self._calendar.set_margin_start(12)
         self._calendar.set_margin_end(12)
         self._calendar.set_margin_top(8)
         self._calendar.set_margin_bottom(8)
         main_box.append(self._calendar)
-
         selection_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         selection_box.set_halign(Gtk.Align.CENTER)
         main_box.append(selection_box)
-
         self._start_label = Gtk.Label()
-        self._start_label.set_markup("<b>Start:</b> --")
+        self._start_label.set_markup("<b>Start:</b> {}".format(self._start_date))
         selection_box.append(self._start_label)
         selection_box.append(Gtk.Label(label="→"))
         self._end_label = Gtk.Label()
-        self._end_label.set_markup("<b>End:</b> --")
+        self._end_label.set_markup("<b>End:</b> {}".format(self._end_date))
         selection_box.append(self._end_label)
+
+        # Mark default dates on calendar
+        self._calendar.select_day(
+            GLib.DateTime.new_local(today.year, today.month, today.day, 0, 0, 0)
+        )
+        self._calendar.mark_day(one_month_ago.day)
+        self._calendar.mark_day(today.day)
 
         self._calendar.connect("day-selected", self._on_calendar_day_selected)
         dialog.connect("response", self._on_calendar_response)
