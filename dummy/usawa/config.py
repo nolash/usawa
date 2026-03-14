@@ -8,9 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def load():
-    cfg = confini.Config(__datadir, env_prefix='USAWA')
-    cfg.censor('SIGS_KEY_PASSPHRASE')
-    cfg.censor('SIGS_DEFAULT_PRIVATE_KEY')
+    cfg = confini.Config(__datadir, env_prefix="USAWA")
+    cfg.censor("WALLET_KEY_PASSPHRASE")
     cfg.process()
 
     if "VALKEY_HOST" in cfg.store:
@@ -30,18 +29,6 @@ def load():
     else:
         socket_file_path = save_data_path("usawa")
         cfg.add(socket_file_path, "SERVER_SOCKET_FILE_PATH")
-
-    if "SIGS_DEFAULT_PUBLIC_KEY" in cfg.store:
-        default_public_key = cfg.get("SIGS_DEFAULT_PUBLIC_KEY")
-    else:
-        default_public_key = save_data_path("usawa")
-        cfg.add(default_public_key, "SIGS_DEFAULT_PUBLIC_KEY")
-
-    if "SIGS_DEFAULT_PRIVATE_KEY" in cfg.store:
-        default_private_key = cfg.get("SIGS_DEFAULT_PRIVATE_KEY")
-    else:
-        default_private_key = save_data_path("usawa")
-        cfg.add(default_private_key, "SIGS_DEFAULT_PRIVATE_KEY")
 
     if "FS_RESOLVER_STORE_PATH" in cfg.store:
         fs_resolver_store_path = cfg.get("FS_RESOLVER_STORE_PATH")
