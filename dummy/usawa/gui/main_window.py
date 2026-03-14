@@ -1,14 +1,16 @@
 import logging
 from usawa.core.usawa_wallet import UsawaWallet
 from usawa.gui.components.wallet_setup import ImportWalletDialog
+from usawa.ledger import Ledger
 from usawa.service import UnixClient
 from usawa.core.entry_service import EntryService
 from usawa.storage.ledger_repository import LedgerRepository
 from gi.repository import Adw, Gtk, Gio, GLib
-
+from usawa import load
 from usawa.gui.controllers.entry_controller import EntryController
 from usawa.gui.views.entry_list_view import EntryListView
 from datetime import datetime
+from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
 
 logg = logging.getLogger("gui.mainwindow")
@@ -121,10 +123,19 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.entry_list_view._load_entries()
 
     def _show_import_dialog(self):
-        dialog = ImportWalletDialog(self)
-        dialog.present(self)
+        try:
+            ledger_tree = load(self.ledger_path)
+            ledger = Ledger.from_tree(ledger_tree)
+            store = LedgerStore(self.valkey_store, ledger)
+            wallet = store.get_key(wallet_class=UsawaWallet)
+            logg.info("wallet found in store, skipping import dialog")
+            self._init_with_wallet(wallet, False)
+        except FileNotFoundError:
+            logg.info("no wallet in store, showing import dialog")
+            dialog = ImportWalletDialog(self)
+            dialog.present(self)
 
-    def _init_with_wallet(self, wallet):
+    def _init_with_wallet(self, wallet, save_wallet: bool = True):
         """Called after wallet is successfully imported."""
         self.wallet = wallet
         repository = LedgerRepository(
@@ -137,6 +148,9 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(entry_service=entry_service)
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
+
+        if save_wallet:
+            repository.save_wallet(wallet)
 
         entry_list_page = self._create_entry_list_page()
         self.nav_view.add(entry_list_page)
