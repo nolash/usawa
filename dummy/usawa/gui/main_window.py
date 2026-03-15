@@ -127,7 +127,10 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             ledger_tree = load(self.ledger_path)
             ledger = Ledger.from_tree(ledger_tree)
             store = LedgerStore(self.valkey_store, ledger)
-            wallet = store.get_key(wallet_class=UsawaWallet)
+            wallet = store.get_key(
+                wallet_class=UsawaWallet,
+                passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
+            )
             logg.info("wallet found in store, skipping import dialog")
             self._init_with_wallet(wallet, False)
         except FileNotFoundError:
@@ -138,6 +141,8 @@ class UsawaMainWindow(Adw.ApplicationWindow):
     def _init_with_wallet(self, wallet, save_wallet: bool = True):
         """Called after wallet is successfully imported."""
         self.wallet = wallet
+        passphrase = self.cfg.get("WALLET_KEY_PASSPHRASE")
+
         repository = LedgerRepository(
             ledger_path=self.ledger_path,
             unix_client=self.client,
@@ -150,7 +155,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
 
         if save_wallet:
-            repository.save_wallet(wallet)
+            repository.save_wallet(wallet, passphrase)
 
         entry_list_page = self._create_entry_list_page()
         self.nav_view.add(entry_list_page)
