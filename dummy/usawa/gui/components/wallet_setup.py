@@ -120,6 +120,7 @@ class ImportWalletDialog(Adw.Dialog):
         self.spinner.start()
 
         passphrase = self.passphrase_row.get_text()
+        self.passphrase = passphrase
 
         threading.Thread(
             target=self._run_decrypt,

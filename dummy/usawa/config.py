@@ -24,6 +24,12 @@ def load():
         valkey_port = save_data_path("usawa")
         cfg.add(valkey_port, "VALKEY_PORT")
 
+    if "WALLET_KEY_PASSPHRASE" in cfg.store:
+        passphrase = cfg.get("WALLET_KEY_PASSPHRASE")
+    else:
+        passphrase = save_data_path("usawa")
+        cfg.add(passphrase, "WALLET_KEY_PASSPHRASE")
+
     if "SERVER_SOCKET_FILE_PATH" in cfg.store:
         socket_file_path = cfg.get("SERVER_SOCKET_FILE_PATH")
     else:

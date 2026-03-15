@@ -91,7 +91,10 @@ class LedgerRepository:
             self.store = LedgerStore(self.valkey_store, ledger)
             if self._wallet is not None:
                 try:
-                    self.store.get_key(wallet_class=UsawaWallet)
+                    self.store.get_key(
+                        wallet_class=UsawaWallet,
+                        passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
+                    )
                     logg.info("wallet already in store, skipping add_key")
                 except FileNotFoundError:
                     logg.info("persisting wallet to store")
@@ -111,7 +114,10 @@ class LedgerRepository:
             self.store = LedgerStore(self.valkey_store, ledger)
             if self._wallet is not None:
                 try:
-                    self.store.get_key(wallet_class=UsawaWallet)
+                    self.store.get_key(
+                        wallet_class=UsawaWallet,
+                        passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
+                    )
                 except FileNotFoundError:
                     logg.info("persisting wallet to store")
                     self.store.add_key(self._wallet)
@@ -187,12 +193,13 @@ class LedgerRepository:
             logg.debug(f"Failed to save entry: {e}", exc_info=True)
             raise
 
-    def save_wallet(self, wallet):
+    def save_wallet(self, wallet, passphrase):
         """Persist wallet to store so it can be retrieved on subsequent launches."""
         ledger_tree = load(self.ledger_path)
         ledger = Ledger.from_tree(ledger_tree)
         self.store = LedgerStore(self.valkey_store, ledger)
-        self.store.add_key(wallet)
+        logg.info("adding key with passphrase: %s", passphrase)
+        self.store.add_key(wallet=wallet, passphrase=passphrase)
         logg.info(
             "wallet persisted to store, pubkey: %s...", wallet.pubkey().hex()[:16]
         )
@@ -241,6 +248,9 @@ class LedgerRepository:
     def export_all_entries_to_xml(self, output_path: str) -> tuple[bool, str]:
         try:
             ledger = self.store.ledger
+
+            for k in ledger.entries:
+                self.resolver.put_entry(ledger.entries[k], lookup="sha512")
 
             tree = ledger.to_tree()
             output_file = Path(output_path)
