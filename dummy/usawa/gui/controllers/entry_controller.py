@@ -72,5 +72,5 @@ class EntryController:
     def export_entry(self, serial: int, output_path: str) -> tuple[bool, str]:
         return self.entry_service.export_entry_to_xml(serial, output_path)
 
-    def save_wallet(self, wallet):
-        return self.entry_service.save_wallet(wallet=wallet)
+    def save_wallet(self, wallet, passphrase):
+        return self.entry_service.save_wallet(wallet=wallet, passphrase=passphrase)
