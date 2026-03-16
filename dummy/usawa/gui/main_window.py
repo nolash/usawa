@@ -38,7 +38,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         toolbar_view.set_content(self.toast_overlay)
 
         self.cfg = self.get_application().cfg
-        self.client = UnixClient(path=self.cfg.get("SERVER_SOCKET_FILE_PATH"))
+        self.unix_client = UnixClient(path=self.cfg.get("SERVER_SOCKET_FILE_PATH"))
         self.valkey_store = ValkeyStore(
             "", host=self.cfg.get("VALKEY_HOST"), port=self.cfg.get("VALKEY_PORT")
         )
@@ -145,7 +145,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
 
         repository = LedgerRepository(
             ledger_path=self.ledger_path,
-            unix_client=self.client,
+            unix_client=self.unix_client,
             valkey_store=self.valkey_store,
             cfg=self.cfg,
             wallet=self.wallet,
@@ -155,7 +155,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
 
         if save_wallet:
-            repository.save_wallet(wallet, passphrase)
+            self.entry_controller.save_wallet(wallet, passphrase)
 
         entry_list_page = self._create_entry_list_page()
         self.nav_view.add(entry_list_page)
