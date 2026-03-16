@@ -1,6 +1,7 @@
 import logging
 from typing import List
 from usawa.core.usawa_wallet import UsawaWallet
+from usawa.storage.file_utils import path_from_uri
 from usawa.storage.xml_utils import (
     _build_export_root,
     _build_incoming_element,
@@ -57,7 +58,16 @@ class LedgerRepository:
         self._store = None
         self.ledger_path = ledger_path
         self.cfg = cfg
-        self.resolver = FSResolver(self.cfg.get("FS_RESOLVER_STORE_PATH"))
+
+        logg.debug("fs resolver path: %s", self.cfg.get("FS_RESOLVER_STORE_PATH"))
+        logg.debug(
+            "fs_resolver as URI: %s",
+            path_from_uri(self.cfg.get("FS_RESOLVER_STORE_PATH")),
+        )
+
+        self.resolver = FSResolver(
+            path_from_uri(self.cfg.get("FS_RESOLVER_STORE_PATH"))
+        )
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, Wallet]:
         ledger_tree = load(self.ledger_path)
