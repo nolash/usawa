@@ -1,6 +1,5 @@
 import logging
 from typing import List
-from usawa.core.usawa_wallet import UsawaWallet
 from usawa.storage.file_utils import path_from_uri
 from usawa.storage.xml_utils import (
     _build_export_root,
@@ -55,7 +54,7 @@ class LedgerRepository:
         self.valkey_store = valkey_store
         self.unix_client = unix_client
         self._wallet = wallet
-        self._store = None
+
         self.ledger_path = ledger_path
         self.cfg = cfg
 
@@ -76,38 +75,9 @@ class LedgerRepository:
         if write:
             logg.info("init store for write")
             self.store = LedgerStore(self.valkey_store, ledger)
-            if self._wallet is not None:
-                try:
-                    self.store.get_key(
-                        wallet_class=UsawaWallet,
-                        passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
-                    )
-                    logg.info("wallet already in store, skipping add_key")
-                except FileNotFoundError:
-                    logg.info("persisting wallet to store")
-                    self.store.add_key(self._wallet)
-            else:
-                try:
-                    logg.info("retrieving wallet from store")
-                    self._wallet = self.store.get_key(wallet_class=UsawaWallet)
-                    logg.info(
-                        "wallet ready, pubkey: %s...", self._wallet.pubkey().hex()[:16]
-                    )
-                except FileNotFoundError:
-                    logg.warning("no wallet found in store — import required")
-                    self._wallet = None
         else:
             logg.info("init store for read")
             self.store = LedgerStore(self.valkey_store, ledger)
-            if self._wallet is not None:
-                try:
-                    self.store.get_key(
-                        wallet_class=UsawaWallet,
-                        passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
-                    )
-                except FileNotFoundError:
-                    logg.info("persisting wallet to store")
-                    self.store.add_key(self._wallet)
 
         logg.info("wallet ready, pubkey: %s...", self._wallet.pubkey().hex()[:16])
 
@@ -182,11 +152,9 @@ class LedgerRepository:
 
     def save_wallet(self, wallet, passphrase):
         """Persist wallet to store so it can be retrieved on subsequent launches."""
-        ledger_tree = load(self.ledger_path)
-        ledger = Ledger.from_tree(ledger_tree)
-        self.store = LedgerStore(self.valkey_store, ledger)
+        store, _, _ = self._init_store()
         logg.info("adding key with passphrase: %s", passphrase)
-        self.store.add_key(wallet=wallet, passphrase=passphrase)
+        store.add_key(wallet=wallet, passphrase=passphrase)
         logg.info(
             "wallet persisted to store, pubkey: %s...", wallet.pubkey().hex()[:16]
         )
@@ -234,8 +202,7 @@ class LedgerRepository:
 
     def export_all_entries_to_xml(self, output_path: str) -> tuple[bool, str]:
         try:
-            ledger = self.store.ledger
-
+            _, ledger, _ = self._init_store()
             for k in ledger.entries:
                 self.resolver.put_entry(ledger.entries[k], lookup="sha512")
 
@@ -274,6 +241,8 @@ class LedgerRepository:
             if not storage_entry:
                 return False, f"Entry #{serial} not found"
 
+            _, ledger, _ = self._init_store()
+
             xml_tree = self.store.ledger.to_tree()
             ns_uri = resolve_namespace(xml_tree)
             target_entry = _find_entry_by_serial(xml_tree, ns_uri, serial)
@@ -283,7 +252,7 @@ class LedgerRepository:
             incoming = _build_incoming_element(ns_uri, target_entry, xml_tree)
             root = _build_export_root(xml_tree, ns_uri, target_entry, incoming)
             _write_xml_to_file(root, output_path)
-            self.store.ledger.truncate()
+            ledger.truncate()
             logg.debug(
                 "Ledger entries after truncate: %d", len(self.store.ledger.entries)
             )
