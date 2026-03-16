@@ -1,19 +1,15 @@
-import hashlib
 import logging
 from typing import List
 from usawa.core.usawa_wallet import UsawaWallet
-import hexathon
 from usawa.storage.xml_utils import (
     _build_export_root,
     _build_incoming_element,
-    _find_child,
     _find_entry_by_serial,
     _write_xml_to_file,
     resolve_namespace,
 )
 from usawa.asset import Asset
 from usawa.crypto import ACL, DemoWallet, Wallet
-from usawa.error import VerifyError
 from usawa.ledger import Ledger
 from usawa.resolve.fs import FSResolver
 from usawa.service import UnixClient
@@ -27,28 +23,9 @@ import mimetypes
 import lxml.etree as ET
 from pathlib import Path
 import lxml.etree as ET
-from copy import deepcopy
 
 
 logg = logging.getLogger("storage.ledger_repository")
-
-
-# def sha256_verify(k, v=None):
-#     if isinstance(k, str):
-#         k = bytes.fromhex(k)
-
-#     if len(k) != 32:
-#         raise ValueError("expect 256 bit key")
-
-#     khx = hexathon.uniform(k.hex())
-
-#     if v is not None:
-#         h = hashlib.sha256()
-#         h.update(v)
-#         if k != h.digest():
-#             raise VerifyError(khx)
-
-#     return khx
 
 
 class LedgerRepository:
