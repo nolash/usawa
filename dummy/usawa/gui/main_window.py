@@ -1,11 +1,17 @@
 import logging
+from pathlib import Path
+from usawa.core.state_manager import StateManager
 from usawa.core.usawa_wallet import UsawaWallet
+from usawa.gui.components.passphrase_dialog import (
+    PASSPHRASE_DIALOG_CSS,
+    PassphraseDialog,
+)
 from usawa.gui.components.wallet_setup import ImportWalletDialog
 from usawa.ledger import Ledger
 from usawa.service import UnixClient
 from usawa.core.entry_service import EntryService
 from usawa.storage.ledger_repository import LedgerRepository
-from gi.repository import Adw, Gtk, Gio, GLib
+from gi.repository import Adw, Gtk, Gio, GLib, Gdk
 from usawa import load
 from usawa.gui.controllers.entry_controller import EntryController
 from usawa.gui.views.entry_list_view import EntryListView
@@ -48,7 +54,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.toast_overlay.set_child(self.nav_view)
 
         self._setup_actions()
-        GLib.idle_add(self._show_import_dialog)
+        GLib.idle_add(self._check_wallet_status)
 
     def _create_menu_button(self):
         menu = Gio.Menu()
@@ -122,20 +128,22 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         logg.info("MainWindow refreshing entries")
         self.entry_list_view._load_entries()
 
-    def _show_import_dialog(self):
-        try:
+    def _check_wallet_status(self):
+        wallet_path = StateManager.get("wallet_path")
+        if not wallet_path or not Path(wallet_path).exists():
+            logg.info("no wallet in store, showing import dialog")
+            dialog = ImportWalletDialog(self)
+            dialog.present(self)
+        else:
             ledger_tree = load(self.ledger_path)
             ledger = Ledger.from_tree(ledger_tree)
             store = LedgerStore(self.valkey_store, ledger)
-            wallet = store.get_key(
+            dialog = PassphraseDialog(
+                store=store,
                 wallet_class=UsawaWallet,
-                passphrase=self.cfg.get("WALLET_KEY_PASSPHRASE"),
+                on_success=lambda wallet: self._init_with_wallet(wallet, False),
+                on_cancel=self._on_wallet_cancelled,
             )
-            logg.info("wallet found in store, skipping import dialog")
-            self._init_with_wallet(wallet, False)
-        except FileNotFoundError:
-            logg.info("no wallet in store, showing import dialog")
-            dialog = ImportWalletDialog(self)
             dialog.present(self)
 
     def _init_with_wallet(self, wallet, save_wallet: bool = True):
@@ -159,3 +167,15 @@ class UsawaMainWindow(Adw.ApplicationWindow):
 
         entry_list_page = self._create_entry_list_page()
         self.nav_view.add(entry_list_page)
+
+    def _on_wallet_cancelled(self):
+        self.get_application().quit()
+
+    def _load_css(self):
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_string(PASSPHRASE_DIALOG_CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
