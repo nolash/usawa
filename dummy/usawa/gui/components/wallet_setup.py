@@ -5,6 +5,7 @@ import threading
 import logging
 import threading
 
+from usawa.core.state_manager import StateManager
 from usawa.core.usawa_wallet import UsawaWallet
 
 
@@ -146,6 +147,7 @@ class ImportWalletDialog(Adw.Dialog):
         toast.set_timeout(3)
         self.parent.toast_overlay.add_toast(toast)
         self.close()
+        StateManager.set("wallet_path", self.privatekey_path)
         self.parent._init_with_wallet(wallet)
 
     def _on_error(self):
