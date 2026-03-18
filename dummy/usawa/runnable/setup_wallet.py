@@ -5,6 +5,10 @@ from pathlib import Path
 from nacl.signing import SigningKey
 from nacl.secret import SecretBox
 from nacl.pwhash import argon2i
+from whee.valkey import ValkeyStore
+
+from usawa.store import KeyStore
+from usawa.crypto import DemoWallet
 
 logg = logging.getLogger("core.setup_wallet")
 
@@ -31,6 +35,9 @@ def encrypt_seed(seed: bytes, passphrase: str) -> bytes:
 
 
 def setup_wallet(wallet_dir=None):
+    db = ValkeyStore('')
+    store = KeyStore(db)
+
     wallet_dir = Path(wallet_dir) if wallet_dir else DEFAULT_WALLET_DIR
     wallet_dir.mkdir(parents=True, exist_ok=True)
     logg.info("wallet directory: %s", wallet_dir)
@@ -58,7 +65,12 @@ def setup_wallet(wallet_dir=None):
         f.write(pk.encode())
     logg.info("public key saved to: %s", publickey_path)
 
+    wallet = DemoWallet(privatekey=random_bytes)
+    store.add_key(wallet, passphrase=passphrase_confirm)
+    logg.info("key written to store")
+
     logg.info("setup complete.")
     logg.info("your 32-byte public key (hex): %s", pk.encode().hex())
+
 
     return 0

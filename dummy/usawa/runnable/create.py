@@ -143,15 +143,15 @@ pk = None
 wallet = None
 dt = datetime.datetime.now()
 
-cfg = usawa.config.load()
+cfg = usawa.config.load_config()
 
 try:
     #pk = store.get_key()
-    wallet = store.get_key(DemoWallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
+    wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
 except FileNotFoundError:
     logg.info('no default key found')
     wallet = DemoWallet()
-    store.add_key(wallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
+    store.add_key(wallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
 if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))

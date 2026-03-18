@@ -91,8 +91,79 @@ def pfx_asset(asset):
     return PFX_ASSET + asset.get_digest(binary=True)
 
 
+class KeyStore(Interface):
 
-class LedgerStore(Interface):
+    def __init__(self, implementation):
+        if not isinstance(implementation, Interface):
+            raise ValueError('store must be whee interface instance')
+        self.db = implementation
+
+
+    """Add signing key to the store.
+
+    If this is the first key in the store, it will be set as default.
+
+    :param wallet: The wallet object to store keys for.
+    :type wallet: usawa.Wallet implementation
+    :param acl: Access control list data to retrieve the allowance and label for the key.
+    :type acl: usawa.ACL
+    :param default: If True, this key will be set as default key.
+    :type default: bool
+    :param passphrase: Passphrase to encrypt the key with.
+    :type passphrase: bytes
+    :todo: Implement the ACL lookup
+    """
+    def add_key(self, wallet, acl=None, default=False, passphrase=None):
+        k = pfx_key()
+        try:
+            self.db.get(k)
+        except FileNotFoundError:
+            default = True
+        pubkey = wallet.pubkey()
+        if default:
+            self.db.put(k, pubkey, exist_ok=True)
+        k = pfx_key(pubkey=pubkey)
+        v = wallet.export(passphrase=passphrase)
+        self.db.put(k, v)
+
+
+    """Get a newly instantiated wallet object from a private key in the store.
+    
+    If public key is not supplied, will retrieve the default private key.
+
+    :param wallet_class: Wallet class to use to instantiate a Wallet object from private key material.
+    :type: usawa.crypto.Wallet
+    :param pubkey: Public key to retrieve private key for.
+    :type pubkey: bytes
+    :param passphrase: Passphrase to decrypt the key with.
+    :type passphrase: bytes
+    :raises FileNotFoundError: No key exists.
+    :raises usawa.error.VerifyError: Key decryption failed.
+    :return: Resulting wallet
+    :rtype: usawa.crypto.Wallet
+    """
+    def get_key(self, wallet_class, pubkey=None, passphrase=None):
+        if pubkey == None:
+            k = pfx_key()
+            pubkey = self.db.get(k)
+        k = pfx_key(pubkey=pubkey)
+        #return self.db.get(k)
+        r = self.db.get(k)
+        return wallet_class.from_export(r, passphrase=passphrase)
+
+
+    """Implements whee.Interface.put
+    """
+    def put(self, k, v):
+        return self.db.put(k, v)
+
+
+    """Implements whee.Interface.get
+    """
+    def get(self, k):
+        return self.db.get(k)
+
+class LedgerStore(KeyStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 
     :param implementation: Store implementation.
@@ -101,12 +172,10 @@ class LedgerStore(Interface):
     :type ledger: usawa.Ledger
     """
     def __init__(self, implementation, ledger):
-        if not isinstance(implementation, Interface):
-            raise ValueError('store must be whee interface instance')
+        super(LedgerStore, self).__init__(implementation)
         if not isinstance(ledger, Ledger):
             raise ValueError('invalid ledger')
         self.ledger = ledger
-        self.__o = implementation
 
 
     """Implements whee.Interface.start
@@ -115,11 +184,11 @@ class LedgerStore(Interface):
         serial = 0
         k = pfx_ledger_topic(self.ledger.topic)
         try:
-            b = self.__o.get(k)
+            b = self.db.get(k)
             serial = int.from_bytes(8, byteorder='big')
         except FileNotFoundError:
             v = serial.to_bytes(8, byteorder='big')
-            self.__o.put(k, v)
+            self.db.put(k, v)
         self.ledger.serial = serial
 
 
@@ -130,10 +199,10 @@ class LedgerStore(Interface):
         v = None
         # TODO: needs to be an atomic routine
         try:
-            v = self.__o.get(k)
+            v = self.db.get(k)
         except KeyError:
             raise PermissionError()
-        self.__o.put(k, 0x01, exist_ok)
+        self.db.put(k, 0x01, exist_ok)
         # atomic until here
 
 
@@ -141,7 +210,7 @@ class LedgerStore(Interface):
     """
     def unlock(self):
         k = pfx_ledger_lock(self.ledger.topic)
-        v = self.__o.delete(k)
+        v = self.db.delete(k)
 
 
     """Add an entry to the store.
@@ -156,7 +225,7 @@ class LedgerStore(Interface):
     def add_entry(self, entry, update_ledger=False):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap()
-        self.__o.put(k, v)
+        self.db.put(k, v)
         if update_ledger:
             self.ledger.add_entry(entry)
 
@@ -176,7 +245,7 @@ class LedgerStore(Interface):
     """
     def get_entry(self, entry, acl=None):
         k = pfx_entry(self.ledger, entry)
-        v = self.__o.get(k)
+        v = self.db.get(k)
         entry = Entry.unwrap(v)
         # TODO: hacky!
         i = 0
@@ -198,14 +267,14 @@ class LedgerStore(Interface):
     def add_asset(self, asset):
         k = pfx_asset(asset)
         v = asset.serialize()
-        self.__o.put(k, v)
+        self.db.put(k, v)
 
 
     """Restore an entry attachment asset from the store.
     """
     def get_asset(self, asset):
         k = pfx_asset(asset)
-        v = self.__o.get(k)
+        v = self.db.get(k)
         digest = asset.get_digest(binary=True)
         return Asset.deserialize(v, digest)
 
@@ -246,69 +315,6 @@ class LedgerStore(Interface):
             i -= 1
 
 
-    """Add signing key to the store.
-
-    If this is the first key in the store, it will be set as default.
-
-    :param wallet: The wallet object to store keys for.
-    :type wallet: usawa.Wallet implementation
-    :param acl: Access control list data to retrieve the allowance and label for the key.
-    :type acl: usawa.ACL
-    :param default: If True, this key will be set as default key.
-    :type default: bool
-    :param passphrase: Passphrase to encrypt the key with.
-    :type passphrase: bytes
-    :todo: Implement the ACL lookup
-    """
-    def add_key(self, wallet, acl=None, default=False, passphrase=None):
-        k = pfx_key()
-        try:
-            self.__o.get(k)
-        except FileNotFoundError:
-            default = True
-        pubkey = wallet.pubkey()
-        if default:
-            self.__o.put(k, pubkey, exist_ok=True)
-        k = pfx_key(pubkey=pubkey)
-        v = wallet.export(passphrase=passphrase)
-        self.__o.put(k, v)
-
-
-    """Get a newly instantiated wallet object from a private key in the store.
-    
-    If public key is not supplied, will retrieve the default private key.
-
-    :param wallet_class: Wallet class to use to instantiate a Wallet object from private key material.
-    :type: usawa.crypto.Wallet
-    :param pubkey: Public key to retrieve private key for.
-    :type pubkey: bytes
-    :param passphrase: Passphrase to decrypt the key with.
-    :type passphrase: bytes
-    :raises FileNotFoundError: No key exists.
-    :raises usawa.error.VerifyError: Key decryption failed.
-    :return: Resulting wallet
-    :rtype: usawa.crypto.Wallet
-    """
-    def get_key(self, wallet_class, pubkey=None, passphrase=None):
-        if pubkey == None:
-            k = pfx_key()
-            pubkey = self.__o.get(k)
-        k = pfx_key(pubkey=pubkey)
-        #return self.__o.get(k)
-        r = self.__o.get(k)
-        return wallet_class.from_export(r, passphrase=passphrase)
-
-
-    """Implements whee.Interface.put
-    """
-    def put(self, k, v):
-        return self.__o.put(k, v)
-
-
-    """Implements whee.Interface.get
-    """
-    def get(self, k):
-        return self.__o.get(k)
 
 
     """Store all entries in the ledger state.
