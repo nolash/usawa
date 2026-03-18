@@ -141,15 +141,16 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             dialog = PassphraseDialog(
                 store=store,
                 wallet_class=UsawaWallet,
-                on_success=lambda wallet: self._init_with_wallet(wallet, False),
+                on_success=lambda wallet, passphrase: self._init_with_wallet(
+                    wallet, passphrase, False
+                ),
                 on_cancel=self._on_wallet_cancelled,
             )
             dialog.present(self)
 
-    def _init_with_wallet(self, wallet, save_wallet: bool = True):
+    def _init_with_wallet(self, wallet, passphrase, save_wallet: bool = True):
         """Called after wallet is successfully imported."""
         self.wallet = wallet
-        passphrase = self.cfg.get("WALLET_KEY_PASSPHRASE")
 
         repository = LedgerRepository(
             ledger_path=self.ledger_path,

@@ -124,18 +124,18 @@ class PassphraseDialog(Adw.Dialog):
                 wallet_class=self.wallet_class,
                 passphrase=passphrase,
             )
-            GLib.idle_add(self._unlock_success, wallet)
+            GLib.idle_add(self._unlock_success, wallet, passphrase)
         except Exception as e:
             logg.warning("Passphrase unlock failed: %s", e)
             GLib.idle_add(self._unlock_failure, str(e))
 
-    def _unlock_success(self, wallet):
+    def _unlock_success(self, wallet, passphrase):
         logg.info("Wallet unlocked successfully")
         self._set_loading(False)
         self._unlocked = True
         self.force_close()
         if self.on_success:
-            self.on_success(wallet)
+            self.on_success(wallet, passphrase)
 
     def _unlock_failure(self, error_msg):
         self._set_loading(False)

@@ -62,6 +62,13 @@ class ImportWalletDialog(Adw.Dialog):
         self.spinner = Gtk.Spinner()
         box.append(self.spinner)
 
+        self.error_label = Gtk.Label(label="")
+        self.error_label.set_css_classes(["error"])
+        self.error_label.set_visible(False)
+        self.error_label.set_wrap(True)
+        self.error_label.set_justify(Gtk.Justification.CENTER)
+        box.append(self.error_label)
+
         button_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         button_row.set_halign(Gtk.Align.CENTER)
         box.append(button_row)
@@ -148,12 +155,24 @@ class ImportWalletDialog(Adw.Dialog):
         self.parent.toast_overlay.add_toast(toast)
         self.close()
         StateManager.set("wallet_path", self.privatekey_path)
-        self.parent._init_with_wallet(wallet)
+        self.parent._init_with_wallet(wallet, self.passphrase)
 
     def _on_error(self):
         self.spinner.stop()
         self.import_btn.set_sensitive(True)
         self.browse_btn.set_sensitive(True)
-        toast = Adw.Toast.new("Failed to decrypt wallet — check your GPG setup")
-        toast.set_timeout(5)
-        self.parent.toast_overlay.add_toast(toast)
+        self._show_error("Wrong passphrase or invalid wallet file.")
+        self._shake_entry()
+
+    def _show_error(self, message: str):
+        self.error_label.set_label(message)
+        self.error_label.set_visible(True)
+
+    def _shake_entry(self):
+        self.passphrase_row.add_css_class("shake")
+
+        def remove_shake():
+            self.passphrase_row.remove_css_class("shake")
+            return False
+
+        GLib.timeout_add(400, remove_shake)
