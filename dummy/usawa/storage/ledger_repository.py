@@ -2,11 +2,7 @@ import logging
 from typing import List
 from usawa.storage.file_utils import path_from_uri
 from usawa.storage.xml_utils import (
-    _build_export_root,
-    _build_incoming_element,
-    _find_entry_by_serial,
     _write_xml_to_file,
-    resolve_namespace,
 )
 from usawa.asset import Asset
 from usawa.crypto import ACL, DemoWallet, Wallet
@@ -163,14 +159,12 @@ class LedgerRepository:
         """Get all entries"""
         try:
             store, _, _ = self._init_store()
-
             return [
                 EntryMapper.to_domain_entry(storage_entry)
                 for _, storage_entry in store.ledger.entries.items()
             ]
         except Exception as e:
-            # logg.error(f"Failed to retrieve entries: {e}")
-            logg.error("failed to map entries: %s", e, exc_info=True)
+            logg.error(f"Failed to retrieve entries: {e}")
             return []
 
     def get_asset_bytes(self, digest: str):
@@ -242,16 +236,13 @@ class LedgerRepository:
                 return False, f"Entry #{serial} not found"
 
             _, ledger, _ = self._init_store()
+            try:
+                _write_xml_to_file(storage_entry.to_string(), output_path)
+            except Exception as e:
+                logg.debug(
+                    "Failed to write entry #%d to file %s: %s", serial, output_path, e
+                )
 
-            xml_tree = self.store.ledger.to_tree()
-            ns_uri = resolve_namespace(xml_tree)
-            target_entry = _find_entry_by_serial(xml_tree, ns_uri, serial)
-            if target_entry is None:
-                return False, f"Entry #{serial} not found in XML"
-
-            incoming = _build_incoming_element(ns_uri, target_entry, xml_tree)
-            root = _build_export_root(xml_tree, ns_uri, target_entry, incoming)
-            _write_xml_to_file(root, output_path)
             ledger.truncate()
             logg.debug(
                 "Ledger entries after truncate: %d", len(self.store.ledger.entries)
