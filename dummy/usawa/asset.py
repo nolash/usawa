@@ -309,7 +309,8 @@ class Asset(UsawaElement):
     """
 
     def to_list(self):
-        d = []
+        base = super(Asset, self).serialize()
+        d = [base]
         for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
         #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             v = getattr(self, k)
@@ -338,7 +339,8 @@ class Asset(UsawaElement):
     def deserialize(data, digest):
         o = Asset()
         v = rencode.loads(data)
-        i = 0
+        super(Asset, o).deserialize(v[0])
+        i = 1
         for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
         #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             vv = v[i]

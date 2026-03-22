@@ -16,7 +16,6 @@ PFX_LEDGER_LOCK = b'\x03'
 PFX_ENTRY = b'\x04'
 PFX_UNIT_INDEX = b'\x08'
 PFX_ASSET = b'\x10'
-PFX_AUX = b'\xfe'
 
 logg = logging.getLogger('usawa.store')
 
@@ -67,6 +66,7 @@ def pfx_ledger_lock(topic):
 :type ledger: usawa.Ledger
 :param entry: Entry object to add to ledger.
 :type entry: usawa.Entry
+:raises ValueError: Invalid ledger or entry
 :return: DB prefix
 :rtype: bytes
 """
@@ -82,6 +82,19 @@ def pfx_entry(ledger, entry):
         raise ValueError('invalid ledger')
     return PFX_LEDGER + ledger.topic + serial.to_bytes(8, byteorder='big')
 
+"""DB key prefix for adding a WIP entry object.
+
+:param entry: Entry draft object to add to store.
+:type entry: usawa.Entry
+:raises ValueError: Invalid ledger or entry
+:return: DB prefix
+:rtype: bytes
+"""
+def pfx_entry_draft(entry):
+    if not isinstance(entry, Entry):
+        raise ValueError('invalid entry')
+    ref = entry.get_ref(binary=True)
+    return PFX_ENTRY + ref
 
 """DB key prefix for adding entry attachment asset to a ledger.
 
@@ -231,6 +244,25 @@ class LedgerStore(KeyStore):
             self.ledger.add_entry(entry)
 
 
+    def add_draft(self, entry):
+        k = pfx_entry_draft(entry)
+        v = entry.serialize()
+        self.db.put(k, v)
+
+
+    def get_draft(self, entry):
+        k = pfx_entry_draft(entry)
+        v = self.db.get(k)
+        entry = Entry.deserialize(v)
+        # TODO: hacky!
+        i = 0
+        for o in entry.attachment:
+            asset = self.get_asset(o)
+            entry.attachment[i] = asset
+            i += 1
+        return entry
+
+
     """Restore an entry from data from the store.
 
     The entry is referenced by its serial number within the store's ledger. It can either be specified as an integer, or an entry object with the serial number property set accordingly.
@@ -255,7 +287,6 @@ class LedgerStore(KeyStore):
             #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
             entry.attachment[i] = asset
             i += 1
-        #entry.verify(acl=acl)
         return entry
 
 

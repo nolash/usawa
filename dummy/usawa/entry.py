@@ -205,14 +205,6 @@ class Entry(UsawaElement):
         self.lookup = None
         self.lookup_algo = None
 
-    """Get the unique non-sum identifier of the entry as a string value.
-
-    :returns: ref
-    :rtype: str
-    """
-    def get_ref(self):
-        return self.ref
-
 
     """Add an entry part to the entry.
 
@@ -383,7 +375,6 @@ class Entry(UsawaElement):
         src_data = v[8]
         attach_data = v[9]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
-        logg.debug('tup {}'.format(v[0]))
         super(Entry, o).deserialize(v[0])
         for v in src_data:
             #src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
