@@ -24,8 +24,11 @@ logg = logging.getLogger("gui.mainwindow")
 
 class UsawaMainWindow(Adw.ApplicationWindow):
 
-    def __init__(self, application, ledger_path=None, **kwargs):
+    def __init__(self, application, ledger_path=None, account_list=None, **kwargs):
         super().__init__(application=application, **kwargs)
+        logg.debug('foo')
+
+        self.account_list = account_list
 
         self.set_title("Usawa")
         self.set_default_size(1000, 600)
@@ -118,6 +121,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             entries=entries,
             refresh_callback=self.refresh_entries,
             toast_overlay=self.toast_overlay,
+            account_list=self.account_list,
         )
         self.entry_list_view._load_entries()
         page.set_child(self.entry_list_view)

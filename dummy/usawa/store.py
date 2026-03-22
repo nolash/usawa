@@ -16,6 +16,7 @@ PFX_LEDGER_LOCK = b'\x03'
 PFX_ENTRY = b'\x04'
 PFX_UNIT_INDEX = b'\x08'
 PFX_ASSET = b'\x10'
+PFX_AUX = b'\xfe'
 
 logg = logging.getLogger('usawa.store')
 

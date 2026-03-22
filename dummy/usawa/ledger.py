@@ -9,6 +9,7 @@ import lxml.etree
 import rencode
 import varints.leb128s
 
+from .base import UsawaElement
 from .crypto import DemoWallet, ACL
 from .xml import nsmap, XML_FORMAT_VERSION
 from .constant import NSPREFIX, DEFAULTPARENT
@@ -211,7 +212,7 @@ class RunningTotal:
         return 'running total {}: income {} expense {} asset {} liability {}'.format(self.sym, self.income, self.expense, self.asset, self.liability)
 
 
-class Ledger:
+class Ledger(UsawaElement):
 
     default_src = 'defalsify.org'
 

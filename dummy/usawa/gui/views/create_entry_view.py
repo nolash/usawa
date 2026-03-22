@@ -6,11 +6,11 @@ import mimetypes
 logg = logging.getLogger("gui.create_entry_view")
 
 
-def create_entry_page(nav_view, controller):
+def create_entry_page(nav_view, controller, account_list=None):
     """Create a new entry page"""
     page = Adw.NavigationPage(title="Create New Entry", tag="create-entry")
 
-    view = CreateEntryView(nav_view, controller)
+    view = CreateEntryView(nav_view, controller, account_list=account_list)
     page.set_child(view)
 
     return page
@@ -19,11 +19,12 @@ def create_entry_page(nav_view, controller):
 class CreateEntryView(Gtk.Box):
     """Create entry view - UI ONLY"""
 
-    def __init__(self, nav_view, controller):
+    def __init__(self, nav_view, controller, account_list=None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         self.nav_view = nav_view
         self.controller = controller
+        self.account_list = account_list
         self.attachment_paths: list[str] = []
 
         self._build_ui(nav_view)

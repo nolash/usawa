@@ -19,6 +19,7 @@ class EntryListView(Gtk.Box):
         toast_overlay,
         entries=None,
         refresh_callback=None,
+        account_list=None,
         **kwargs,
     ):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0, **kwargs)
@@ -28,6 +29,7 @@ class EntryListView(Gtk.Box):
         self.entries = entries or []
         self.refresh_callback = refresh_callback
         self.toast_overlay = toast_overlay
+        self.account_list = account_list
         self.active_filter = None
 
         overlay = Gtk.Overlay()
@@ -319,7 +321,7 @@ class EntryListView(Gtk.Box):
     def on_fab_clicked(self, button):
         logg.info("FAB clicked - opening create entry window")
 
-        create_page = create_entry_page(self.nav_view, self.entry_controller)
+        create_page = create_entry_page(self.nav_view, self.entry_controller, account_list=self.account_list)
         self.nav_view.push(create_page)
 
     def refresh_data(self):

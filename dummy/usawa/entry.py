@@ -1,12 +1,12 @@
 import enum
 import logging
 import datetime
-import uuid
 import hashlib
 
 import lxml.etree
 import rencode
 
+from .base import UsawaElement
 from .constant import DEFAULTPARENT, NSPREFIX
 from .crypto import DemoWallet
 from .error import ACLError, VerifyError
@@ -150,7 +150,7 @@ class EntryPart:
         return '[{}] {}:{} {}'.format(pfx, self.typ, self.account, self.amount)
 
 
-class Entry:
+class Entry(UsawaElement):
 
     digest_algo = 'sha512' # The algorithm used for generating entry digests. Must match a hashlib (standard library) type string identifier.
 
@@ -181,15 +181,13 @@ class Entry:
     :todo: Ensure canonical format of keyid.
     """
     def __init__(self, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
+        super(Entry, self).__init__(ref=ref)
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
         elif parent == None:
             parent = DEFAULTPARENT
         elif len(parent) != 64:
             raise ValueError('invalid parent hash')
-        if ref == None:
-            ref = str(uuid.uuid4())
-        self.ref = ref
         self.parent = parent
         self.serial = serial
         self.dt = tx_date
@@ -206,6 +204,14 @@ class Entry:
         self.credit = []
         self.lookup = None
         self.lookup_algo = None
+
+    """Get the unique non-sum identifier of the entry as a string value.
+
+    :returns: ref
+    :rtype: str
+    """
+    def get_ref(self):
+        return self.ref
 
 
     """Add an entry part to the entry.
@@ -328,8 +334,10 @@ class Entry:
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
+        base = super(Entry, self).serialize()
         logg.debug('serializing with parent {}'.format(self.parent.hex()))
         d = [
+                base,
                 self.parent,
                 self.serial,
                 self.ref,
@@ -364,17 +372,19 @@ class Entry:
     def deserialize(data):
         v = rencode.loads(data)
         #parent = v[0].hex()
-        parent = v[0]
-        serial = v[1]
-        ref = v[2].decode('utf-8')
-        date_reg = datetime.datetime.strptime(v[3].decode('utf-8'), '%Y%m%d%H%M%S')
-        date = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d')
+        parent = v[1]
+        serial = v[2]
+        ref = v[3].decode('utf-8')
+        date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
+        date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d')
         #unit = v[5].decode('utf-8')
-        description = v[5].decode('utf-8')
-        dst_data = v[6]
-        src_data = v[7]
-        attach_data = v[8]
+        description = v[6].decode('utf-8')
+        dst_data = v[7]
+        src_data = v[8]
+        attach_data = v[9]
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        logg.debug('tup {}'.format(v[0]))
+        super(Entry, o).deserialize(v[0])
         for v in src_data:
             #src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
             src = EntryPart.deserialize(v, debit=True)

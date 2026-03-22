@@ -2,12 +2,12 @@ import hashlib
 import mimetypes
 import logging
 import os
-import uuid
 
 import lxml.etree
 import rencode
 import magic
 
+from .base import UsawaElement
 from .constant import NSPREFIX
 from .xml import nsmap
 
@@ -46,7 +46,7 @@ def parse_path(path):
     )
 
 
-class Asset:
+class Asset(UsawaElement):
     """Represents a file asset, used as attachment in usawa.Entry.
 
     Object is not intended to be instantiated directly. Instead one of the following static methods should be used:
@@ -56,14 +56,14 @@ class Asset:
     Asset.from_tree() - Recreate from an XML tree.
     """
 
-    def __init__(self, digest=None):
+    def __init__(self, digest=None, ref=None):
+        super(Asset, self).__init__(ref=ref)
         self.digest = digest
         self.mime = None
         self.enc = None
         self.slug = None
         self.ext = None
         self.extref = None
-        self.uuid = None
         self.description = None
 
     """Return the preferred filename with extension for the asset.
@@ -202,7 +202,6 @@ class Asset:
 
         h = hashlib.sha1()
         h.update(o.digest)
-        # o.uuid = str(uuid.uuid1(h.digest()))
         o.extref = extref
         o.description = description
 
@@ -244,8 +243,7 @@ class Asset:
         if canon:
             return tree
 
-        # if self.uuid != None:
-        #    tree.set('uuid', self.uuid)
+        tree.set('ref', self.ref)
 
         if self.extref != None:
             o = lxml.etree.SubElement(tree, "extref")
@@ -278,8 +276,8 @@ class Asset:
 
     @staticmethod
     def from_tree(tree):
-        o = Asset()
-        # o.uuid = tree.get('uuid')
+        uuid = tree.get('ref')
+        o = Asset(ref=uuid)
         o.mime = tree.get("mime")
         v = tree.find("digest", namespaces=nsmap()).text
         o.digest = bytes.fromhex(v)
@@ -312,8 +310,8 @@ class Asset:
 
     def to_list(self):
         d = []
-        # for k in ['mime', 'uuid', 'slug', 'ext', 'description', 'extref', 'enc']:
-        for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
+        for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
+        #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             v = getattr(self, k)
             d.append(v)
         return d
@@ -341,8 +339,8 @@ class Asset:
         o = Asset()
         v = rencode.loads(data)
         i = 0
-        # for k in ['mime', 'uuid', 'slug', 'ext', 'description', 'extref', 'enc']:
-        for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
+        for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
+        #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             vv = v[i]
             if isinstance(vv, bytes):
                 vv = vv.decode("utf-8")

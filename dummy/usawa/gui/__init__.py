@@ -21,11 +21,12 @@ class Usawa(Adw.Application):
         self.win = None
         self.ledger_file = None
         self.cfg = None
+        self.account_list = None
         self.connect("activate", self.on_activate)
         signal.signal(signal.SIGINT, self._handle_sigint)
 
     def on_activate(self, app):
-        self.win = UsawaMainWindow(application=app, ledger_path=self.ledger_file)
+        self.win = UsawaMainWindow(application=app, ledger_path=self.ledger_file, account_list=self.account_list)
         self.win.present()
 
     def _handle_sigint(self, *_):
