@@ -13,19 +13,19 @@ def check_path_parts(path):
             raise AccountError('invalid part: ' + v)
     #return True
     typ = getattr(AccountType, parts[0].lower())
-    return (typ, parts,)
+    return (typ, parts[1:],)
 
 
 def from_account_path(p, sym=None, typ=None):
     if sym != None:
         p = sym + '.' + p
     o = p.split('.')
-    logg.debug('have {} {} {}'.format(p, sym, typ))
     if len(o) != 2:
         raise ValueError('account path should have zero or one symbol specifier')
     sym = o[0]
-    o = check_path_parts(o[1])
-    typ = o[0]
+    if typ == None:
+        o = check_path_parts(o[1])
+        typ = o[0]
     path = o[1]
 
     return (sym, typ, path,)
@@ -38,6 +38,12 @@ class AccountType(enum.Enum):
     expense = 'Expense'
     imprt = 'Import'
     export = 'Export'
+
+
+class AccountDisplay(enum.IntEnum):
+    full = 0
+    typ = 1
+    path = 2
 
 
 class Account:
@@ -59,8 +65,9 @@ class Account:
 
 
     def to_path(self):
-        path = self.segments.join('/')
-        path = '{}.{}/{}'.format(self.sym, self.typ, path)
+        path = '/'.join(self.segments)
+        path = '{}.{}/{}'.format(self.sym, self.typ.value.lower(), path)
+        return path
 
 
 class AccountIndex:
@@ -71,6 +78,7 @@ class AccountIndex:
         self.locked = False
         #self.validate = pathvalidator
         self.iterval = None
+        self.iterfilter = None
 
 
     def add(self, path, sym=None, typ=None):
@@ -85,6 +93,8 @@ class AccountIndex:
             self.accounts[sym] = []
         elif path in self.accounts[sym]:
             logg.debug('Ignoring duplicate account: {}:{}'.format(sym, path))
+        path = account.to_path()
+        logg.info('add account {}'.format(path))
         self.accounts[sym].append(path)
 
 
@@ -92,28 +102,57 @@ class AccountIndex:
         self.locked = True
 
 
-    def check(self, sym, path):
+    def check(self, sym, typ, path):
+        s = '{}.{}/{}'.format(sym, typ.value.lower(), path)
         try:
-            return path in self.accounts[sym]
+            return s in self.accounts[sym]
         except KeyError:
             return False
 
 
-    def __iter__(self):
+    def set_filter(self, sym=None, typ=None, display=AccountDisplay.full):
+        if typ != None:
+            typ = typ.value
+        self.iterfilter = (sym, typ, display,)
+
+
+    def __iter__(self, fltr=None):
+        self.iterval = None
         keys = list(self.uidx.syms())
         keys.sort()
+        fltr = self.iterfilter
         for k in keys:
-            for v in self.accounts[k]:
+            if fltr != None:
+                if fltr[0] != None:
+                    if fltr[0] != k:
+                        continue
+            accounts = self.accounts.get(k)
+            if accounts == None:
+                continue
+            for v in accounts:
+                path = v
+                (sym, v) = v.split('.', maxsplit=1)
+                (typ, v) = v.split('/', maxsplit=1)
+                if fltr != None:
+                    if fltr[1] != None:
+                        if typ.casefold() != fltr[1].casefold():
+                            continue
                 if self.iterval == None:
                     self.iterval = []
-                self.iterval.append(k + '/' + v)
+                if fltr != None:
+                    if fltr[2] != AccountDisplay.full:
+                        path = v
+                        if fltr[2] == AccountDisplay.typ:
+                            path = typ + '/' + path 
+                self.iterval.append(path)
         return self
 
 
     def __next__(self):
+        if self.iterval == None:
+            raise StopIteration()
         if len(self.iterval) == 0:
-            self.iverval = None
+            self.iterval = None
             raise StopIteration()
         v = self.iterval.pop(0)
         return v
-
