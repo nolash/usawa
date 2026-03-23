@@ -64,10 +64,17 @@ class Account:
         return Account(o[0], o[1], o[2])
 
 
-    def to_path(self):
+    def to_path(self, display=AccountDisplay.full):
         path = '/'.join(self.segments)
-        path = '{}.{}/{}'.format(self.sym, self.typ.value.lower(), path)
+        if display == AccountDisplay.full:
+            path = '{}.{}/{}'.format(self.sym, self.typ.value.lower(), path)
+        elif display == AccountDisplay.typ:
+            path = '{}/{}'.format(self.typ.value.lower(), path)
         return path
+
+
+    def __str__(self):
+        return self.to_path()
 
 
 class AccountIndex:
@@ -118,6 +125,7 @@ class AccountIndex:
         path = account.to_path()
         logg.info('add account {}'.format(path))
         self.accounts[sym].append(path)
+        return account
 
 
     def lock(self):
@@ -126,10 +134,17 @@ class AccountIndex:
 
     def check(self, sym, typ, path):
         s = '{}.{}/{}'.format(sym, typ.value.lower(), path)
+        r = False
         try:
-            return s in self.accounts[sym]
+            r = s in self.accounts[sym]
         except KeyError:
-            return False
+            return None
+        return s
+
+
+    def check_path(self, path):
+        o = Account.path_parser(path)
+        return self.check(o[0], o[1], o[2])
 
 
     def set_filter(self, sym=None, typ=None, display=AccountDisplay.full):

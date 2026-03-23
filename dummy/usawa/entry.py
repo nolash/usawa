@@ -207,9 +207,9 @@ class Entry(UsawaElement):
 
 
     @staticmethod
-    def empty():
+    def empty(*args, **kwargs):
         dt = datetime.datetime.utcnow()
-        return Entry(-1, dt)
+        return Entry(-1, dt, *args, **kwargs)
 
 
     """Add an entry part to the entry.
