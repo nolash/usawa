@@ -16,6 +16,7 @@ PFX_LEDGER_LOCK = b'\x03'
 PFX_ENTRY = b'\x04'
 PFX_UNIT_INDEX = b'\x08'
 PFX_ASSET = b'\x10'
+PFX_ASSET_INDEX = b'\x11'
 
 logg = logging.getLogger('usawa.store')
 
@@ -103,6 +104,12 @@ def pfx_asset(asset):
     if not isinstance(asset, Asset):
         raise ValueError('invalid asset')
     return PFX_ASSET + asset.get_digest(binary=True)
+
+
+def pfx_asset_index(asset):
+    if not isinstance(asset, Asset):
+        raise ValueError('invalid asset')
+    return PFX_ASSET_INDEX + asset.get_ref(binary=True)
 
 
 class BaseStore(Interface):
@@ -201,7 +208,7 @@ class EntryStore(BaseStore):
             i += 1
         return entry
 
-class LedgerStore(KeyStore):
+class LedgerStore(EntryStore, KeyStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 
     :param implementation: Store implementation.
@@ -305,6 +312,9 @@ class LedgerStore(KeyStore):
     def add_asset(self, asset):
         k = pfx_asset(asset)
         v = asset.serialize()
+        self.db.put(k, v)
+        v = k
+        k = pfx_asset_index(asset)
         self.db.put(k, v)
 
 

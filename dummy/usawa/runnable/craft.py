@@ -54,7 +54,7 @@ class Context:
         if self.cfg.true('ACCOUNTS_STRICT'):
             self.accounts.lock()
 
-        self.entry = Entry.empty(ref=args.r)
+        self.entry = Entry.empty(ref=args.e)
         self.db = None
         if self.cfg.get('STORE_TYPE') == 'valkey':
             dbid = self.cfg.get('VALKEY_ID')
@@ -62,7 +62,7 @@ class Context:
             port = self.cfg.get('VALKEY_PORT')
             self.db = ValkeyStore('', host=host, port=port)
         self.store = EntryStore(self.db)
-        if args.r:
+        if args.e:
             self.entry = self.store.get_draft(self.entry)
             self.state = 1
         else:
@@ -120,7 +120,9 @@ class Context:
 
 
 argp = argparse.ArgumentParser()
-argp.add_argument('-r', type=str, help='entry unique reference')
+argp.add_argument('-e', type=str, help='unique reference of entry')
+argp.add_argument('-x', type=str, help='unique reference of attachment')
+argp.add_argument('-z', type=str, help='sum of attachment')
 argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('-l', type=str, help='ledger file')
@@ -132,8 +134,6 @@ if args.v:
 
 ctx = Context(args)
 
-
-   
 
 def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     if default != None:
@@ -191,14 +191,15 @@ def do_interactive(ctx):
     #return ctx.open(output)
 
 entry = None
-if ctx.state == 0:
+if self.cmd == 'entry':
     do_interactive(ctx)
     ctx.validate()
     entry = Entry.empty(description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
     entry.add_part(ctx.part[0], debit=True)
     entry.add_part(ctx.part[1])
-else:
     entry = ctx.entry
+elif self.cmd == 'asset':
+
 
 ctx.store.put_draft(entry)
 print(entry)
