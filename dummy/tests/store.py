@@ -193,5 +193,6 @@ class TestStore(unittest.TestCase):
         self.assertEqual(o.get_digest(binary=True), hash_of_foo)
         self.assertEqual(o.get_ref(binary=True), uuid_for_foo.bytes)
 
+
 if __name__ == '__main__':
     unittest.main()

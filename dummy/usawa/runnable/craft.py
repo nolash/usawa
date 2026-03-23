@@ -4,8 +4,8 @@ import logging
 from whee.valkey import ValkeyStore
 
 import usawa.config
-from usawa import Entry, Ledger, EntryPart
-from usawa.store import EntryStore
+from usawa import Entry, Ledger, EntryPart, Asset
+from usawa.store import LedgerStore
 from usawa.account import Account, AccountIndex, AccountType, AccountDisplay
 from usawa.constant import CATEGORIES
 
@@ -61,13 +61,14 @@ class Context:
             host = self.cfg.get('VALKEY_HOST')
             port = self.cfg.get('VALKEY_PORT')
             self.db = ValkeyStore('', host=host, port=port)
-        self.store = EntryStore(self.db)
+        self.store = LedgerStore(self.db, self.ledger)
         if args.e:
             self.entry = self.store.get_draft(self.entry)
             self.state = 1
         else:
             self.store.put_draft(self.entry)
         self.ref = self.entry.get_ref()
+
 
 
     def parse_type(self, v):
@@ -121,8 +122,8 @@ class Context:
 
 argp = argparse.ArgumentParser()
 argp.add_argument('-e', type=str, help='unique reference of entry')
-argp.add_argument('-x', type=str, help='unique reference of attachment')
-argp.add_argument('-z', type=str, help='sum of attachment')
+argp.add_argument('-x', type=str, action='append', default=[], help='unique reference of attachment')
+argp.add_argument('-z', type=str, action='append', default=[], help='sum of attachment')
 argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('-l', type=str, help='ledger file')
@@ -191,14 +192,26 @@ def do_interactive(ctx):
     #return ctx.open(output)
 
 entry = None
-if self.cmd == 'entry':
+if ctx.state == 0:
     do_interactive(ctx)
     ctx.validate()
     entry = Entry.empty(description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
     entry.add_part(ctx.part[0], debit=True)
     entry.add_part(ctx.part[1])
+else:
     entry = ctx.entry
-elif self.cmd == 'asset':
+
+
+for v in args.x:
+    k = uuid.UUID(k) 
+    asset = Asset(ref=str(k))
+    attach = self.store.get_asset_indexed(asset)
+    entry.attach(asset)
+for v in args.z:
+    k = bytes.fromhex(v)
+    asset = Asset(digest=k)
+    attach = self.store.get_asset_indexed(asset)
+    entry.attach(asset)
 
 
 ctx.store.put_draft(entry)

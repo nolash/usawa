@@ -56,13 +56,20 @@ class Asset(UsawaElement):
     Asset.from_tree() - Recreate from an XML tree.
     """
 
-    def __init__(self, digest=None, ref=None):
+    def __init__(self, digest=None, ref=None, slug=None, mimetype=None):
         super(Asset, self).__init__(ref=ref)
         self.digest = digest
-        self.mime = None
-        self.enc = None
-        self.slug = None
         self.ext = None
+        if mimetype == None:
+            mimetype = 'application/octet-stream'
+        else:
+            ext = mimetypes.guess_extension(mimetype, strict=True)
+            self.ext = ext[1:]
+        self.mime = mimetype
+        self.enc = None
+        if slug == None:
+            slug = self.get_ref()
+        self.slug = slug
         self.extref = None
         self.description = None
 
@@ -190,10 +197,10 @@ class Asset(UsawaElement):
             closer()
         o.digest = h.digest()
 
+        (o.slug, o.ext) = parse_path(src)
         s = mimetypes.guess_extension(o.mime, strict=True)
         if s != None:
             o.ext = s[1:]
-        (o.slug, o.ext) = parse_path(src)
         if slug != None:
             logg.info("overriding file base name {} -> {}".format(o.slug, slug))
             o.slug = slug
