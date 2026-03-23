@@ -105,13 +105,27 @@ def pfx_asset(asset):
     return PFX_ASSET + asset.get_digest(binary=True)
 
 
-class KeyStore(Interface):
+class BaseStore(Interface):
 
     def __init__(self, implementation):
         if not isinstance(implementation, Interface):
             raise ValueError('store must be whee interface instance')
         self.db = implementation
 
+
+    """Implements whee.Interface.put
+    """
+    def put(self, k, v):
+        return self.db.put(k, v)
+
+
+    """Implements whee.Interface.get
+    """
+    def get(self, k):
+        return self.db.get(k)
+
+
+class KeyStore(BaseStore):
 
     """Add signing key to the store.
 
@@ -166,16 +180,26 @@ class KeyStore(Interface):
         return wallet_class.from_export(r, passphrase=passphrase)
 
 
-    """Implements whee.Interface.put
-    """
-    def put(self, k, v):
-        return self.db.put(k, v)
+class EntryStore(BaseStore):
 
 
-    """Implements whee.Interface.get
-    """
-    def get(self, k):
-        return self.db.get(k)
+    def put_draft(self, entry):
+        k = pfx_entry_draft(entry)
+        v = entry.serialize()
+        self.db.put(k, v, exist_ok=True)
+
+
+    def get_draft(self, entry):
+        k = pfx_entry_draft(entry)
+        v = self.db.get(k)
+        entry = Entry.deserialize(v)
+        # TODO: hacky!
+        i = 0
+        for o in entry.attachment:
+            asset = self.get_asset(o)
+            entry.attachment[i] = asset
+            i += 1
+        return entry
 
 class LedgerStore(KeyStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
@@ -243,24 +267,6 @@ class LedgerStore(KeyStore):
         if update_ledger:
             self.ledger.add_entry(entry)
 
-
-    def add_draft(self, entry):
-        k = pfx_entry_draft(entry)
-        v = entry.serialize()
-        self.db.put(k, v)
-
-
-    def get_draft(self, entry):
-        k = pfx_entry_draft(entry)
-        v = self.db.get(k)
-        entry = Entry.deserialize(v)
-        # TODO: hacky!
-        i = 0
-        for o in entry.attachment:
-            asset = self.get_asset(o)
-            entry.attachment[i] = asset
-            i += 1
-        return entry
 
 
     """Restore an entry from data from the store.

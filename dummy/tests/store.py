@@ -170,7 +170,7 @@ class TestStore(unittest.TestCase):
         o.add_part(dst)
         o.add_tag('foo')
         o.add_pair('bar', 'baz')
-        store.add_draft(o)
+        store.put_draft(o)
         o = store.get_draft(o)
 
  

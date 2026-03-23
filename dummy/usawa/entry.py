@@ -206,6 +206,12 @@ class Entry(UsawaElement):
         self.lookup_algo = None
 
 
+    @staticmethod
+    def empty():
+        dt = datetime.datetime.utcnow()
+        return Entry(-1, dt)
+
+
     """Add an entry part to the entry.
 
     At least one debit and one credit item must be added to be valid.

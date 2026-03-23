@@ -10,7 +10,7 @@ def check_path_parts(path):
     parts = path.split('/')
     for v in parts:
         if not v.isalnum():
-            raise AccountError('invalid part: ' + v)
+            raise AccountError('invalid part: {} ({})'.format(v, v.encode('utf-8').hex()))
     #return True
     typ = getattr(AccountType, parts[0].lower())
     return (typ, parts[1:],)
@@ -79,6 +79,28 @@ class AccountIndex:
         #self.validate = pathvalidator
         self.iterval = None
         self.iterfilter = None
+
+
+#    @staticmethod
+#    def from_io(self, io, closer=None):
+#        while True:
+#            v = io.readline()
+#        if closer != None:
+#            closer()
+#
+
+    @staticmethod
+    def from_file(unitindex, filepath):
+        o = AccountIndex(unitindex)
+        f = open(filepath, "r")
+        while True:
+            v = f.readline()
+            if not v:
+                break
+            o.add(v.strip())
+        f.close()
+#        return AccountIndex.from_io(f, closer=f.close) 
+        return o
 
 
     def add(self, path, sym=None, typ=None):

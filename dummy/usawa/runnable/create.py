@@ -114,7 +114,6 @@ argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
 argp.add_argument('--unit-precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
-argp.add_argument('--unit-rate', type=float, default=1.0, help='Unit exchange rate')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
 
