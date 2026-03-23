@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from usawa.core.state_manager import StateManager
-from usawa.core.usawa_wallet import UsawaWallet
+from usawa.crypto import DemoWallet
 from usawa.gui.components.passphrase_dialog import (
     PASSPHRASE_DIALOG_CSS,
     PassphraseDialog,
@@ -140,7 +140,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             store = LedgerStore(self.valkey_store, ledger)
             dialog = PassphraseDialog(
                 store=store,
-                wallet_class=UsawaWallet,
+                wallet_class=DemoWallet,
                 on_success=lambda wallet, passphrase: self._init_with_wallet(
                     wallet, passphrase, False
                 ),
