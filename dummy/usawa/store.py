@@ -262,13 +262,13 @@ class AssetStore(BaseStore):
     :type asset: usawa.Asset
     :raises: FileExistsError if entry is already in store.
     """
-    def add_asset(self, asset):
+    def add_asset(self, asset, overwrite=False):
         k = pfx_asset(asset)
         v = asset.serialize()
-        self.db.put(k, v)
+        self.db.put(k, v, exist_ok=overwrite)
         v = k
         k = pfx_asset_index(asset)
-        self.db.put(k, v)
+        self.db.put(k, v, exist_ok=True)
 
 
     """Restore an entry attachment asset from the store.

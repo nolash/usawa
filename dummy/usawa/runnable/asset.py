@@ -34,7 +34,7 @@ class Context:
         else:
             raise ValueError('Must provide either file path or digest')
 
-        self.store.add_asset(self.asset)
+        self.store.add_asset(self.asset, overwrite=True)
 
 
 argp = argparse.ArgumentParser()
