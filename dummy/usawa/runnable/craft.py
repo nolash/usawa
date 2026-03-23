@@ -1,5 +1,6 @@
 import argparse
 import logging
+import uuid
 
 from whee.valkey import ValkeyStore
 
@@ -203,14 +204,14 @@ else:
 
 
 for v in args.x:
-    k = uuid.UUID(k) 
+    k = uuid.UUID(v) 
     asset = Asset(ref=str(k))
-    attach = self.store.get_asset_indexed(asset)
+    asset = ctx.store.get_asset_indexed(asset)
     entry.attach(asset)
 for v in args.z:
     k = bytes.fromhex(v)
     asset = Asset(digest=k)
-    attach = self.store.get_asset_indexed(asset)
+    asset = ctx.store.get_asset(asset)
     entry.attach(asset)
 
 
