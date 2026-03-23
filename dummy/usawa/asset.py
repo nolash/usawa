@@ -56,8 +56,10 @@ class Asset(UsawaElement):
     Asset.from_tree() - Recreate from an XML tree.
     """
 
-    def __init__(self, digest=None, ref=None, slug=None, mimetype=None):
+    def __init__(self, digest=None, ref=None, slug=None, mimetype=None, extref=None, description=None):
         super(Asset, self).__init__(ref=ref)
+        if isinstance(digest, str):
+            digest = bytes.fromhex(digest)
         self.digest = digest
         self.ext = None
         if mimetype == None:
@@ -70,8 +72,8 @@ class Asset(UsawaElement):
         if slug == None:
             slug = self.get_ref()
         self.slug = slug
-        self.extref = None
-        self.description = None
+        self.extref = extref
+        self.description = description
 
     """Return the preferred filename with extension for the asset.
 
@@ -135,7 +137,7 @@ class Asset(UsawaElement):
     """
 
     @staticmethod
-    def from_file(filepath, description=None, slug=None, mimetype=None, extref=None):
+    def from_file(filepath, description=None, slug=None, mimetype=None, ref=None, extref=None):
         f = open(filepath, "rb")
         return Asset.from_io(
             f,
@@ -144,6 +146,7 @@ class Asset(UsawaElement):
             description=description,
             slug=slug,
             mimetype=mimetype,
+            ref=ref,
             extref=extref,
         )
 
@@ -172,9 +175,9 @@ class Asset(UsawaElement):
 
     @staticmethod
     def from_io(
-        io, src, closer=None, description=None, slug=None, mimetype=None, extref=None
+        io, src, closer=None, description=None, slug=None, mimetype=None, extref=None, ref=None
     ):
-        o = Asset()
+        o = Asset(ref=ref)
         h = hashlib.sha512()
         b = io.read(BLOCKSIZE)
         if mimetype == None:

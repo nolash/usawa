@@ -103,7 +103,8 @@ def pfx_entry_draft(entry):
 def pfx_asset(asset):
     if not isinstance(asset, Asset):
         raise ValueError('invalid asset')
-    return PFX_ASSET + asset.get_digest(binary=True)
+    digest = asset.get_digest(binary=True)
+    return PFX_ASSET + digest
 
 
 def pfx_asset_index(asset):
@@ -130,6 +131,27 @@ class BaseStore(Interface):
     """
     def get(self, k):
         return self.db.get(k)
+
+
+    """Implements whee.Interface.lock
+    """
+    def lock(self):
+        k = pfx_ledger_lock(self.ledger.topic)
+        v = None
+        # TODO: needs to be an atomic routine
+        try:
+            v = self.db.get(k)
+        except KeyError:
+            raise PermissionError()
+        self.db.put(k, 0x01, exist_ok)
+        # atomic until here
+
+
+    """Implements whee.Interface.unlock
+    """
+    def unlock(self):
+        k = pfx_ledger_lock(self.ledger.topic)
+        v = self.db.delete(k)
 
 
 class KeyStore(BaseStore):
@@ -318,26 +340,6 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
         self.ledger.serial = serial
 
 
-    """Implements whee.Interface.lock
-    """
-    def lock(self):
-        k = pfx_ledger_lock(self.ledger.topic)
-        v = None
-        # TODO: needs to be an atomic routine
-        try:
-            v = self.db.get(k)
-        except KeyError:
-            raise PermissionError()
-        self.db.put(k, 0x01, exist_ok)
-        # atomic until here
-
-
-    """Implements whee.Interface.unlock
-    """
-    def unlock(self):
-        k = pfx_ledger_lock(self.ledger.topic)
-        v = self.db.delete(k)
-
     """Load all entries from store, oldest to newest.
 
     Must be called on an unused ledger instance. Using with a ledger that contains or has contains entries is undefined.
@@ -372,8 +374,6 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
             #    break
             self.ledger.add_entry(o, check_parent=False)
             i -= 1
-
-
 
 
     """Store all entries in the ledger state.
