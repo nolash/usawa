@@ -54,7 +54,7 @@ class Context:
         if self.cfg.true('ACCOUNTS_STRICT'):
             self.accounts.lock()
 
-        self.entry = Entry.empty()
+        self.entry = Entry.empty(ref=args.r)
         self.db = None
         if self.cfg.get('STORE_TYPE') == 'valkey':
             dbid = self.cfg.get('VALKEY_ID')
@@ -189,15 +189,16 @@ def do_interactive(ctx):
     #output = input_or_default('Output file', ctx.output)
     #logg.debug('output {}'.format(output))
     #return ctx.open(output)
-    
 
+entry = None
 if ctx.state == 0:
     do_interactive(ctx)
     ctx.validate()
-    #entry = Entry(-1, dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
     entry = Entry.empty(description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
     entry.add_part(ctx.part[0], debit=True)
     entry.add_part(ctx.part[1])
+else:
+    entry = ctx.entry
 
 ctx.store.put_draft(entry)
 print(entry)
