@@ -6,7 +6,7 @@ import logging
 import threading
 
 from usawa.core.state_manager import StateManager
-from usawa.core.usawa_wallet import UsawaWallet
+from usawa.crypto import DemoWallet
 
 
 logg = logging.getLogger("gui.wallet_setup_view")
@@ -137,9 +137,11 @@ class ImportWalletDialog(Adw.Dialog):
         ).start()
 
     def _run_decrypt(self, privatekey_path, passphrase):
-        logg.info("running decrypt")
+        logg.info("running decrypt with passphrase; %s", passphrase)
         try:
-            wallet = UsawaWallet(keyfile=privatekey_path, passphrase=passphrase)
+            with open(privatekey_path, "rb") as f:
+                v = f.read()
+            wallet = DemoWallet.from_export(v, passphrase=passphrase)
             GLib.idle_add(self._on_success, wallet)
         except Exception as e:
             logg.error("wallet decrypt failed: %s", e)
