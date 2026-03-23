@@ -9,13 +9,16 @@ import lxml.etree
 from whee.mem import MemStore
 
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, Asset
-from usawa.store import LedgerStore
+from usawa.store import LedgerStore, AssetStore
 from usawa.crypto import ACL
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 testdir = os.path.realpath(os.path.dirname(__file__))
+
+hash_of_foo = bytes.fromhex('f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7')
+uuid_for_foo = uuid.UUID('9ce0268e-4add-4874-9a00-322dd0157c97')
 
 
 class TestStore(unittest.TestCase):
@@ -173,7 +176,22 @@ class TestStore(unittest.TestCase):
         store.put_draft(o)
         o = store.get_draft(o)
 
- 
+
+
+    def test_store_asset_index(self):
+        store = AssetStore(self.store)
+        asset = Asset(digest=hash_of_foo, ref=str(uuid_for_foo))
+        store.add_asset(asset)
+
+        asset = Asset(digest=hash_of_foo)
+        o = store.get_asset(asset)
+        self.assertEqual(o.get_digest(binary=True), hash_of_foo)
+        self.assertEqual(o.get_ref(binary=True), uuid_for_foo.bytes)
+
+        asset = Asset(ref=str(uuid_for_foo))
+        o = store.get_asset_indexed(asset)
+        self.assertEqual(o.get_digest(binary=True), hash_of_foo)
+        self.assertEqual(o.get_ref(binary=True), uuid_for_foo.bytes)
 
 if __name__ == '__main__':
     unittest.main()

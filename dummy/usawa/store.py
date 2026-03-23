@@ -208,7 +208,88 @@ class EntryStore(BaseStore):
             i += 1
         return entry
 
-class LedgerStore(EntryStore, KeyStore):
+
+    """Add an entry to the store.
+
+    :param entry: Entry to add.
+    :type entry: usawa.Entry or int
+    :param update_ledger: Add the underlying ledger object with the entry.
+    :type update_ledger: boolean
+    :raises: ValueError if the entry is not the right object type.
+    :raises: FileExistsError if entry is already in store.
+    """
+    def add_entry(self, entry, update_ledger=False):
+        k = pfx_entry(self.ledger, entry)
+        v = entry.wrap()
+        self.db.put(k, v)
+        if update_ledger:
+            self.ledger.add_entry(entry)
+
+
+
+    """Restore an entry from data from the store.
+
+    The entry is referenced by its serial number within the store's ledger. It can either be specified as an integer, or an entry object with the serial number property set accordingly.
+
+    :param entry: Entry of entry serial to restore.
+    :type entry: usawa.Entry or int
+    :param acl: Optional collection of public keys to validate signatures against.
+    :type acl: usawa.ACL
+    :raises: PermissionError if the entry does not have a valid signature.
+    :raises: ValueError if the serial number cannot be retrieved from the entry argument.
+    :raises: FileExistsError if entry is already in store.
+    :todo: optimize replacing asset stub with deserialized asset
+    """
+    def get_entry(self, entry, acl=None):
+        k = pfx_entry(self.ledger, entry)
+        v = self.db.get(k)
+        entry = Entry.unwrap(v)
+        # TODO: hacky!
+        i = 0
+        for o in entry.attachment:
+            asset = self.get_asset(o)
+            #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
+            entry.attachment[i] = asset
+            i += 1
+        return entry
+
+
+class AssetStore(BaseStore):
+
+    """Add an entry attachment asset to the store.
+
+    :param asset: Asset containing digest to restore.
+    :type asset: usawa.Asset
+    :raises: FileExistsError if entry is already in store.
+    """
+    def add_asset(self, asset):
+        k = pfx_asset(asset)
+        v = asset.serialize()
+        self.db.put(k, v)
+        v = k
+        k = pfx_asset_index(asset)
+        self.db.put(k, v)
+
+
+    """Restore an entry attachment asset from the store.
+    """
+    def get_asset(self, asset):
+        k = pfx_asset(asset)
+        v = self.db.get(k)
+        digest = asset.get_digest(binary=True)
+        return Asset.deserialize(v, digest)
+
+
+    """Restore an entry attachment asset from the store using the reference index.
+    """
+    def get_asset_indexed(self, asset):
+        k = pfx_asset_index(asset)
+        k = self.db.get(k)
+        v = self.db.get(k)
+        return Asset.deserialize(v, k[1:])
+
+
+class LedgerStore(EntryStore, AssetStore, KeyStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 
     :param implementation: Store implementation.
@@ -256,76 +337,6 @@ class LedgerStore(EntryStore, KeyStore):
     def unlock(self):
         k = pfx_ledger_lock(self.ledger.topic)
         v = self.db.delete(k)
-
-
-    """Add an entry to the store.
-
-    :param entry: Entry to add.
-    :type entry: usawa.Entry or int
-    :param update_ledger: Add the underlying ledger object with the entry.
-    :type update_ledger: boolean
-    :raises: ValueError if the entry is not the right object type.
-    :raises: FileExistsError if entry is already in store.
-    """
-    def add_entry(self, entry, update_ledger=False):
-        k = pfx_entry(self.ledger, entry)
-        v = entry.wrap()
-        self.db.put(k, v)
-        if update_ledger:
-            self.ledger.add_entry(entry)
-
-
-
-    """Restore an entry from data from the store.
-
-    The entry is referenced by its serial number within the store's ledger. It can either be specified as an integer, or an entry object with the serial number property set accordingly.
-
-    :param entry: Entry of entry serial to restore.
-    :type entry: usawa.Entry or int
-    :param acl: Optional collection of public keys to validate signatures against.
-    :type acl: usawa.ACL
-    :raises: PermissionError if the entry does not have a valid signature.
-    :raises: ValueError if the serial number cannot be retrieved from the entry argument.
-    :raises: FileExistsError if entry is already in store.
-    :todo: optimize replacing asset stub with deserialized asset
-    """
-    def get_entry(self, entry, acl=None):
-        k = pfx_entry(self.ledger, entry)
-        v = self.db.get(k)
-        entry = Entry.unwrap(v)
-        # TODO: hacky!
-        i = 0
-        for o in entry.attachment:
-            asset = self.get_asset(o)
-            #asset = Asset.deserialize(v, digest=o.get_digest(binary=True))
-            entry.attachment[i] = asset
-            i += 1
-        return entry
-
-
-    """Add an entry attachment asset to the store.
-
-    :param asset: Asset containing digest to restore.
-    :type asset: usawa.Asset
-    :raises: FileExistsError if entry is already in store.
-    """
-    def add_asset(self, asset):
-        k = pfx_asset(asset)
-        v = asset.serialize()
-        self.db.put(k, v)
-        v = k
-        k = pfx_asset_index(asset)
-        self.db.put(k, v)
-
-
-    """Restore an entry attachment asset from the store.
-    """
-    def get_asset(self, asset):
-        k = pfx_asset(asset)
-        v = self.db.get(k)
-        digest = asset.get_digest(binary=True)
-        return Asset.deserialize(v, digest)
-
 
     """Load all entries from store, oldest to newest.
 
