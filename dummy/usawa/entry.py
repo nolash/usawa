@@ -193,7 +193,7 @@ class Entry(UsawaElement):
         self.dt = tx_date
         self.uidx = unitindex
         if tx_datereg == None:
-            tx_datereg = datetime.datetime.now()
+            tx_datereg = datetime.datetime.utcnow()
         self.dtreg = tx_datereg
         self.attachment = []
         self.sigs = {}
@@ -659,4 +659,4 @@ class Entry(UsawaElement):
 
 
     def __str__(self):
-        return 'entry serial {} parent {}'.format(self.serial, self.parent.hex())
+        return 'entry serial {} date {} parent {}'.format(self.serial, self.dt, self.parent.hex())

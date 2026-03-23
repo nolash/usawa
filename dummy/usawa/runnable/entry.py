@@ -1,6 +1,7 @@
 import argparse
 import logging
 import uuid
+import datetime
 
 from whee.valkey import ValkeyStore
 
@@ -18,8 +19,8 @@ class Context:
 
     def __init__(self, args):
         self.cfg = usawa.config.load_config(config_dir=args.c) 
-        self.cmd = args.cmd
         self.state = 0
+        self.commit = args.commit
     
         # entry parts
         self.description = None
@@ -29,6 +30,10 @@ class Context:
         self.part = []
         self.output = None
         self.f = None
+        if args.d:
+            self.txdate = datetime.datetime.fromisoformat(args.d)
+        else:
+            self.txdate = datetime.datetime.utcnow()
         self.attach = []
       
         # set up ledger
@@ -55,7 +60,7 @@ class Context:
         if self.cfg.true('ACCOUNTS_STRICT'):
             self.accounts.lock()
 
-        self.entry = Entry.empty(ref=args.e)
+        self.entry = Entry(-1, self.txdate, ref=args.e)
         self.db = None
         if self.cfg.get('STORE_TYPE') == 'valkey':
             dbid = self.cfg.get('VALKEY_ID')
@@ -127,8 +132,9 @@ argp.add_argument('-x', type=str, action='append', default=[], help='unique refe
 argp.add_argument('-z', type=str, action='append', default=[], help='sum of attachment')
 argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-c', type=str, help='override config dir')
+argp.add_argument('-d', type=str, help='transaction date or datetime')
+argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
 argp.add_argument('-l', type=str, help='ledger file')
-argp.add_argument('cmd', type=str, choices=['entry', 'asset'], help='subcommand')
 args = argp.parse_args()
 
 if args.v:
@@ -188,15 +194,14 @@ def do_interactive(ctx):
 
     ctx.ref = input_or_default('External ref', ctx.ref)
 
-    #output = input_or_default('Output file', ctx.output)
-    #logg.debug('output {}'.format(output))
-    #return ctx.open(output)
 
 entry = None
 if ctx.state == 0:
     do_interactive(ctx)
     ctx.validate()
-    entry = Entry.empty(description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
+    entry = Entry.empty(ref=ctx.ref)
+    entry = ctx.store.get_draft(entry)
+    entry.description = description
     entry.add_part(ctx.part[0], debit=True)
     entry.add_part(ctx.part[1])
 else:
@@ -213,6 +218,11 @@ for v in args.z:
     asset = Asset(digest=k)
     asset = ctx.store.get_asset(asset)
     entry.attach(asset)
+
+if ctx.commit:
+    if entry.serial != -1:
+        raise AttributeError('entry draft already marked as committed')
+    entry.serial = ctx.ledger.next_serial()
 
 
 ctx.store.put_draft(entry)
