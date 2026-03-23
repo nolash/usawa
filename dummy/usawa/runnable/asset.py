@@ -18,6 +18,14 @@ class Context:
         self.cfg = usawa.config.load_config(config_dir=args.c) 
         self.state = 0
         self.asset = None
+
+        if self.cfg.get('STORE_TYPE') == 'valkey':
+            dbid = self.cfg.get('VALKEY_ID')
+            host = self.cfg.get('VALKEY_HOST')
+            port = self.cfg.get('VALKEY_PORT')
+            self.db = ValkeyStore('', host=host, port=port)
+        self.store = AssetStore(self.db)
+
         if args.f:
             self.asset = Asset.from_file(args.f, extref=args.e, mimetype=args.m, slug=args.n)
         elif args.z:
@@ -26,7 +34,8 @@ class Context:
         else:
             raise ValueError('Must provide either file path or digest')
 
- 
+        self.store.add_asset(self.asset)
+
 
 argp = argparse.ArgumentParser()
 argp.add_argument('-e', type=str, help='unique reference of asset')
