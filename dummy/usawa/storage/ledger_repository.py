@@ -27,8 +27,6 @@ logg = logging.getLogger("storage.ledger_repository")
 class LedgerRepository:
     """Repository that wraps LedgerStore and handles mapping"""
 
-    wallet_class = DemoWallet
-
     def __init__(
         self,
         ledger_path=None,
@@ -147,13 +145,13 @@ class LedgerRepository:
             raise
 
     def save_wallet(self, wallet, passphrase):
-        """Persist wallet to store so it can be retrieved on subsequent launches."""
         store, _, _ = self._init_store()
-        logg.info("adding key with passphrase: %s", passphrase)
-        store.add_key(wallet=wallet, passphrase=passphrase)
-        logg.info(
-            "wallet persisted to store, pubkey: %s...", wallet.pubkey().hex()[:16]
-        )
+        try:
+            store.get_key(DemoWallet, passphrase=passphrase)
+            logg.info("key already exists in store, skipping")
+        except FileNotFoundError:
+            logg.info("key written to store")
+            store.add_key(wallet, passphrase=passphrase)
 
     def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""
