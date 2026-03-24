@@ -113,6 +113,7 @@ argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
 argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
+argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('--unit-precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
@@ -142,7 +143,7 @@ pk = None
 wallet = None
 dt = datetime.datetime.now()
 
-cfg = usawa.config.load_config()
+cfg = usawa.config.load_config(config_dir=arg.c)
 
 try:
     #pk = store.get_key()

@@ -133,6 +133,7 @@ argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, d
 argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
 # TODO: read default from xml if not defined
 argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
+argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
 argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
@@ -149,12 +150,12 @@ ledger_tree = load(arg.ledger_xml_file)
 uidx = UnitIndex.from_tree(ledger_tree)
 ledger = Ledger.from_tree(ledger_tree)
 
-cfg = usawa.config.load()
+cfg = usawa.config.load_config(config_dir=arg.c)
 db = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
 store = LedgerStore(db, ledger)
 #pk = store.get_key()
 #wallet = DemoWallet(privatekey=pk)
-wallet = store.get_key(DemoWallet, passphrase=cfg.get('SIGS_KEY_PASSPHRASE'))
+wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
 ledger.set_wallet(wallet)
 dt = datetime.datetime.now()
 
