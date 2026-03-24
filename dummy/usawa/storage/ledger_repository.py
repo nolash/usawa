@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from usawa.gui.core.models import LedgerEntry
 from usawa.storage.file_utils import path_from_uri
 from usawa.storage.xml_utils import (
     _write_xml_to_file,
@@ -10,7 +11,6 @@ from usawa.ledger import Ledger
 from usawa.resolve.fs import FSResolver
 from usawa.service import UnixClient
 from usawa.store import LedgerStore
-from ..core.models import LedgerEntry
 from .entry_mapper import EntryMapper
 from whee.valkey import ValkeyStore
 from usawa import Ledger, DemoWallet, load

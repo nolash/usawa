@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
 
-from usawa.core.entry_service import EntryService
-from ...core.models import LedgerEntry
+from ..core.entry_service import EntryService
+from ..core.models import LedgerEntry
 
 logg = logging.getLogger("gui.entry_controller")
 

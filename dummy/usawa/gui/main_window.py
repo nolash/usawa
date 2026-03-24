@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from usawa.core.state_manager import StateManager
+from .core.state_manager import StateManager
 from usawa.crypto import DemoWallet
 from usawa.gui.components.passphrase_dialog import (
     PASSPHRASE_DIALOG_CSS,
@@ -9,7 +9,7 @@ from usawa.gui.components.passphrase_dialog import (
 from usawa.gui.components.wallet_setup import ImportWalletDialog
 from usawa.ledger import Ledger
 from usawa.service import UnixClient
-from usawa.core.entry_service import EntryService
+from .core.entry_service import EntryService
 from usawa.storage.ledger_repository import LedgerRepository
 from gi.repository import Adw, Gtk, Gio, GLib, Gdk
 from usawa import load
