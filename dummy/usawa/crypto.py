@@ -1,5 +1,6 @@
 import logging
 import hashlib
+import os
 
 import rencode
 import lxml.etree
@@ -7,15 +8,16 @@ import lxml.etree
 import nacl.signing
 import nacl.secret
 import nacl.exceptions
+from nacl.pwhash import argon2i
 
 from usawa.error import VerifyError
 
-AXX_ALL = 0xffffffff
+AXX_ALL = 0xFFFFFFFF
 AXX_ANY = 0x01
 
-DEFAULT_DID = 'usawa'
+DEFAULT_DID = "usawa"
 
-logg = logging.getLogger('crypto')
+logg = logging.getLogger("crypto")
 
 
 class DID:
@@ -30,43 +32,45 @@ class DID:
     :param method: DID method
     :type method: str
     """
-    def __init__(self, v='_', method=DEFAULT_DID):
+
+    def __init__(self, v="_", method=DEFAULT_DID):
         self.v = v
         self.m = method
-
 
     """Return DID method
 
     :returns: Method
     :rtype :str
     """
+
     def method(self):
         return self.m
 
-
     def __str__(self):
-        return 'did:' + self.m + ':' + self.v
+        return "did:" + self.m + ":" + self.v
 
 
-def key_from_export(v, passphrase='', did=None):
-        if passphrase == None:
-            passphrase = b''
-        if isinstance(passphrase, str):
-            passphrase = passphrase.encode('utf-8')
-        h = hashlib.sha256()
-        h.update(passphrase)
-        z = h.digest()
-        o = nacl.secret.SecretBox(z)
-        r = None
-        try:
-            r = o.decrypt(v)
-        except nacl.exceptions.CryptoError:
-            raise VerifyError('decrypt fail')
-        return r
+def key_from_export(v, passphrase="", did=None):
+    if passphrase is None:
+        passphrase = b""
+    if isinstance(passphrase, str):
+        passphrase = passphrase.encode("utf-8")
+
+    salt = v[: argon2i.SALTBYTES]
+    ciphertext = v[argon2i.SALTBYTES :]
+
+    key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt)
+
+    box = nacl.secret.SecretBox(key)
+    try:
+        r = box.decrypt(ciphertext)
+    except nacl.exceptions.CryptoError:
+        raise VerifyError("decrypt fail")
+    return r
+
 
 class Wallet:
-    """Wallet is an unimplemented class defining the interface for wallet operations.
-    """
+    """Wallet is an unimplemented class defining the interface for wallet operations."""
 
     """Get the did URI for the wallet identity.
 
@@ -75,38 +79,38 @@ class Wallet:
     :return: DID URI
     :rtype: str
     """
+
     def __init__(self, did=None):
         if did == None:
             did = DID()
         self.didval = did
-
 
     """Return the DID object for the wallet.
 
     :return: DID
     :rtype: usawa.DID
     """
+
     def did(self):
         return self.didval
-
 
     """Return the method part of the DID wallet.
 
     :return: DID method
     :rtype: str
     """
+
     def did_method(self):
         return self.didval.method()
-
 
     """Return the endpoint part of the DID wallet.
 
     :return: DID method
     :rtype: str
     """
+
     def did_uri(self):
         return str(self.didval)
-
 
     """Return the well-known identifier for a signature produced by the wallet.
 
@@ -115,6 +119,7 @@ class Wallet:
     :return: Wallet identifier
     :rtype: bytes
     """
+
     def address(self):
         return self.pubkey()
 
@@ -128,9 +133,9 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
+
     def sign(self, v):
         raise NotImplementedError
-
 
     """Return the public key data in the wallet.
 
@@ -138,9 +143,9 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
-    def pubkey(self):
-            raise NotImplementedError
 
+    def pubkey(self):
+        raise NotImplementedError
 
     """Return the private key data in the wallet.
         
@@ -148,9 +153,9 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
-    def privkey(self):
-            raise NotImplementedError
 
+    def privkey(self):
+        raise NotImplementedError
 
     """Verify signature data against the given message.
 
@@ -161,32 +166,28 @@ class Wallet:
     :returns: True if signature is valid.
     :rtype: boolean
     """
+
     def verify(self, v, sig):
         raise NotImplementedError
 
-
     def export(self, passphrase=None):
-        if passphrase == None:
-            passphrase = b''
-        elif isinstance(passphrase, str):
-            passphrase = passphrase.encode('utf-8')
+        if passphrase is None:
+            passphrase = b""
+        if isinstance(passphrase, str):
+            passphrase = passphrase.encode("utf-8")
         if len(passphrase) == 0:
-            logg.warning('exporting key with no passphrase')
-        h = hashlib.sha256()
-        h.update(passphrase)
-        z = h.digest()
-        o = nacl.secret.SecretBox(z)
-        k = self.privkey()
-        r = o.encrypt(k)
-        if len(r) != len(k) + o.NONCE_SIZE + o.MACBYTES:
-            raise VerifyError()
-        return r
+            logg.warning("exporting key with no passphrase")
 
+        salt = os.urandom(argon2i.SALTBYTES)
+        key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt)
+        box = nacl.secret.SecretBox(key)
+        k = self.privkey()
+        r = box.encrypt(k)
+        return salt + r  # prepend salt
 
     @staticmethod
     def from_export(v, passphrase=None):
         raise NotImplementedError()
-
 
     """Generate an identity XML tree entry from the wallet.
 
@@ -195,14 +196,14 @@ class Wallet:
     :returns: XML tree.
     :rtype: lxml.etree.Element
     """
+
     def to_tree(self):
         pubkey = self.pubkey()
-        o = lxml.etree.Element('identity')
-        o.set('keyid', pubkey.hex())
+        o = lxml.etree.Element("identity")
+        o.set("keyid", pubkey.hex())
         did = self.did()
-        o.set('didtype', did.method())
+        o.set("didtype", did.method())
         return o
-
 
     def __str__(self):
         return self.did_uri()
@@ -222,6 +223,7 @@ class DemoWallet(Wallet):
     :param did: DID object (see usawa.Wallet for details).
     :type did: usawa.DID
     """
+
     def __init__(self, privatekey=None, publickey=None, did=None):
         super(DemoWallet, self).__init__(did=did)
         self.pk = None
@@ -236,40 +238,41 @@ class DemoWallet(Wallet):
 
         if publickey == None:
             if publickey_chk == None:
-                raise AttributeError('wallet must be created with either public or private key')
-            publickey = publickey_chk    
+                raise AttributeError(
+                    "wallet must be created with either public or private key"
+                )
+            publickey = publickey_chk
         elif publickey_chk != None and publickey != publickey_chk.encode():
-            raise ValueError('publickey supplied does not match privatekey')
+            raise ValueError("publickey supplied does not match privatekey")
         else:
             publickey = nacl.signing.VerifyKey(publickey)
         self.pubk = publickey
         self.didval = DID(v=self.pubkey().hex())
-        logg.debug('wallet created {}'.format(self.pubkey().hex()))
+        logg.debug("wallet created {}".format(self.pubkey().hex()))
 
-  
     """Implements usawa.Wallet.sign
     """
+
     def sign(self, v):
         r = self.pk.sign(v)
         return r.signature
 
-
     """Implements usawa.Wallet.sign
     """
-    def pubkey(self):
-        """Implements usawa.Wallet.pubkey
-        """
-        return self.pubk.encode()
 
+    def pubkey(self):
+        """Implements usawa.Wallet.pubkey"""
+        return self.pubk.encode()
 
     """Implements usawa.Wallet.privkey
     """
+
     def privkey(self, passphrase=None):
         return self.pk.encode()
 
-
     """Implements usawa.Wallet.verify
     """
+
     def verify(self, v, sig):
         r = False
         try:
@@ -278,7 +281,6 @@ class DemoWallet(Wallet):
         except nacl.exceptions.BadSignatureError:
             pass
         return r
-
 
     @staticmethod
     def from_export(v, passphrase=None):
@@ -291,11 +293,11 @@ class ACL:
 
     :todo: Implement signing purpose distinction.
     """
+
     def __init__(self):
         self.axx = {}
         self.rev = {}
         self.dids = {}
-
 
     """Create an ACL object from a wallet.
 
@@ -309,12 +311,12 @@ class ACL:
     :type label: str
     :todo: what should be an object
     """
+
     @staticmethod
     def from_wallet(wallet, what=None, label=None):
         o = ACL()
         o.add(wallet.pubkey(), what=what, label=label, did=wallet.did())
         return o
-
 
     """Retrieve DID for a wallet identifier.
 
@@ -323,9 +325,9 @@ class ACL:
     :return: DID object
     :rtype: usawa.DID
     """
+
     def did(self, v):
         return self.dids[v]
-
 
     """Add a public key to the trusted list of keys.
 
@@ -338,6 +340,7 @@ class ACL:
     :param did: DID to associate to ACL. See usawa.DID for more details on default values.
     :type did: usawa.DID
     """
+
     def add(self, who, what=None, label=None, did=DEFAULT_DID):
         if isinstance(who, str):
             who = bytes.fromhex(who)
@@ -346,7 +349,10 @@ class ACL:
         if what == None:
             what = AXX_ALL
         logg.info('add acl line "{}" ({}): {} did {}'.format(label, who, what, did))
-        self.axx[label] = (who, what,)
+        self.axx[label] = (
+            who,
+            what,
+        )
         self.rev[who] = label
         self.dids[label] = did
 
@@ -357,11 +363,11 @@ class ACL:
     :returns: True if found.
     :rtype: boolean
     """
+
     def have(self, who):
         if isinstance(who, str):
             who = bytes.fromhex(who)
         return self.rev[who]
-
 
     """Check if key is valid for the given purpose.
 
@@ -372,6 +378,7 @@ class ACL:
     :returns: 0 if key not found. Otherwise True key is valid for purpose.
     :rtype: bool or int
     """
+
     def may(self, who, what):
         label = who
         if isinstance(label, bytes):
@@ -389,6 +396,7 @@ class ACL:
     :rtype: list of str or bytes
     :todo: Filter by purpose.
     """
+
     def pubkeys(self, binary=True):
         r = []
         for k in self.axx.values():
@@ -401,27 +409,32 @@ class ACL:
             r.append(v)
         return r
 
-
     """Generate the simple data structure used for rencode serialization.
 
     :returns: data structure
     :rtype: list
     """
+
     def to_list(self):
         keys = list(self.rev.keys())
         keys.sort()
         r = []
         for k in keys:
             v = self.axx[self.rev[k]][1]
-            r.append((k, v,))
+            r.append(
+                (
+                    k,
+                    v,
+                )
+            )
         return r
-
 
     """Generate the wire format for the ACL.
 
     :return: rencoded object
     :rtype: bytes
     """
+
     def serialize(self):
         r = self.to_list()
         return rencode.dumps(r)

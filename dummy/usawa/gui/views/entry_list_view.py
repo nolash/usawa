@@ -221,8 +221,6 @@ class EntryListView(Gtk.Box):
         self.refresh_data()
 
     def on_calendar_clicked(self, button):
-        logg.info("Calendar button clicked - showing date range picker")
-
         today = date.today()
         try:
             one_month_ago = today.replace(month=today.month - 1)
@@ -298,9 +296,6 @@ class EntryListView(Gtk.Box):
 
     def _on_calendar_response(self, dialog, response):
         if response == Gtk.ResponseType.OK and self._start_date and self._end_date:
-            logg.info(
-                "Date range selected: {} to {}".format(self._start_date, self._end_date)
-            )
             start = datetime.strptime(self._start_date, "%Y-%m-%d").date()
             end = datetime.strptime(self._end_date, "%Y-%m-%d").date()
             filtered = [
