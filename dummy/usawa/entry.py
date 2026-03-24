@@ -204,6 +204,7 @@ class Entry(UsawaElement):
         self.credit = []
         self.lookup = None
         self.lookup_algo = None
+        self.parts = []
 
 
     @staticmethod
@@ -656,6 +657,17 @@ class Entry(UsawaElement):
         tree = self.to_tree(canon=True)
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup'])
         return b.encode('utf-8')
+
+
+    def __iter__(self):
+        self.parts = self.debit + self.credit
+        return self
+
+
+    def __next__(self):
+        if len(self.parts) == 0:
+            raise StopIteration()
+        return self.parts.pop(0)
 
 
     def __str__(self):

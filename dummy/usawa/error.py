@@ -16,3 +16,7 @@ class SocketError(Exception):
 
 class AccountError(Exception):
     pass
+
+
+class BalanceError(Exception):
+    pass
