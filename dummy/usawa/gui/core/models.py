@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 from pathlib import Path
 
@@ -55,3 +55,17 @@ class LedgerEntry:
                     return False, f"Attachment file not found: {filepath}"
 
         return True, ""
+
+    def add_attachment(self, filepath: Union[str, List[str]]):
+        """
+        Add one or more attachment file paths
+        """
+        if isinstance(filepath, str):
+            if filepath not in self.attachments:
+                self.attachments.append(filepath)
+        elif isinstance(filepath, list):
+            for path in filepath:
+                if path not in self.attachments:
+                    self.attachments.append(path)
+        else:
+            raise TypeError(f"filepath must be str or List[str], got {type(filepath)}")
