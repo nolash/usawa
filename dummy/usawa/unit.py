@@ -1,4 +1,5 @@
 import logging
+import copy
 
 import rencode
 import lxml.etree
@@ -27,12 +28,48 @@ class UnitIndex:
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
     """
-    def __init__(self, base, precision=None):
+    def __init__(self, base=None, precision=None):
+        self.detail = {}
+        self.rate = {}
         self.base = base
-        if precision == None:
-            precision = UnitIndex.default_precision
-        self.detail = {base: precision}
-        self.exchange = {base: UnitIndex.default_exchange}
+        if base != None:
+            if precision == None:
+                precision = UnitIndex.default_precision
+            self.detail = {base: precision}
+            self.exchange = {base: UnitIndex.default_exchange}
+
+
+    def clone(self):
+        o = UnitIndex()
+        o.detail = self.detail
+        o.base = self.base
+        o.exchange = copy.copy(self.exchange)
+        return o
+
+
+    def set_rate(self, unit, rate):
+        if unit == self.base:
+            raise ValueError('cannot adjust rate for base')
+        if not isinstance(rate, float):
+            rate /= 1000000
+        self.rate[unit] = rate
+
+
+    def val(self, unit, amount):
+        r = self.rate[unit] * amount
+        # TODO: embed in rate
+        base_precision = self.detail[self.base]
+        adj = base_precision - self.detail[unit]
+        if adj < 0:
+            logg.debug('r {}'.format(r))
+            r /= (10 ** abs(adj))
+        else:
+            r *= (10 ** adj)
+
+        v = int(r)
+        m = int((r - v) * 1000000)
+        logg.debug('val {} -> {},{} adj {}'.format(r, v, m, adj))
+        return (v, m,)
 
 
     """Add a unit to the index.
@@ -46,11 +83,9 @@ class UnitIndex:
     :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
     :type ex: int or float
     """
-    def add(self, sym, precision=2, ex=1000000000):
+    def add(self, sym, precision=2, rate=1000000):
         self.detail[sym] = precision
-        if isinstance(ex, float):
-            ex = int(ex*1000000000) # nano resolution
-        self.exchange[sym] = ex
+        self.set_rate(sym, rate)
 
 
     """Create a unit index object from XML.
@@ -72,7 +107,6 @@ class UnitIndex:
         for o in tree.iter(NSPREFIX + 'unit'):
             logg.debug('add unit ' + o.get('sym'))
             r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
-            r.exchange[o.get('sym')] = int(o.find('exchange', namespaces=nsmap()).text)
         r.check()
         return r
 
@@ -111,20 +145,6 @@ class UnitIndex:
     def sym(self, k):
         _ = self.get(k)
         return k
-
-
-    """Retrieve the exchange rate for the unit.
-
-    The value represents a decimal number with nano precision. For example, a value of 4200000000 corresponds to a float value of 4.2.
-
-    :param k: Unit symbol.
-    :type k: str
-    :raises: KeyError if symbol not found.
-    :returns: Rate
-    :rtype: int
-    """
-    def ex(self, k):
-        return self.exchange[k]
 
 
     """Retrieve a list of all the units in the index.
@@ -260,9 +280,6 @@ class UnitIndex:
             unit.set('sym', k)
             o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.detail[k])
-            unit.append(o)
-            o = lxml.etree.SubElement(unit, 'exchange')
-            o.text = str(self.exchange[k])
             unit.append(o)
             tree.append(unit)
 

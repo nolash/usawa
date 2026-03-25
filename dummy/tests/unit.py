@@ -1,6 +1,9 @@
 import unittest
+import logging
 
 from usawa import UnitIndex
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestUnit(unittest.TestCase):
@@ -9,7 +12,7 @@ class TestUnit(unittest.TestCase):
         self.uidx_default = UnitIndex('FOO')
         self.uidx_three = UnitIndex('FOO', precision=3)
         self.uidx_none = UnitIndex('FOO', precision=0)
-        self.uidx_default.add('BAR', precision=4, ex=0.2)
+        self.uidx_default.add('BAR', precision=4, rate=0.23)
 
 
     def test_tostring(self):
@@ -44,6 +47,22 @@ class TestUnit(unittest.TestCase):
         self.assertEqual(v, 123)
         v = self.uidx_default.from_floatstring('BAR', '1.2345')
         self.assertEqual(v, 12345)
+
+
+    def test_unit_rates(self):
+        #self.uidx_default.add('BAR', precision=3)
+        #r = self.uidx_default.val('BAR', 42333)
+        with self.assertRaises(ValueError):
+            self.uidx_default.set_rate('FOO', 230000)
+        #self.uidx_default.set_rate('BAR', 230000)
+        r = self.uidx_default.val('BAR', 4233300)
+        self.assertEqual(r[0], 9736)
+        self.assertEqual(r[1], 590000)
+
+        r = self.uidx_default.set_rate('BAR', 1000000)
+        r = self.uidx_default.val('BAR', 4233300)
+        self.assertEqual(r[0], 42333)
+        self.assertEqual(r[1], 0)
 
 
 if __name__ == '__main__':

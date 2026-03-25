@@ -79,12 +79,6 @@
 	<xs:complexType name="Unit">
 		<xs:sequence>
 			<xs:element name="precision" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-			<xs:choice>
-				<xs:element name="exchange" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-				<xs:sequence>
-					<xs:element name="rate" type="Rate" minOccurs="1" maxOccurs="unbounded" />
-				</xs:sequence>
-			</xs:choice>
 		</xs:sequence>
 		<xs:attribute name="sym" type="xs:string" />
 	</xs:complexType>
