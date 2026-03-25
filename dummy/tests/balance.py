@@ -4,7 +4,7 @@ import datetime
 import os
 
 from usawa import EntryPart, Entry, UnitIndex
-from usawa.balance import Translator
+from usawa.balance import Balancer
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -22,29 +22,23 @@ class TestBalancer(unittest.TestCase):
         self.dtreg = datetime.datetime.now()
 
 
-    def test_translate_ex(self):
-        o = Translator(self.uidx, 'FOO')
-        o.set_ex('BAR', 230000)
-        r = o.val('BAR', 42333)
-        print(r)
-
 #    def test_balancer_process(self):
 #        dst = EntryPart('FOO', 'asset', 'foo', 1337)
 #        src = EntryPart('FOO', 'income', 'baz', 1337, debit=True)
 #        entry = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
 #        entry.add_part(src)
 #        entry.add_part(dst)
-#        o = Balancer(self.uidx, entry=entry, base='FOO')
+#        o = Balancer(self.uidx)
 #        self.assertTrue(o.balanced())
 #
-#    
-#    def test_balancer_parts_simple(self):
-#        o = Balancer(self.uidx, base='FOO')
-#        src = EntryPart('FOO', 'income', 'baz', 1337, debit=True)
-#        o.apply_part(src)
-#        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-#        o.apply_part(dst)
-#        self.assertTrue(o.balanced())
+    
+    def test_balancer_parts_simple(self):
+        o = Balancer(self.uidx)
+        src = EntryPart('FOO', 'income', 'baz', 1337, debit=True)
+        o.apply_part(src)
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        o.apply_part(dst)
+        self.assertTrue(o.balanced())
 
 
 

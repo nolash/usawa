@@ -31,19 +31,20 @@ class UnitIndex:
     def __init__(self, base=None, precision=None):
         self.detail = {}
         self.rate = {}
-        self.base = base
+        self.base = None
         if base != None:
             if precision == None:
                 precision = UnitIndex.default_precision
             self.detail = {base: precision}
-            self.exchange = {base: UnitIndex.default_exchange}
+            self.set_rate(base, UnitIndex.default_exchange)
+        self.base = base
 
 
     def clone(self):
         o = UnitIndex()
         o.detail = self.detail
         o.base = self.base
-        o.exchange = copy.copy(self.exchange)
+        o.rate = copy.copy(self.rate)
         return o
 
 
@@ -51,12 +52,13 @@ class UnitIndex:
         if unit == self.base:
             raise ValueError('cannot adjust rate for base')
         if not isinstance(rate, float):
-            rate /= 1000000
+            rate /= 1000000000
         self.rate[unit] = rate
 
 
     def val(self, unit, amount):
         r = self.rate[unit] * amount
+        logg.debug('rate {} {} {}'.format(r, amount, self.rate[unit]))
         # TODO: embed in rate
         base_precision = self.detail[self.base]
         adj = base_precision - self.detail[unit]
@@ -67,7 +69,7 @@ class UnitIndex:
             r *= (10 ** adj)
 
         v = int(r)
-        m = int((r - v) * 1000000)
+        m = int((r - v) * 1000000000)
         logg.debug('val {} -> {},{} adj {}'.format(r, v, m, adj))
         return (v, m,)
 
@@ -83,7 +85,7 @@ class UnitIndex:
     :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
     :type ex: int or float
     """
-    def add(self, sym, precision=2, rate=1000000):
+    def add(self, sym, precision=2, rate=1000000000):
         self.detail[sym] = precision
         self.set_rate(sym, rate)
 

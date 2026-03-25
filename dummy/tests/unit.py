@@ -54,12 +54,11 @@ class TestUnit(unittest.TestCase):
         #r = self.uidx_default.val('BAR', 42333)
         with self.assertRaises(ValueError):
             self.uidx_default.set_rate('FOO', 230000)
-        #self.uidx_default.set_rate('BAR', 230000)
         r = self.uidx_default.val('BAR', 4233300)
         self.assertEqual(r[0], 9736)
         self.assertEqual(r[1], 590000)
 
-        r = self.uidx_default.set_rate('BAR', 1000000)
+        self.uidx_default.set_rate('BAR', 1000000)
         r = self.uidx_default.val('BAR', 4233300)
         self.assertEqual(r[0], 42333)
         self.assertEqual(r[1], 0)
