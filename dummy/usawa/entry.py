@@ -7,6 +7,7 @@ import lxml.etree
 import rencode
 
 from .base import UsawaElement
+from .balance import Balancer
 from .constant import DEFAULTPARENT, NSPREFIX
 from .crypto import DemoWallet
 from .error import ACLError, VerifyError
@@ -205,7 +206,9 @@ class Entry(UsawaElement):
         self.lookup = None
         self.lookup_algo = None
         self.parts = []
-
+        self.balancer = None
+        if unitindex != None:
+            self.balancer = Balancer(unitindex)
 
     @staticmethod
     def empty(*args, **kwargs):
@@ -230,6 +233,8 @@ class Entry(UsawaElement):
             self.debit.append(part)
         else:
             self.credit.append(part)
+        if self.balancer != None:
+            self.balancer.apply_part(part)
 
 
     """Append a single media asset to the attachment list for the entry.

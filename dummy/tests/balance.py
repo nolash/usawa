@@ -41,6 +41,24 @@ class TestBalancer(unittest.TestCase):
         self.assertTrue(o.balanced())
 
 
+    def test_balancer_parts_simple(self):
+        o = Balancer(self.uidx)
+        self.uidx.set_rate('BAR', 230000000)
+        src = EntryPart('BAR', 'income', 'baz', 420000, debit=True)
+        o.apply_part(src)
+        dst = EntryPart('FOO', 'asset', 'foo', 9660)
+        o.apply_part(dst)
+        self.assertTrue(o.balanced())
+
+
+    def test_balancer_parts_simple(self):
+        o = Balancer(self.uidx)
+        self.uidx.set_rate('BAR', 230000000)
+        src = EntryPart('BAR', 'income', 'baz', 420000, debit=True)
+        o.apply_part(src)
+        dst = EntryPart('FOO', 'asset', 'foo', 9660)
+        o.apply_part(dst)
+        self.assertTrue(o.balanced())
 
 if __name__ == '__main__':
     unittest.main()

@@ -136,7 +136,16 @@ class TestEntry(unittest.TestCase):
         o.add_part(dst_two)
         wallet = DemoWallet()
         data = o.wrap(wallet=wallet)
-        print(list(o))
+
+
+    def test_entry_balance(self):
+        dst_one = EntryPart('FOO', 'asset', 'foo', 1337)
+        dst_two = EntryPart('FOO', 'asset', 'bar', 42)
+        src = EntryPart('FOO', 'income', 'baz', 1337+42, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=self.uidx)
+        o.add_part(src, debit=True)
+        o.add_part(dst_one)
+        o.add_part(dst_two)
 
 
 if __name__ == '__main__':
