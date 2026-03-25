@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from gi.repository import Gtk, Adw, Gio, Pango
 from pathlib import Path
@@ -136,6 +137,38 @@ class CreateEntryView(Gtk.Box):
         header.add_css_class("heading")
         section_box.append(header)
 
+        # Transaction date
+        date_label = Gtk.Label(label="Transaction Date")
+        date_label.set_halign(Gtk.Align.START)
+        date_label.add_css_class("dim-label")
+        section_box.append(date_label)
+
+        date_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+
+        self.date_entry = Gtk.Entry()
+        self.date_entry.set_placeholder_text("YYYY-MM-DD")
+        self.date_entry.set_text(datetime.now().strftime("%Y-%m-%d"))
+        self.date_entry.set_hexpand(True)
+        date_box.append(self.date_entry)
+
+        calendar_btn = Gtk.Button()
+        calendar_btn.set_icon_name("x-office-calendar-symbolic")
+        calendar_btn.add_css_class("flat")
+        calendar_btn.connect("clicked", self._on_show_calendar)
+        date_box.append(calendar_btn)
+        section_box.append(date_box)
+
+        # Optional time
+        time_label = Gtk.Label(label="Transaction Time (optional)")
+        time_label.set_halign(Gtk.Align.START)
+        time_label.add_css_class("dim-label")
+        section_box.append(time_label)
+
+        self.time_entry = Gtk.Entry()
+        self.time_entry.set_placeholder_text("HH:MM:SS (optional)")
+        section_box.append(self.time_entry)
+
+        # Amount
         amount_label = Gtk.Label(label="Amount")
         amount_label.set_halign(Gtk.Align.START)
         amount_label.add_css_class("dim-label")
@@ -145,6 +178,7 @@ class CreateEntryView(Gtk.Box):
         self.amount_entry.set_placeholder_text("0.00")
         section_box.append(self.amount_entry)
 
+        # Source / Destination cards
         ledger_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
         ledger_box.set_homogeneous(True)
 
@@ -514,3 +548,18 @@ class CreateEntryView(Gtk.Box):
         if parent is not None:
             parent.remove(row)
         logg.debug("Removed attachment: %s", file_path)
+
+    def _on_show_calendar(self, button):
+        popover = Gtk.Popover()
+        popover.set_parent(button)
+
+        calendar = Gtk.Calendar()
+        calendar.connect("day-selected", lambda c: self._on_date_selected(c, popover))
+        popover.set_child(calendar)
+        popover.popup()
+
+    def _on_date_selected(self, calendar, popover):
+        date = calendar.get_date()
+        date_str = f"{date.get_year():04d}-{date.get_month():02d}-{date.get_day_of_month():02d}"
+        self.date_entry.set_text(date_str)
+        popover.popdown()

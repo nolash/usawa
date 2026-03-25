@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from typing import Optional
 
@@ -16,12 +17,27 @@ class EntryController:
 
     def collect_entry_data(self, view) -> Optional[LedgerEntry]:
         """Collect data from the view and create an entry"""
+
+        tx_date_str = view.date_entry.get_text().strip()
+        tx_time_str = view.time_entry.get_text().strip()
+
+        try:
+            if tx_time_str:
+                tx_date = datetime.strptime(
+                    f"{tx_date_str} {tx_time_str}", "%Y-%m-%d %H:%M:%S"
+                )
+            else:
+                tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            logg.error("Invalid date/time format")
+            return None
         try:
             entry = LedgerEntry(
                 external_reference=view.ref_entry.get_text().strip() or None,
                 description=view.desc_entry.get_text().strip() or None,
                 amount=float(view.amount_entry.get_text() or "0"),
                 source_unit="BTC",
+                tx_date=tx_date,
                 source_type=view.get_source_type(),
                 source_path=view.source_path_entry.get_text().strip(),
                 dest_unit="BTC",
