@@ -90,6 +90,13 @@ Another entry may be added using the new _truncated state_:
 ... and so on.
 
 
+#### Attaching assets to entries
+
+The `add.py` tool provides the `-x` flag to add a file as an attachment to the entry. The flag can be specified several times.
+
+Although the tool will attempt to auto-detect metadata from the file, there is no support for explicitly defining file metadata in the tool currently.
+
+
 ### Viewing the ledger
 
 An XML representation of the ledger and its entries may be generated using the corresponding ledger state.
@@ -242,6 +249,18 @@ Sample output of third command:
   </incoming>
 </ledger>
 ```
+
+
+### Exporting the ledger
+
+Entries can be exported as XML to a directory using the `usawa/runnable/export.py` command.
+
+The input to the export command is the zero-state ledger xml file.
+
+The filename of each entry written to the directory will be its sha512 hash.
+
+Each entry will produce two files, one of them containing the canonical XML for the entry, the other including entry metadata that is not part of the canonicalized data.
+
 
 
 ## State of development
