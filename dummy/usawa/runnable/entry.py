@@ -4,6 +4,7 @@ import uuid
 import datetime
 import signal
 import sys
+import shutil
 
 from whee.valkey import ValkeyStore
 
@@ -38,7 +39,7 @@ class Context:
         self.attach = []
 
         # set up ledger
-        s = args.l
+        s = args.ledger_file
         if not s:
             try:
                 s = self.cfg.get('MAIN_LEDGER_FILE')
@@ -47,6 +48,11 @@ class Context:
         if not s:
             raise ValueError('ledger file required')
         self.ledger = Ledger.from_file(s)
+        self.fp = args.o
+        self.fp_bak = None
+        if self.fp == None:
+            self.fp = s
+            self.fp_bak = s + '_' + str(self.ledger.serial)
         self.uidx = self.ledger.uidx
 
         # set up accounts hierarchy, if applicable
@@ -81,14 +87,14 @@ class Context:
         self.havedst = False
         self.i = 0
 
-
-    def open(self, output):
-        if output == '<stdout>':
-            self.f = sys.stdout
-            logg.debug('output is stdout')
-        else:
-            self.f = open(output, 'w')
-        return self
+#
+#    def open(self, output):
+#        if output == '<stdout>':
+#            self.f = sys.stdout
+#            logg.debug('output is stdout')
+#        else:
+#            self.f = open(output, 'w')
+#        return self
 
 
     def parse_type(self, v):
@@ -144,10 +150,10 @@ class Context:
             raise ValueError('invalid ref')
 
 
-    def close(self):
-        if self.f and self.f != sys.stdout:
-            self.f.close()
-
+#    def close(self):
+#        if self.f and self.f != sys.stdout:
+#            self.f.close()
+#
 
 
 argp = argparse.ArgumentParser()
@@ -157,16 +163,15 @@ argp.add_argument('-z', type=str, action='append', default=[], help='sum of atta
 argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('-d', type=str, help='transaction date or datetime')
-argp.add_argument('-o', type=str, default='<stdout>', help='output ledger state')
+argp.add_argument('-o', type=str, help='output ledger state')
 argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
-argp.add_argument('-l', type=str, help='ledger file')
+argp.add_argument('ledger_file', type=str, help='ledger file')
 args = argp.parse_args()
 
 if args.v:
     logg.setLevel(getattr(logging, args.v.upper()))
 
 ctx = Context(args)
-ctx.open(args.o)
 
 def croak(*args, **kwargs):
     sys.exit(1)
@@ -276,8 +281,12 @@ if v == 'YES':
     ctx.store.add_entry(entry, update_ledger=True)
     ctx.ledger.truncate()
     ctx.ledger.sign()
-    ctx.f.write(ctx.ledger.to_string())
-    ctx.close()
+    if ctx.fp_bak != None:
+        shutil.copy(ctx.fp, ctx.fp_bak)
+    f = open(ctx.fp, 'w')
+    f.write(ctx.ledger.to_string())
+    f.close()
 else:
     ctx.store.put_draft(entry)
+
 print(entry)

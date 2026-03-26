@@ -529,14 +529,14 @@ class Ledger(UsawaElement):
     def apply_entryparts(self, entry):
         for v in entry.debit:
             amount = v.amount
-            if v.isdebit:
-                amount *= -1
+            #if v.isdebit:
+            #    amount *= -1
             self.running[v.unit].apply(v.typ, amount)
 
         for v in entry.credit:
             amount = v.amount
-            if v.isdebit:
-                amount *= -1
+            #if v.isdebit:
+            #    amount *= -1
             self.running[v.unit].apply(v.typ, amount)
 
         logg.debug('applied entry {} src {} dst {}'.format(entry.serial, entry.debit, entry.credit))
