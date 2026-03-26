@@ -26,7 +26,9 @@ def from_account_path(p, sym=None, typ=None):
     if typ == None:
         o = check_path_parts(o[1])
         typ = o[0]
-    path = o[1]
+        path = o[1]
+    else:
+        path = o[1].split('/')
 
     return (sym, typ, path,)
 

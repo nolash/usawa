@@ -2,6 +2,8 @@ import argparse
 import logging
 import uuid
 import datetime
+import signal
+import sys
 
 from whee.valkey import ValkeyStore
 
@@ -24,10 +26,11 @@ class Context:
     
         # entry parts
         self.description = None
-        self.src = [None, None, None]
-        self.dst = [None, None, None]
+        #self.src = [None, None, None]
+        #self.dst = [None, None, None]
+        self.src = []
+        self.dst = []
         self.amount = None
-        self.part = []
         self.output = None
         self.f = None
         if args.d:
@@ -35,7 +38,7 @@ class Context:
         else:
             self.txdate = datetime.datetime.utcnow()
         self.attach = []
-      
+
         # set up ledger
         s = args.l
         if not s:
@@ -47,8 +50,8 @@ class Context:
             raise ValueError('ledger file required')
         self.ledger = Ledger.from_file(s)
         self.uidx = self.ledger.uidx
-        self.src[2] = self.uidx.base
-        self.dst[2] = self.uidx.base
+        #self.src[2] = self.uidx.base
+        #self.dst[2] = self.uidx.base
 
         # set up accounts hierarchy, if applicable
         self.accounts = None
@@ -75,6 +78,10 @@ class Context:
             self.store.put_draft(self.entry)
         self.ref = self.entry.get_ref()
 
+        self.base = self.uidx.base
+        self.k = 'src'
+        self.havedst = False
+        self.i = 0
 
 
     def parse_type(self, v):
@@ -109,18 +116,27 @@ class Context:
         return uidx.from_floatstring(sym, v)
 
 
+    def parse_side(self, v):
+        for k in ['src', 'dst']:
+            if k.startswith(v):
+                return k
+        raise ValueError('invalid side: ' + v)
+
+
     def add_part(self, part):
         logg.info('add part {}'.format(part))
         self.part.append(part)
 
 
     def validate(self):
-        for v in self.src:
-            if v == None:
-                raise ValueError('invalid src')
-        for v in self.dst:
-            if v == None:
-                raise ValueError('invalid dst')
+        #for k in self.src:
+        #    if v == None:
+        if len(self.src) == 0:
+            raise ValueError('no src')
+        #for v in self.dst:
+        #    if v == None:
+        if len(self.dst) == 0:
+            raise ValueError('no dst')
         if self.ref == None:
             raise ValueError('invalid ref')
      
@@ -142,6 +158,11 @@ if args.v:
 
 ctx = Context(args)
 
+def croak(*args, **kwargs):
+    sys.exit(1)
+
+signal.signal(signal.SIGINT, croak)
+signal.signal(signal.SIGTERM, croak)
 
 def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     if default != None:
@@ -156,54 +177,66 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     return v
 
 
-def do_interactive(ctx):
-    v = input_or_default('Entry description', ctx.description)
-    ctx.description = v
+def do_interactive_one(ctx):
+    ctx.description = input_or_default('Entry description', ctx.description)
+    ctx.ref = input_or_default('External ref', ctx.ref)
 
-    amounts = {
-            'src': None,
-            'dst': None,
-            }
 
-    for k in ['src', 'dst']:
-        o = vars(ctx)
-        #v = input('Entry {} type: '.format(k))
+def do_interactive_two(ctx, entry):
 
-        v = input_or_default('Entry {} unit'.format(k), o[k][2])
+    r = True
+    while r:
+        try:
+            r = enter_part(ctx, entry)
+        except Exception as e:
+            logg.error('err {}'.format(e))
+            pass
+
+
+def enter_part(ctx, entry):
+        if ctx.i > 0:
+            if ctx.havedst:
+                ctx.k = ''
+            else:
+                ctx.k = 'dst'
+            v = input_or_default('Entry side', ctx.k)
+            if v == '':
+                return False
+            ctx.k = ctx.parse_side(v)
+            if v == 'dst':
+                ctx.havedst = True
+
+        v = input_or_default('Entry {} unit'.format(ctx.k), ctx.base)
         unit = ctx.parse_unit(v)
-        o[k][2] = unit
+        if ctx.base != unit:
+            ctx.base = unit
 
-        v = input_or_default('Entry {} type'.format(k), o[k][0])
+        v = input_or_default('Entry {} type'.format(ctx.k))
         typ = ctx.parse_type(v)
-        o[k][0] = typ
 
-        v = input_or_default('Entry {} account'.format(k), o[k][1])
+        v = input_or_default('Entry {} account'.format(ctx.k))
         account = ctx.parse_account(v, sym=unit, typ=typ)
-        o[k][1] = account
 
         amount = None
-        if k =='dst':
-            amount = amounts['src']
-        v = input_or_default('Entry {} amount'.format(k), amount)
+        v = input_or_default('Entry {} amount'.format(ctx.k), amount)
         amount = ctx.parse_amount(ctx.uidx, unit, v)
-        amount *= -1
-        amounts[k] = str(amount)
 
-        part = EntryPart(unit, typ.value, account.to_path(display=AccountDisplay.path), amount, debit=k=='src')
-        ctx.add_part(part)
+        isdebit = ctx.k=='src'
+        part = EntryPart(unit, typ.value, account.to_path(display=AccountDisplay.path), amount, debit=isdebit)
+        entry.add_part(part)
 
-    ctx.ref = input_or_default('External ref', ctx.ref)
+        ctx.i += 1
+
+        return True
 
 
 entry = None
 if ctx.state == 0:
-    do_interactive(ctx)
-    ctx.validate()
-    entry = Entry.empty(ref=ctx.ref)
+    do_interactive_one(ctx)
+    entry = Entry.empty(ref=ctx.ref, unitindex=ctx.uidx)
     entry = ctx.store.get_draft(entry)
-    entry.description = description
-    entry.add_part(ctx.part[0], debit=True)
-    entry.add_part(ctx.part[1])
+    entry.description = ctx.description
+    do_interactive_two(ctx, entry)
 else:
     entry = ctx.entry
 
@@ -225,5 +258,10 @@ if ctx.commit:
     entry.serial = ctx.ledger.next_serial()
 
 
+#v = input_or_default('Commit? (type YES, any other input is no)', '')
+#if v == 'YES':
+    #ctx.store.put_entry(entry)
+#    pass
+#else:
 ctx.store.put_draft(entry)
 print(entry)

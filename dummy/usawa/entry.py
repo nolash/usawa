@@ -226,10 +226,10 @@ class Entry(UsawaElement):
     :type debit: boolean
     :raises KeyError: Symbol does not exist in unit index.
     """
-    def add_part(self, part, debit=False):
+    def add_part(self, part):
         if self.uidx != None:
             self.uidx.sym(part.unit)
-        if debit:
+        if part.isdebit:
             self.debit.append(part)
         else:
             self.credit.append(part)
@@ -297,7 +297,7 @@ class Entry(UsawaElement):
         src = EntryPart.from_tree(src_tree, debit=True)
         dst = EntryPart.from_tree(dst_tree)
         entry.add_part(dst)
-        entry.add_part(src, debit=True)
+        entry.add_part(src)
 
         for v in o.findall('attachment', namespaces=nsmap()):
             asset = Asset.from_tree(v)
@@ -375,13 +375,11 @@ class Entry(UsawaElement):
     @staticmethod
     def deserialize(data):
         v = rencode.loads(data)
-        #parent = v[0].hex()
         parent = v[1]
         serial = v[2]
         ref = v[3].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d')
-        #unit = v[5].decode('utf-8')
         description = v[6].decode('utf-8')
         dst_data = v[7]
         src_data = v[8]
@@ -389,12 +387,10 @@ class Entry(UsawaElement):
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
         super(Entry, o).deserialize(v[0])
         for v in src_data:
-            #src = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3], debit=True)
             src = EntryPart.deserialize(v, debit=True)
-            o.add_part(src, debit=True)
+            o.add_part(src)
 
         for v in dst_data:
-            #dst = EntryPart(v[0].decode('utf-8'), v[1].decode('utf-8'), v[2].decode('utf-8'), v[3])
             dst = EntryPart.deserialize(v)
             o.add_part(dst)
 
