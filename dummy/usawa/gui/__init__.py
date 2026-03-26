@@ -50,6 +50,8 @@ class Usawa(Adw.Application):
             else:
                 filtered_args.append(args[i])
                 i += 1
+        self.cfg = load_config(config_dir=config_dir)
+        logg.debug('config-dump:\n{}'.format(self.cfg))
 
         if len(filtered_args) == 0:
             logg.error("missing ledger file argument")
@@ -57,11 +59,10 @@ class Usawa(Adw.Application):
 
         if filtered_args[0] == "setup-wallet":
             wallet_dir = filtered_args[1] if len(filtered_args) > 1 else None
-            setup_wallet(wallet_dir=wallet_dir)
+            setup_wallet(self.cfg, wallet_dir=wallet_dir)
             return 0
 
         self.ledger_file = filtered_args[0]
-        self.cfg = load_config(config_dir=config_dir)
         for k in self.cfg.all():
             logg.debug("config {} => {}".format(k, self.cfg.get(k)))
         self.activate()

@@ -18,6 +18,7 @@ from usawa.gui.views.entry_list_view import EntryListView
 from datetime import datetime
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
+from whee.fs import FsStore
 
 logg = logging.getLogger("gui.mainwindow")
 
@@ -48,9 +49,20 @@ class UsawaMainWindow(Adw.ApplicationWindow):
 
         self.cfg = self.get_application().cfg
         self.unix_client = UnixClient(path=self.cfg.get("SERVER_SOCKET_FILE_PATH"))
-        self.valkey_store = ValkeyStore(
-            "", host=self.cfg.get("VALKEY_HOST"), port=self.cfg.get("VALKEY_PORT")
-        )
+        store_type = self.cfg.get('STORE_TYPE')
+        if store_type == 'valkey':
+            self.store = ValkeyStore(
+                "",
+                host=self.cfg.get("VALKEY_HOST"),
+                port=self.cfg.get("VALKEY_PORT"),
+            )
+        elif store_type == 'fs':
+            self.store = FsStore(
+                base=self.cfg.get('FSSTORE_BASE'),
+                )
+        else:
+            raise ValueError('invalid store type: ' + store_type)
+
         self.ledger_path = ledger_path
 
         self.nav_view = Adw.NavigationView()
@@ -141,7 +153,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         else:
             ledger_tree = load(self.ledger_path)
             ledger = Ledger.from_tree(ledger_tree)
-            store = LedgerStore(self.valkey_store, ledger)
+            store = LedgerStore(self.store, ledger)
             dialog = PassphraseDialog(
                 store=store,
                 wallet_class=DemoWallet,
@@ -159,7 +171,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         repository = LedgerRepository(
             ledger_path=self.ledger_path,
             unix_client=self.unix_client,
-            valkey_store=self.valkey_store,
+            valkey_store=self.store,
             cfg=self.cfg,
             wallet=self.wallet,
         )

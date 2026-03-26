@@ -123,6 +123,7 @@ class LedgerChainManager:
         """
         next_path = self.derive_next()
 
+        raise NotImplementedError('not sure if we need this')
         db = ValkeyStore('')
     
         store = LedgerStore(db, ledger)

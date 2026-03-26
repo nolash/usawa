@@ -7,6 +7,7 @@ import sys
 import shutil
 
 from whee.valkey import ValkeyStore
+from whee.fs import FsStore
 
 import usawa.config
 from usawa import Entry, Ledger, EntryPart, Asset, DemoWallet
@@ -72,6 +73,9 @@ class Context:
             host = self.cfg.get('VALKEY_HOST')
             port = self.cfg.get('VALKEY_PORT')
             self.db = ValkeyStore('', host=host, port=port)
+        elif self.cfg.get('STORE_TYPE') == 'fs':
+            base = self.cfg.get('FSSTORE_BASE')
+            self.db = FsStore(base=base, dbname='usawa')
         self.store = LedgerStore(self.db, self.ledger)
         self.wallet = self.store.get_key(DemoWallet, passphrase=self.cfg.get('WALLET_KEY_PASSPHRASE'))
         self.ledger.set_wallet(self.wallet)
@@ -86,15 +90,6 @@ class Context:
         self.k = 'src'
         self.havedst = False
         self.i = 0
-
-#
-#    def open(self, output):
-#        if output == '<stdout>':
-#            self.f = sys.stdout
-#            logg.debug('output is stdout')
-#        else:
-#            self.f = open(output, 'w')
-#        return self
 
 
     def parse_type(self, v):
@@ -148,12 +143,6 @@ class Context:
             raise ValueError('no dst')
         if self.ref == None:
             raise ValueError('invalid ref')
-
-
-#    def close(self):
-#        if self.f and self.f != sys.stdout:
-#            self.f.close()
-#
 
 
 argp = argparse.ArgumentParser()

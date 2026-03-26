@@ -1,3 +1,4 @@
+import argparse
 import getpass
 import logging
 import os
@@ -6,15 +7,20 @@ from nacl.signing import SigningKey
 from nacl.secret import SecretBox
 from nacl.pwhash import argon2i
 from whee.valkey import ValkeyStore
+from whee.fs import FsStore
+from xdg_base_dirs import xdg_data_home
 
 from usawa.store import KeyStore
 from usawa.crypto import DemoWallet
+from usawa.config import load_config
 
-logg = logging.getLogger("core.setup_wallet")
+logging.basicConfig(level=logging.WARNING)
+logg = logging.getLogger()
 
 PRIVATEKEY_FILE = "privatekey.box"
 PUBLICKEY_FILE = "publickey.bin"
 
+# TODO: change to xdg_data_dir
 DEFAULT_WALLET_DIR = (
     Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "usawa"
 )
@@ -34,8 +40,23 @@ def encrypt_seed(seed: bytes, passphrase: str) -> bytes:
     return salt + encrypted
 
 
-def setup_wallet(wallet_dir=None):
-    db = ValkeyStore('')
+def setup_wallet(cfg, wallet_dir=None):
+    db = None
+    store_type = cfg.get('STORE_TYPE')
+    if store_type == 'valkey':
+            db = ValkeyStore(
+                "",
+                host=cfg.get("VALKEY_HOST"),
+                port=cfg.get("VALKEY_PORT"),
+            )
+    elif store_type == 'fs':
+        db = FsStore(
+            base=cfg.get('FSSTORE_BASE', xdg_data_home()),
+            dbname='usawa',
+            )
+    else:
+        raise ValueError('invalid store type: ' + store_type)
+
     store = KeyStore(db)
 
     wallet_dir = Path(wallet_dir) if wallet_dir else DEFAULT_WALLET_DIR
@@ -72,5 +93,17 @@ def setup_wallet(wallet_dir=None):
     logg.info("setup complete.")
     logg.info("your 32-byte public key (hex): %s", pk.encode().hex())
 
-
     return 0
+
+
+if __name__ == '__main__':
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
+    args = argp.parse_args()
+
+    if args.v:
+        logg.setLevel(getattr(logging, args.v.upper()))
+
+    cfg = load_config(config_dir=args.c)
+    setup_wallet(cfg)

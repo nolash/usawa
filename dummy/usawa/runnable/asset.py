@@ -24,7 +24,10 @@ class Context:
             host = self.cfg.get('VALKEY_HOST')
             port = self.cfg.get('VALKEY_PORT')
             self.db = ValkeyStore('', host=host, port=port)
-        self.store = AssetStore(self.db)
+        elif self.cfg.get('STORE_TYPE') == 'fs':
+            base = self.cfg.get('FSSTORE_BASE')
+            self.db = FsStore(base=base, dbname='usawa')
+        self.store = LedgerStore(self.db, self.ledger)
 
         if args.f:
             self.asset = Asset.from_file(args.f, extref=args.e, mimetype=args.m, slug=args.n)
