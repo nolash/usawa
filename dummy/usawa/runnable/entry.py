@@ -8,7 +8,7 @@ import sys
 from whee.valkey import ValkeyStore
 
 import usawa.config
-from usawa import Entry, Ledger, EntryPart, Asset
+from usawa import Entry, Ledger, EntryPart, Asset, DemoWallet
 from usawa.store import LedgerStore
 from usawa.account import Account, AccountIndex, AccountType, AccountDisplay
 from usawa.constant import CATEGORIES
@@ -26,8 +26,6 @@ class Context:
     
         # entry parts
         self.description = None
-        #self.src = [None, None, None]
-        #self.dst = [None, None, None]
         self.src = []
         self.dst = []
         self.amount = None
@@ -50,8 +48,6 @@ class Context:
             raise ValueError('ledger file required')
         self.ledger = Ledger.from_file(s)
         self.uidx = self.ledger.uidx
-        #self.src[2] = self.uidx.base
-        #self.dst[2] = self.uidx.base
 
         # set up accounts hierarchy, if applicable
         self.accounts = None
@@ -71,6 +67,8 @@ class Context:
             port = self.cfg.get('VALKEY_PORT')
             self.db = ValkeyStore('', host=host, port=port)
         self.store = LedgerStore(self.db, self.ledger)
+        self.wallet = self.store.get_key(DemoWallet, passphrase=self.cfg.get('WALLET_KEY_PASSPHRASE'))
+        self.ledger.set_wallet(self.wallet)
         if args.e:
             self.entry = self.store.get_draft(self.entry)
             self.state = 1
@@ -82,6 +80,15 @@ class Context:
         self.k = 'src'
         self.havedst = False
         self.i = 0
+
+
+    def open(self, output):
+        if output == '<stdout>':
+            self.f = sys.stdout
+            logg.debug('output is stdout')
+        else:
+            self.f = open(output, 'w')
+        return self
 
 
     def parse_type(self, v):
@@ -129,17 +136,18 @@ class Context:
 
 
     def validate(self):
-        #for k in self.src:
-        #    if v == None:
         if len(self.src) == 0:
             raise ValueError('no src')
-        #for v in self.dst:
-        #    if v == None:
         if len(self.dst) == 0:
             raise ValueError('no dst')
         if self.ref == None:
             raise ValueError('invalid ref')
-     
+
+
+    def close(self):
+        if self.f and self.f != sys.stdout:
+            self.f.close()
+
 
 
 argp = argparse.ArgumentParser()
@@ -149,6 +157,7 @@ argp.add_argument('-z', type=str, action='append', default=[], help='sum of atta
 argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('-d', type=str, help='transaction date or datetime')
+argp.add_argument('-o', type=str, default='<stdout>', help='output ledger state')
 argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
 argp.add_argument('-l', type=str, help='ledger file')
 args = argp.parse_args()
@@ -157,6 +166,7 @@ if args.v:
     logg.setLevel(getattr(logging, args.v.upper()))
 
 ctx = Context(args)
+ctx.open(args.o)
 
 def croak(*args, **kwargs):
     sys.exit(1)
@@ -258,10 +268,16 @@ if ctx.commit:
     entry.serial = ctx.ledger.next_serial()
 
 
-#v = input_or_default('Commit? (type YES, any other input is no)', '')
-#if v == 'YES':
-    #ctx.store.put_entry(entry)
-#    pass
-#else:
-ctx.store.put_draft(entry)
+v = input_or_default('Commit? (type YES, any other input is no)', '')
+if v == 'YES':
+    entry.parent = ctx.ledger.cur
+    entry.sign(ctx.wallet)
+    entry.serial = ctx.ledger.next_serial()
+    ctx.store.add_entry(entry, update_ledger=True)
+    ctx.ledger.truncate()
+    ctx.ledger.sign()
+    ctx.f.write(ctx.ledger.to_string())
+    ctx.close()
+else:
+    ctx.store.put_draft(entry)
 print(entry)

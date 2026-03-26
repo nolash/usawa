@@ -125,7 +125,7 @@ class RunningTotal:
     :type entry: usawa.Entry
     """
     def apply(self, typ, amount):
-        fn = getattr(self, typ + '_delta')
+        fn = getattr(self, typ.lower() + '_delta')
         fn(amount)
 
 
@@ -505,6 +505,7 @@ class Ledger(UsawaElement):
         (k, v) = entry.get_lookup(self.lookup_algo)
         logg.debug('addentr entry for algo {}: {} {}'.format(self.lookup_algo, k, v))
         #entry.parent = oldsum
+        # TODO: parent being changed after sealed and signed, why?
         entry.parent = self.cur
         self.cur = bytes.fromhex(k)
         logg.debug('selfcur is now {}'.format(self.cur.hex()))
