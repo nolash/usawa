@@ -36,7 +36,7 @@ class Context:
         if args.d:
             self.txdate = datetime.datetime.fromisoformat(args.d)
         else:
-            self.txdate = datetime.datetime.utcnow()
+            self.txdate = datetime.datetime.now(datetime.UTC)
         self.attach = []
 
         # set up ledger
@@ -77,7 +77,9 @@ class Context:
             base = self.cfg.get('FSSTORE_BASE')
             self.db = FsStore(base=base, dbname='usawa')
         self.store = LedgerStore(self.db, self.ledger)
-        self.wallet = self.store.get_key(DemoWallet, passphrase=self.cfg.get('WALLET_KEY_PASSPHRASE'))
+        ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
+        mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
+        self.wallet = self.store.get_key(DemoWallet, passphrase=self.cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
         self.ledger.set_wallet(self.wallet)
         if args.e:
             self.entry = self.store.get_draft(self.entry)
@@ -145,6 +147,10 @@ class Context:
             raise ValueError('invalid ref')
 
 
+    def parse_txdate(self, v):
+        return datetime.date.fromisoformat(v)
+
+
 argp = argparse.ArgumentParser()
 argp.add_argument('-e', type=str, help='unique reference of entry')
 argp.add_argument('-x', type=str, action='append', default=[], help='unique reference of attachment')
@@ -184,6 +190,11 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
 def do_interactive_one(ctx):
     ctx.description = input_or_default('Entry description', ctx.description)
     ctx.ref = input_or_default('External ref', ctx.ref)
+    dt = datetime.datetime.utcnow()
+    dt = input_or_default('Transaction date(time)', ctx.txdate)
+    if isinstance(dt, str):
+        dt = ctx.parse_txdate(dt)
+    ctx.txdate = dt
 
 
 def do_interactive_two(ctx, entry):
@@ -233,13 +244,13 @@ def enter_part(ctx, entry):
 
         return True
 
-
 entry = None
 if ctx.state == 0:
     do_interactive_one(ctx)
-    entry = Entry.empty(ref=ctx.ref, unitindex=ctx.uidx)
+    entry = Entry.empty(ref=ctx.ref, unitindex=ctx.uidx, tx_date=ctx.txdate)
     entry = ctx.store.get_draft(entry)
     entry.description = ctx.description
+    entry.dt = ctx.txdate
     do_interactive_two(ctx, entry)
 else:
     entry = ctx.entry

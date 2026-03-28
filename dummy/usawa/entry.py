@@ -194,7 +194,7 @@ class Entry(UsawaElement):
         self.dt = tx_date
         self.uidx = unitindex
         if tx_datereg == None:
-            tx_datereg = datetime.datetime.utcnow()
+            tx_datereg = datetime.datetime.now(datetime.UTC)
         self.dtreg = tx_datereg
         self.attachment = []
         self.sigs = {}
@@ -210,10 +210,13 @@ class Entry(UsawaElement):
         if unitindex != None:
             self.balancer = Balancer(unitindex)
 
+
     @staticmethod
-    def empty(*args, **kwargs):
-        dt = datetime.datetime.utcnow()
-        return Entry(-1, dt, *args, **kwargs)
+    def empty(tx_date=None, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
+        if not tx_date:
+            tx_date = datetime.datetime.utcnow()
+        logg.debug('txdate is {}'.format(tx_date))
+        return Entry(-1, tx_date, ref=ref, description=description, parent=parent, tx_datereg=tx_datereg, unitindex=unitindex)
 
 
     """Add an entry part to the entry.
@@ -346,7 +349,7 @@ class Entry(UsawaElement):
                 self.serial,
                 self.ref,
                 self.dtreg.strftime('%Y%m%d%H%M%S'),
-                self.dt.strftime('%Y%m%d'),
+                self.dt.strftime('%Y%m%d%H%M%S'),
                 self.description,
                 credit,
                 debit,
@@ -379,7 +382,7 @@ class Entry(UsawaElement):
         serial = v[2]
         ref = v[3].decode('utf-8')
         date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
-        date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d')
+        date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d%H%M%S')
         description = v[6].decode('utf-8')
         dst_data = v[7]
         src_data = v[8]
