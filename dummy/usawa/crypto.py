@@ -50,16 +50,22 @@ class DID:
         return "did:" + self.m + ":" + self.v
 
 
-def key_from_export(v, passphrase="", did=None):
+def key_from_export(v, passphrase="", did=None, opslimit=0, memlimit=0):
     if passphrase is None:
         passphrase = b""
     if isinstance(passphrase, str):
         passphrase = passphrase.encode("utf-8")
 
     salt = v[: argon2i.SALTBYTES]
-    ciphertext = v[argon2i.SALTBYTES :]
+    ciphertext = v[argon2i.SALTBYTES:]
+    if not opslimit:
+        opslimit = nacl.pwhash.OPSLIMIT_INTERACTIVE
+    if not memlimit:
+        memlimit = nacl.pwhash.MEMLIMIT_INTERACTIVE
+    
+    logg.debug('pwhash ops {} mem {} salt {} pw {}'.format(opslimit, memlimit, salt, passphrase.hex()))
 
-    key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt)
+    key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt, opslimit=opslimit, memlimit=memlimit)
 
     box = nacl.secret.SecretBox(key)
     try:
@@ -133,9 +139,9 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
-
     def sign(self, v):
         raise NotImplementedError
+
 
     """Return the public key data in the wallet.
 
@@ -143,7 +149,6 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
-
     def pubkey(self):
         raise NotImplementedError
 
@@ -153,9 +158,9 @@ class Wallet:
     :rtype: bytes
     :todo: Raise local error if sign fail
     """
-
     def privkey(self):
         raise NotImplementedError
+
 
     """Verify signature data against the given message.
 
@@ -170,7 +175,8 @@ class Wallet:
     def verify(self, v, sig):
         raise NotImplementedError
 
-    def export(self, passphrase=None):
+
+    def export(self, passphrase=None, opslimit=0, memlimit=0):
         if passphrase is None:
             passphrase = b""
         if isinstance(passphrase, str):
@@ -179,15 +185,22 @@ class Wallet:
             logg.warning("exporting key with no passphrase")
 
         salt = os.urandom(argon2i.SALTBYTES)
-        key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt)
+        if not opslimit:
+            opslimit = nacl.pwhash.OPSLIMIT_INTERACTIVE
+        if not memlimit:
+            memlimit = nacl.pwhash.MEMLIMIT_INTERACTIVE
+        logg.debug('pwhash ops {} mem {} salt {} pw {}'.format(opslimit, memlimit, salt, passphrase.hex()))
+        key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt, opslimit=opslimit, memlimit=memlimit)
         box = nacl.secret.SecretBox(key)
         k = self.privkey()
         r = box.encrypt(k)
         return salt + r  # prepend salt
 
+
     @staticmethod
-    def from_export(v, passphrase=None):
+    def from_export(v, passphrase=None, **kwargs):
         raise NotImplementedError()
+
 
     """Generate an identity XML tree entry from the wallet.
 
@@ -283,8 +296,8 @@ class DemoWallet(Wallet):
         return r
 
     @staticmethod
-    def from_export(v, passphrase=None):
-        k = key_from_export(v, passphrase=passphrase)
+    def from_export(v, passphrase=None, opslimit=0, memlimit=0):
+        k = key_from_export(v, passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
         return DemoWallet(privatekey=k)
 
 

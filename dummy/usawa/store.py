@@ -170,7 +170,7 @@ class KeyStore(BaseStore):
     :type passphrase: bytes
     :todo: Implement the ACL lookup
     """
-    def add_key(self, wallet, acl=None, default=False, passphrase=None):
+    def add_key(self, wallet, acl=None, default=False, passphrase=None, opslimit=0, memlimit=0):
         k = pfx_key()
         try:
             self.db.get(k)
@@ -180,7 +180,7 @@ class KeyStore(BaseStore):
         if default:
             self.db.put(k, pubkey, exist_ok=True)
         k = pfx_key(pubkey=pubkey)
-        v = wallet.export(passphrase=passphrase)
+        v = wallet.export(passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
         self.db.put(k, v)
 
 
@@ -199,14 +199,14 @@ class KeyStore(BaseStore):
     :return: Resulting wallet
     :rtype: usawa.crypto.Wallet
     """
-    def get_key(self, wallet_class, pubkey=None, passphrase=None):
+    def get_key(self, wallet_class, pubkey=None, passphrase=None, opslimit=0, memlimit=0):
         if pubkey == None:
             k = pfx_key()
             pubkey = self.db.get(k)
         k = pfx_key(pubkey=pubkey)
         #return self.db.get(k)
         r = self.db.get(k)
-        return wallet_class.from_export(r, passphrase=passphrase)
+        return wallet_class.from_export(r, passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
 
 
 class EntryStore(BaseStore):

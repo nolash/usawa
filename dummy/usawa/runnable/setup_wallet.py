@@ -85,9 +85,11 @@ def setup_wallet(cfg, wallet_dir=None):
     with open(publickey_path, "wb") as f:
         f.write(pk.encode())
     logg.info("public key saved to: %s", publickey_path)
+    ops = int(cfg.get('WALLET_OPSLIMIT', 0))
+    mem = int(cfg.get('WALLET_MEMLIMIT', 0))
 
     wallet = DemoWallet(privatekey=random_bytes)
-    store.add_key(wallet, passphrase=passphrase_confirm)
+    store.add_key(wallet, passphrase=passphrase_confirm, opslimit=ops, memlimit=mem)
     logg.info("key written to store")
 
     logg.info("setup complete.")

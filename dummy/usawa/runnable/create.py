@@ -10,6 +10,8 @@ from usawa import Ledger, DemoWallet, UnitIndex, ACL
 import usawa.config
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
+from whee.fs import FsStore
+from xdg_base_dirs import xdg_data_home
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -117,6 +119,7 @@ argp.add_argument('-c', type=str, help='override config dir')
 argp.add_argument('--unit-precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
+cfg = usawa.config.load_config(config_dir=arg.c)
 
 
 def do_interactive(ctx):
@@ -137,7 +140,21 @@ ctx = ctx.open(ctx.output)
 ctx.validate()
 
 ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri)
-db = ValkeyStore('')
+store_type = cfg.get('STORE_TYPE')
+db = None
+if store_type == 'valkey':
+        db = ValkeyStore(
+            "",
+            host=cfg.get("VALKEY_HOST"),
+            port=cfg.get("VALKEY_PORT"),
+        )
+elif store_type == 'fs':
+    db = FsStore(
+        base=cfg.get('FSSTORE_BASE', xdg_data_home()),
+        dbname='usawa',
+        )
+else:
+    raise ValueError('invalid store type: ' + store_type)
 store = LedgerStore(db, ledger)
 pk = None
 wallet = None
@@ -145,9 +162,11 @@ dt = datetime.datetime.now()
 
 cfg = usawa.config.load_config(config_dir=arg.c)
 
+ops = int(cfg.get('WALLET_OPSLIMIT', 0))
+mem = int(cfg.get('WALLET_MEMLIMIT', 0))
 try:
     #pk = store.get_key()
-    wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
+    wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
 except FileNotFoundError:
     logg.info('no default key found')
     wallet = DemoWallet()
