@@ -13,6 +13,7 @@ from .crypto import DemoWallet
 from .error import ACLError, VerifyError
 from .xml import nsmap
 from .asset import Asset
+from .tag import Tags
 
 logg = logging.getLogger('usawa.entry')
 
@@ -181,7 +182,7 @@ class Entry(UsawaElement):
     :todo: Prevent changes after the first signature calculation.
     :todo: Ensure canonical format of keyid.
     """
-    def __init__(self, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
+    def __init__(self, serial, tx_date, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None, tags=None):
         super(Entry, self).__init__(ref=ref)
         if isinstance(parent, str):
             parent = bytes.fromhex(parent)
@@ -207,6 +208,7 @@ class Entry(UsawaElement):
         self.lookup_algo = None
         self.parts = []
         self.balancer = None
+        self.tags = tags
         if unitindex != None:
             self.balancer = Balancer(unitindex)
 
@@ -342,6 +344,10 @@ class Entry(UsawaElement):
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
+        tags = None
+        if self.tags:
+            tags = self.tags.serialize()
+
         base = super(Entry, self).serialize()
         logg.debug('serializing with parent {}'.format(self.parent.hex()))
         d = [
@@ -355,6 +361,7 @@ class Entry(UsawaElement):
                 credit,
                 debit,
                 attach,
+                tags,
                 ]
         return d
 
@@ -388,7 +395,12 @@ class Entry(UsawaElement):
         dst_data = v[7]
         src_data = v[8]
         attach_data = v[9]
-        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg)
+        tags = None
+        try: 
+            tags = Tags.deserialize(v[10])
+        except TypeError:
+            pass
+        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags)
         super(Entry, o).deserialize(v[0])
         for v in src_data:
             src = EntryPart.deserialize(v, debit=True)
@@ -638,18 +650,6 @@ class Entry(UsawaElement):
         h.update(b.encode('utf-8'))
 
         return (h.digest().hex(), b,)
-#
-#
-#    def tree_sum(self, lookup):
-#        tree = self.to_tree()
-#        b = lxml.etree.tostring(tree)
-#        h = None
-#        if lookup == 'sha512':
-#            h = hashlib.sha512()
-#        elif lookup == 'sha256':
-#            h = hashlib.sha256()
-#        h.update(b)
-#        return h.digest()
 
 
     """Generate canonical XML for signature material.
