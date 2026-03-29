@@ -210,7 +210,42 @@ class KeyStore(BaseStore):
         return wallet_class.from_export(r, passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
 
 
-class EntryStore(BaseStore):
+class AssetStore(BaseStore):
+
+    """Add an entry attachment asset to the store.
+
+    :param asset: Asset containing digest to restore.
+    :type asset: usawa.Asset
+    :raises: FileExistsError if entry is already in store.
+    """
+    def add_asset(self, asset, overwrite=False):
+        k = pfx_asset(asset)
+        v = asset.serialize()
+        self.db.put(k, v, exist_ok=overwrite)
+        v = k
+        k = pfx_asset_index(asset)
+        self.db.put(k, v, exist_ok=True)
+
+
+    """Restore an entry attachment asset from the store.
+    """
+    def get_asset(self, asset):
+        k = pfx_asset(asset)
+        v = self.db.get(k)
+        digest = asset.get_digest(binary=True)
+        return Asset.deserialize(v, digest)
+
+
+    """Restore an entry attachment asset from the store using the reference index.
+    """
+    def get_asset_indexed(self, asset):
+        k = pfx_asset_index(asset)
+        k = self.db.get(k)
+        v = self.db.get(k)
+        return Asset.deserialize(v, k[1:])
+
+
+class EntryStore(KeyStore):
 
 
     # TODO: this will overwrite the draft when the entry has a serial, but on check is being performed that the ledger entry was actually added.
@@ -280,41 +315,6 @@ class EntryStore(BaseStore):
             entry.attachment[i] = asset
             i += 1
         return entry
-
-
-class AssetStore(BaseStore):
-
-    """Add an entry attachment asset to the store.
-
-    :param asset: Asset containing digest to restore.
-    :type asset: usawa.Asset
-    :raises: FileExistsError if entry is already in store.
-    """
-    def add_asset(self, asset, overwrite=False):
-        k = pfx_asset(asset)
-        v = asset.serialize()
-        self.db.put(k, v, exist_ok=overwrite)
-        v = k
-        k = pfx_asset_index(asset)
-        self.db.put(k, v, exist_ok=True)
-
-
-    """Restore an entry attachment asset from the store.
-    """
-    def get_asset(self, asset):
-        k = pfx_asset(asset)
-        v = self.db.get(k)
-        digest = asset.get_digest(binary=True)
-        return Asset.deserialize(v, digest)
-
-
-    """Restore an entry attachment asset from the store using the reference index.
-    """
-    def get_asset_indexed(self, asset):
-        k = pfx_asset_index(asset)
-        k = self.db.get(k)
-        v = self.db.get(k)
-        return Asset.deserialize(v, k[1:])
 
 
 class LedgerStore(EntryStore, AssetStore, KeyStore):

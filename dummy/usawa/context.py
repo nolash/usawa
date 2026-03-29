@@ -1,2 +1,121 @@
-class Context:
-    pass
+from whee.valkey import ValkeyStore
+from whee.fs import FsStore
+from usawa import DemoWallet, Ledger
+from usawa.account import AccountIndex
+from usawa.store import LedgerStore, EntryStore, KeyStore
+from usawa.resolve.fs import FSResolver
+
+
+class UsawaContext:
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.db = None
+        self.ledger = None
+        self.ledger_path_in = None
+        self.ledger_path_out = None
+        self.uidx = None
+        self.wallet = None
+        self.resolver = None
+        self.store = None
+        self.keystore = None
+        self.aidx = None
+        self.o = {}
+
+
+    def set(self, k, v):
+        self.o[k] = v
+
+
+    def get(self, k):
+        return self.o[k]
+
+
+    def init(self, args, store_scope=None):
+        v = None
+        try:
+            v = args.i
+        except AttributeError:
+            pass
+        self.ledger_path_in = self.cfg.get('MAIN_LEDGER_FILE', v)
+        v = None
+        try:
+            v = args.o
+        except AttributeError:
+            pass
+        self.ledger_path_out = self.cfg.get('MAIN_LEDGER_FILE', v)
+        if self.ledger_path_out == None:
+            self.ledger_path_out = self.ledger_path_in
+        if self.ledger_path_in != None:
+            self.load_ledger()
+        self.create_store(store_scope=store_scope)
+        self.create_resolver()
+        self.load_accounts()
+        self.load_wallet()
+
+
+    def load_wallet(self):
+        if self.wallet != None:
+            raise AttributeError('wallet set')
+        ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
+        mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
+        pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
+        self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+        if self.ledger != None:
+            self.ledger.set_wallet(self.wallet)
+
+
+    def load_ledger(self):
+        if self.ledger != None:
+            raise AttributeError('ledger set')
+        self.ledger = Ledger.from_file(self.ledger_path_in)
+        self.uidx = self.ledger.uidx
+        if self.wallet != None:
+            self.ledger.set_wallet(self.wallet)
+
+
+    def load_accounts(self):
+        s = self.cfg.get('ACCOUNTS_FILE')
+        if s:
+            self.aidx = AccountIndex.from_file(self.uidx, s)
+        else:
+            self.aidx = AccountIndex(uidx)
+        if self.cfg.true('ACCOUNTS_STRICT'):
+            self.aidx.lock()
+
+
+    def create_store(self, store_scope=None):
+        if store_scope == None:
+            store_scope = 'ledger'
+        if self.store != None:
+            raise AttributeError('store set')
+        if store_scope  == 'ledger':
+            if self.ledger == None:
+                raise AttributeError('ledger required for ledger store scope')
+        if self.cfg.get('STORE_TYPE') == 'valkey':
+            dbid = self.cfg.get('VALKEY_ID')
+            host = self.cfg.get('VALKEY_HOST')
+            port = self.cfg.get('VALKEY_PORT')
+            self.db = ValkeyStore('', host=host, port=port)
+        elif self.cfg.get('STORE_TYPE') == 'fs':
+            base = self.cfg.get('FSSTORE_BASE')
+            self.db = FsStore(base=base, dbname='usawa')
+        if store_scope == 'ledger':
+            self.store = LedgerStore(self.db, self.ledger)
+            self.keystore = self.store
+        elif store_scope == 'asset' or store_score == 'entry':
+            self.store = EntryStore(self.db)
+            self.keystore = KeyStore(self.db)
+
+
+    def create_resolver(self, resolver_type='fs'):
+        if resolver_type != 'fs':
+            raise NotImplementedError('only fs resolver available')
+        resolver_path = self.cfg.get('FS_RESOLVER_STORE_PATH')
+        if resolver_path:
+            self.resolver = FSResolver(resolver_path)
+        else:
+            logg.debug('missing resolver')
+
+
+
