@@ -186,13 +186,13 @@ cfg = usawa.config.load_config(config_dir=arg.c)
 
 ops = int(cfg.get('WALLET_OPSLIMIT', 0))
 mem = int(cfg.get('WALLET_MEMLIMIT', 0))
+logg.debug('ops {}'.format(ops))
 try:
-    #pk = store.get_key()
     wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
 except FileNotFoundError:
     logg.info('no default key found')
     wallet = DemoWallet()
-    store.add_key(wallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
+    store.add_key(wallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
 if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
