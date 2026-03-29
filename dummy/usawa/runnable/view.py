@@ -11,6 +11,8 @@ from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
+from whee.fs import FsStore
+from xdg_base_dirs import xdg_data_home
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -70,11 +72,28 @@ ctx = Context.from_args(arg)
 ledger = Ledger.from_file(arg.ledger_xml_file)
 
 cfg = usawa.config.load_config(config_dir=arg.c)
-storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-store = LedgerStore(storedb, ledger)
+store_type = cfg.get('STORE_TYPE')
+db = None
+if store_type == 'valkey':
+        db = ValkeyStore(
+            "",
+            host=cfg.get("VALKEY_HOST"),
+            port=cfg.get("VALKEY_PORT"),
+        )
+elif store_type == 'fs':
+    db = FsStore(
+        base=cfg.get('FSSTORE_BASE', xdg_data_home()),
+        dbname='usawa',
+        )
+else:
+    raise ValueError('invalid store type: ' + store_type)
+store = LedgerStore(db, ledger)
 #pk = store.get_key()
 #wallet = DemoWallet(privatekey=pk)
-wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
+ops = int(cfg.get('WALLET_OPSLIMIT', 0))
+mem = int(cfg.get('WALLET_MEMLIMIT', 0))
+logg.debug('ops {}'.format(ops))
+wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
 acl = ACL.from_wallet(wallet)
 store.load(acl=acl)
 sys.stdout.write(ledger.to_string())
