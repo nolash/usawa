@@ -13,6 +13,10 @@ class Tags:
             self.store.put_tag(tag, description)
 
 
+    def remove(self, tag):
+        del(self.tags[tag])
+
+
     def to_list(self):
         return list(self.tags.keys())
 

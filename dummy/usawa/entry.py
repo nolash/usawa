@@ -214,11 +214,11 @@ class Entry(UsawaElement):
 
 
     @staticmethod
-    def empty(tx_date=None, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None):
+    def empty(tx_date=None, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None, tags=None):
         if not tx_date:
             tx_date = datetime.datetime.utcnow()
         logg.debug('txdate is {}'.format(tx_date))
-        return Entry(-1, tx_date, ref=ref, description=description, parent=parent, tx_datereg=tx_datereg, unitindex=unitindex)
+        return Entry(-1, tx_date, ref=ref, description=description, parent=parent, tx_datereg=tx_datereg, unitindex=unitindex, tags=tags)
 
 
     """Add an entry part to the entry.
