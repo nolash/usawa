@@ -57,6 +57,8 @@ class UnitIndex:
 
 
     def val(self, unit, amount):
+        if isinstance(amount, float):
+            amount = self.from_float(unit, amount)
         r = self.rate[unit] * amount
         logg.debug('rate {} {} {}'.format(r, amount, self.rate[unit]))
         # TODO: embed in rate
@@ -107,9 +109,10 @@ class UnitIndex:
         base = tree.get('base')
         r = UnitIndex(base)
         for o in tree.iter(NSPREFIX + 'unit'):
-            logg.debug('add unit ' + o.get('sym'))
-            r.detail[o.get('sym')] = int(o.find('precision', namespaces=nsmap()).text)
-        r.check()
+            precision = int(o.find('precision', namespaces=nsmap()).text)
+            logg.debug('add unit {} precision {}'.format(o.get('sym'), precision))
+            r.detail[o.get('sym')] = precision
+            r.check()
         return r
 
 
@@ -230,6 +233,11 @@ class UnitIndex:
         if neg:
             r *= -1
         return int(r)
+
+
+    def from_float(self, sym, v):
+        adj = 10 ** self.detail[sym]
+        return int(v * adj)
 
 
     """Generate the simple data structure used for rencode serialization.

@@ -1,5 +1,6 @@
 import enum
 import logging
+import re
 
 from .error import AccountError
 
@@ -40,6 +41,7 @@ class AccountType(enum.Enum):
     expense = 'Expense'
     imprt = 'Import'
     export = 'Export'
+    equity = 'Equity'
 
 
 class AccountDisplay(enum.IntEnum):
@@ -149,10 +151,14 @@ class AccountIndex:
         return self.check(o[0], o[1], o[2])
 
 
-    def set_filter(self, sym=None, typ=None, display=AccountDisplay.full):
+    def set_filter(self, sym=None, typ=None, path=None, display=AccountDisplay.full):
         if typ != None:
             typ = typ.value
-        self.iterfilter = (sym, typ, display,)
+        self.iterfilter = (sym, typ, path, display,)
+
+
+    def reset_filter(self):
+        self.iterfilter = None
 
 
     def __iter__(self, fltr=None):
@@ -176,12 +182,15 @@ class AccountIndex:
                     if fltr[1] != None:
                         if typ.casefold() != fltr[1].casefold():
                             continue
+                    if fltr[2] != None:
+                        if not re.search(fltr[2], v, re.IGNORECASE):
+                            continue
                 if self.iterval == None:
                     self.iterval = []
                 if fltr != None:
-                    if fltr[2] != AccountDisplay.full:
+                    if fltr[3] != AccountDisplay.full:
                         path = v
-                        if fltr[2] == AccountDisplay.typ:
+                        if fltr[3] == AccountDisplay.typ:
                             path = typ + '/' + path 
                 self.iterval.append(path)
         return self

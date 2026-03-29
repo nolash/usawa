@@ -137,7 +137,7 @@ class Asset(UsawaElement):
     """
 
     @staticmethod
-    def from_file(filepath, description=None, slug=None, mimetype=None, ref=None, extref=None):
+    def from_file(filepath, description=None, slug=None, mimetype=None, ref=None, extref=None, w=None):
         f = open(filepath, "rb")
         return Asset.from_io(
             f,
@@ -148,6 +148,7 @@ class Asset(UsawaElement):
             mimetype=mimetype,
             ref=ref,
             extref=extref,
+            w=w,
         )
 
     """Instantiate an asset object from an input stream.
@@ -175,11 +176,13 @@ class Asset(UsawaElement):
 
     @staticmethod
     def from_io(
-        io, src, closer=None, description=None, slug=None, mimetype=None, extref=None, ref=None
+        io, src, closer=None, description=None, slug=None, mimetype=None, extref=None, ref=None, w=None,
     ):
         o = Asset(ref=ref)
         h = hashlib.sha512()
         b = io.read(BLOCKSIZE)
+        if w != None:
+            w.write(b)
         if mimetype == None:
             v = mimetypes.guess_file_type(src, strict=True)
             if v != None:
@@ -194,13 +197,16 @@ class Asset(UsawaElement):
             b = io.read(BLOCKSIZE)
             if len(b) == 0:
                 break
+            if w != None:
+                w.write(b)
             h.update(b)
             c += len(b)
         if closer != None:
             closer()
         o.digest = h.digest()
 
-        (o.slug, o.ext) = parse_path(src)
+        if src != None:
+            (o.slug, o.ext) = parse_path(src)
         s = mimetypes.guess_extension(o.mime, strict=True)
         if s != None:
             o.ext = s[1:]

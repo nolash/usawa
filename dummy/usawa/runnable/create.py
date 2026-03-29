@@ -20,8 +20,8 @@ logg = logging.getLogger()
 class Context:
 
     def __init__(self):
-        self.unit = None
-        self.unit_precision = None
+        #self.unit = None
+        #self.unit_precision = None
         self.uidx = None
         self.topic = None
         self.uri = None
@@ -46,9 +46,32 @@ class Context:
     @staticmethod
     def from_args(args):
         ctx = Context()
-        ctx.unit = args.unit
-        ctx.unit_precision = args.unit_precision
-        ctx.uidx = UnitIndex(ctx.unit, precision=ctx.unit_precision)
+        unitspec = None
+        unit = None
+        unit_precision = None
+        try:
+            unitspec = args.unit[0].split(':')
+            unit = unitspec[0]
+            logg.debug('have unit {}'.format(unit))
+            unit_precision = None
+            try:
+                unit_precision = unitspec[1]
+            except IndexError:
+                unit_precision = UnitIndex.default_precision
+        except IndexError:
+            unit = UnitIndex.default_unit 
+            unit_precision = UnitIndex.default_precision
+        ctx.uidx = UnitIndex(unit, precision=unit_precision)
+        for v in args.unit[1:]:
+            unitspec = v.split(':')
+            unit = unitspec[0]
+            unit_precision = None
+            try:
+                unit_precision = unitspec[1]
+            except IndexError:
+                unit_precision = UnitIndex.default_precision
+            ctx.uidx.add(unit, precision=unit_precision)
+
         ctx.topic = args.topic
         if ctx.topic == None:
             ctx.topic = str(uuid.uuid4())
@@ -63,8 +86,8 @@ class Context:
     def validate(self):
         self.topic = parse_topic(self.topic)
         self.uri = parse_uri(self.uri)
-        self.unit = parse_unit(self.unit)
-        self.unit_precision = parse_unit_precision(self.unit_precision)
+        #self.unit = parse_unit(self.unit)
+        #self.unit_precision = parse_unit_precision(self.unit_precision)
         return self
 
 
@@ -112,11 +135,10 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
 argp = argparse.ArgumentParser()
 argp.add_argument('-i', action='store_true', help='interactive edit')
 argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
-argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
+argp.add_argument('-u', '--unit', type=str, action='append', default=[], help='Units to use for transaction')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
 argp.add_argument('-c', type=str, help='override config dir')
-argp.add_argument('--unit-precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
 arg = argp.parse_args()
 ctx = Context.from_args(arg)
 cfg = usawa.config.load_config(config_dir=arg.c)

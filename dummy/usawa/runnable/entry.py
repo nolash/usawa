@@ -198,7 +198,6 @@ def do_interactive_one(ctx):
 
 
 def do_interactive_two(ctx, entry):
-
     r = True
     while r:
         try:

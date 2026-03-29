@@ -572,6 +572,7 @@ class Ledger(UsawaElement):
 
         units = tree.find('units', namespaces=nsmap())
         unitindex = UnitIndex.from_tree(units)
+
         unit = units.get('base')
         part = tree.find('incoming', namespaces=nsmap())
         serial = int(part.get('serial'))
@@ -607,7 +608,6 @@ class Ledger(UsawaElement):
             liability = int(v.find('liability', namespaces=nsmap()).text)
             sym = v.get('unit')
             ledger.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
-            logg.debug(r.running[sym])
 
         if ledger.running.get(unit) == None:
             ledger.running[unit] = RunningTotal(unit, unitindex)

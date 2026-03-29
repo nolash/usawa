@@ -238,6 +238,7 @@ class Entry(UsawaElement):
             self.credit.append(part)
         if self.balancer != None:
             self.balancer.apply_part(part)
+        logg.debug('add part {} to entry {}'.format(part, self))
 
 
     """Append a single media asset to the attachment list for the entry.
