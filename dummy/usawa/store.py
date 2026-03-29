@@ -83,6 +83,7 @@ def pfx_entry(ledger, entry):
         raise ValueError('invalid ledger')
     return PFX_LEDGER + ledger.topic + serial.to_bytes(8, byteorder='big')
 
+
 """DB key prefix for adding a WIP entry object.
 
 :param entry: Entry draft object to add to store.
@@ -212,8 +213,11 @@ class KeyStore(BaseStore):
 class EntryStore(BaseStore):
 
 
+    # TODO: this will overwrite the draft when the entry has a serial, but on check is being performed that the ledger entry was actually added.
     def put_draft(self, entry):
         k = pfx_entry_draft(entry)
+        if entry.serial > -1:
+            return self.db.put(k, b'\x00', exist_ok=True)
         v = entry.serialize()
         self.db.put(k, v, exist_ok=True)
 
@@ -221,6 +225,8 @@ class EntryStore(BaseStore):
     def get_draft(self, entry):
         k = pfx_entry_draft(entry)
         v = self.db.get(k)
+        if len(v) == 1:
+            return None
         entry = Entry.deserialize(v)
         # TODO: hacky!
         i = 0

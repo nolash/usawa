@@ -83,7 +83,7 @@ class EntryPart:
         if self.isdebit:
             tag = 'debit'
 
-        tree = lxml.etree.Element(tag, type=self.typ, nsmap=nsmap())
+        tree = lxml.etree.Element(tag, type=self.typ.lower(), nsmap=nsmap())
 
         o = lxml.etree.Element('unit')
         o.text = self.unit
