@@ -210,6 +210,20 @@ class KeyStore(BaseStore):
         return wallet_class.from_export(r, passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
 
 
+    """Get the public key of the default key in the store.
+
+    :param wallet_class: Wallet class to use to instantiate a Wallet object from private key material.
+    :type: usawa.crypto.Wallet
+    :raises FileNotFoundError: No key exists.
+    :return: Resulting wallet
+    :rtype: usawa.crypto.Wallet
+    """
+    def get_default_key(self, wallet_class):
+        k = pfx_key()
+        pubkey = self.db.get(k)
+        return wallet_class(publickey=pubkey)
+
+
 class AssetStore(BaseStore):
 
     """Add an entry attachment asset to the store.

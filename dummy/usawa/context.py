@@ -1,3 +1,5 @@
+import getpass
+
 from whee.valkey import ValkeyStore
 from whee.fs import FsStore
 from usawa import DemoWallet, Ledger
@@ -6,9 +8,15 @@ from usawa.store import LedgerStore, EntryStore, KeyStore
 from usawa.resolve.fs import FSResolver
 
 
+def pwgetter():
+    return getpass.getpass('passphrase: ')
+
+
 class UsawaContext:
 
-    def __init__(self, cfg):
+    pwget = pwgetter
+
+    def __init__(self, cfg, askpass=None):
         self.cfg = cfg
         self.db = None
         self.ledger = None
@@ -21,6 +29,7 @@ class UsawaContext:
         self.keystore = None
         self.aidx = None
         self.o = {}
+        self.askpass = False
 
 
     def set(self, k, v):
@@ -51,7 +60,17 @@ class UsawaContext:
         self.create_store(store_scope=store_scope)
         self.create_resolver()
         self.load_accounts()
+
+        self.askpass = args.p
         self.load_wallet()
+
+
+    def getpw(self):
+        pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
+        if pw == None:
+            if self.askpass:
+                pw = UsawaContext.pwget()
+        return pw
 
 
     def load_wallet(self):
@@ -59,7 +78,7 @@ class UsawaContext:
             raise AttributeError('wallet set')
         ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
         mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
-        pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
+        pw = self.getpw()
         self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
         if self.ledger != None:
             self.ledger.set_wallet(self.wallet)

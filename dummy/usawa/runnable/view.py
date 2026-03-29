@@ -5,6 +5,7 @@ import urllib.parse
 import argparse
 import uuid
 import datetime
+#import getpass
 
 import usawa.config
 from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
@@ -14,7 +15,7 @@ from whee.valkey import ValkeyStore
 from whee.fs import FsStore
 from xdg_base_dirs import xdg_data_home
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
 
 
@@ -58,11 +59,17 @@ class Context:
 
 argp = argparse.ArgumentParser()
 argp.add_argument('-o', type=str, dest='output', help='output file for resulting XML document')
+#argp.add_argument('-p', action='store_true', help='prompt for password to open wallet')
 argp.add_argument('-c', type=str, help='override config dir')
+argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
 argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
 argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
 arg = argp.parse_args()
+
+if arg.v:
+    logg.setLevel(getattr(logging, arg.v.upper()))
+
 ctx = Context.from_args(arg)
 
 #ledger = None
@@ -90,10 +97,14 @@ else:
 store = LedgerStore(db, ledger)
 #pk = store.get_key()
 #wallet = DemoWallet(privatekey=pk)
-ops = int(cfg.get('WALLET_OPSLIMIT', 0))
-mem = int(cfg.get('WALLET_MEMLIMIT', 0))
-logg.debug('ops {}'.format(ops))
-wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
+#ops = int(cfg.get('WALLET_OPSLIMIT', 0))
+#mem = int(cfg.get('WALLET_MEMLIMIT', 0))
+#pw = cfg.get('WALLET_KEY_PASSPHRASE')
+#if arg.p and pw == None:
+#    pw = getpass.getpass("passphrase: ")
+#logg.debug('ops {}'.format(ops))
+#wallet = store.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+wallet = store.get_default_key(DemoWallet)
 acl = ACL.from_wallet(wallet)
 store.load(acl=acl)
 sys.stdout.write(ledger.to_string())

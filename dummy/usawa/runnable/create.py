@@ -5,6 +5,7 @@ import urllib.parse
 import argparse
 import datetime
 import uuid
+import getpass
 
 from usawa import Ledger, DemoWallet, UnitIndex, ACL
 import usawa.config
@@ -13,7 +14,7 @@ from whee.valkey import ValkeyStore
 from whee.fs import FsStore
 from xdg_base_dirs import xdg_data_home
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
 
 
@@ -135,11 +136,17 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
 argp = argparse.ArgumentParser()
 argp.add_argument('-i', action='store_true', help='interactive edit')
 argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
+argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
 argp.add_argument('-u', '--unit', type=str, action='append', default=[], help='Units to use for transaction')
+argp.add_argument('-p', action='store_true', help='Use passphrase to open wallet')
 argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
 argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
 argp.add_argument('-c', type=str, help='override config dir')
 arg = argp.parse_args()
+
+if arg.v:
+    logg.setLevel(getattr(logging, arg.v.upper()))
+
 ctx = Context.from_args(arg)
 cfg = usawa.config.load_config(config_dir=arg.c)
 
@@ -186,13 +193,16 @@ cfg = usawa.config.load_config(config_dir=arg.c)
 
 ops = int(cfg.get('WALLET_OPSLIMIT', 0))
 mem = int(cfg.get('WALLET_MEMLIMIT', 0))
+pw = cfg.get('WALLET_KEY_PASSPHRASE')
+if arg.p and pw == None:
+    pw = getpass.getpass("passphrase: ")
 logg.debug('ops {}'.format(ops))
 try:
-    wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
+    wallet = store.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
 except FileNotFoundError:
     logg.info('no default key found')
     wallet = DemoWallet()
-    store.add_key(wallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
+    store.add_key(wallet, passphrase=pw, opslimit=ops, memlimit=mem)
 if wallet == None:
     wallet = DemoWallet(privatekey=pk)
     logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
