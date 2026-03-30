@@ -19,4 +19,9 @@ setup(
             "xdg-base-dirs~=6.0.2",
             "varints@file://" + varints_dir,
             ],
+        extras_require={
+            'gui': [
+                "PyGObject~=3.52.3",
+                ],
+            }
         )
