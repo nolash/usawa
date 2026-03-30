@@ -16,7 +16,6 @@ class EntryService:
 
     def save_entry(self, entry: LedgerEntry) -> tuple[bool, str]:
         try:
-            entry.tx_date = datetime.now()
             entry.date_registered = datetime.now()
             entry.transaction_ref = self._generate_transaction_ref()
 

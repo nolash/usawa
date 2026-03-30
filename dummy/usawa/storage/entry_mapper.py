@@ -3,7 +3,7 @@ from datetime import datetime, date
 
 from usawa.entry import Entry, EntryPart
 from usawa.unit import UnitIndex
-from ..core.models import LedgerEntry
+from ..gui.core.models import LedgerEntry
 from usawa import Entry, EntryPart
 
 logg = logging.getLogger("storage.entry_mapper")

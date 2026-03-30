@@ -5,7 +5,7 @@ import threading
 import logging
 import threading
 
-from usawa.core.state_manager import StateManager
+from ..core.state_manager import StateManager
 from usawa.crypto import DemoWallet
 
 
