@@ -120,46 +120,6 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     return v
 
 
-argp = argparse.ArgumentParser()
-argp.add_argument('-i', action='store_true', help='interactive edit')
-argp.add_argument('-r', type=str, help='external reference')
-argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
-argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
-argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
-argp.add_argument('-x', type=str, dest='attachment', default=[], action='append', help='add file attachment')
-argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
-argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
-argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
-argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
-# TODO: read default from xml if not defined
-argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
-argp.add_argument('-c', type=str, help='override config dir')
-argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
-argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
-argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
-argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
-
-argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
-arg = argp.parse_args()
-ctx = Context.from_args(arg)
-
-ledger = None
-logg.warning('hardcoding unit index default sym, need unitindex xml parser')
-logg.warning('using default sym for all entries for now')
-ledger_tree = load(arg.ledger_xml_file)
-uidx = UnitIndex.from_tree(ledger_tree)
-ledger = Ledger.from_tree(ledger_tree)
-
-cfg = usawa.config.load_config(config_dir=arg.c)
-db = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-store = LedgerStore(db, ledger)
-#pk = store.get_key()
-#wallet = DemoWallet(privatekey=pk)
-wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
-ledger.set_wallet(wallet)
-dt = datetime.datetime.now()
-
-
 def do_interactive(ctx):
     v = input_or_default('Entry description', ctx.description)
     ctx.description = v
@@ -186,24 +146,71 @@ def do_interactive(ctx):
     output = input_or_default('Output file', ctx.output)
     logg.debug('output {}'.format(output))
     return ctx.open(output)
-    
 
-if arg.i:
-    ctx = do_interactive(ctx)
 
-ctx.validate()
-entry = Entry(ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
-entry.add_part(ctx.part[0], debit=True)
-entry.add_part(ctx.part[1])
-for o in ctx.attach:
-    entry.attach(o)
-    try:
-        store.add_asset(o)
-    except FileExistsError:
-        logg.info('asset already in store: {}'.format(o))
-entry.sign(wallet)
-store.add_entry(entry, update_ledger=True)
-ledger.truncate()
-ledger.sign()
-ctx.f.write(ledger.to_string())
-ctx.close()
+def main():
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-i', action='store_true', help='interactive edit')
+    argp.add_argument('-r', type=str, help='external reference')
+    argp.add_argument('-s', type=str, dest='src_account', default='general', help='source account')
+    argp.add_argument('-t', type=str, dest='dst_account', default='general', help='destination account')
+    argp.add_argument('-a', type=str, dest='amount', help='source and destination amount')
+    argp.add_argument('-x', type=str, dest='attachment', default=[], action='append', help='add file attachment')
+    argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
+    argp.add_argument('--src-type', dest='src_type', type=str, choices=CATEGORIES, default='expense', help='source type')
+    argp.add_argument('--dst-type', dest='dst_type', type=str, choices=CATEGORIES, default='asset', help='dest type')
+    argp.add_argument('-d', '--description', dest='description', type=str, help='interactive edit')
+    # TODO: read default from xml if not defined
+    argp.add_argument('-u', '--unit', type=str, default=UnitIndex.default_unit, help='Unit to use for transaction')
+    argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('--unit-precision', dest='unit_precision', type=int, default=UnitIndex.default_precision, help='Unit precision')
+    argp.add_argument('--unit-rate', dest='unit_precision', type=float, default=1.0, help='Unit exchange rate')
+    argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
+    argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
+
+    argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
+    arg = argp.parse_args()
+    ctx = Context.from_args(arg)
+
+    ledger = None
+    logg.warning('hardcoding unit index default sym, need unitindex xml parser')
+    logg.warning('using default sym for all entries for now')
+    ledger_tree = load(arg.ledger_xml_file)
+    uidx = UnitIndex.from_tree(ledger_tree)
+    ledger = Ledger.from_tree(ledger_tree)
+
+    cfg = usawa.config.load_config(config_dir=arg.c)
+    db = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
+    store = LedgerStore(db, ledger)
+    #pk = store.get_key()
+    #wallet = DemoWallet(privatekey=pk)
+    wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
+    ledger.set_wallet(wallet)
+    dt = datetime.datetime.now()
+
+
+       
+
+    if arg.i:
+        ctx = do_interactive(ctx)
+
+    ctx.validate()
+    entry = Entry(ledger.next_serial(), dt, parent=ledger.current(), description=ctx.description, ref=ctx.ref, unitindex=ctx.uidx)
+    entry.add_part(ctx.part[0], debit=True)
+    entry.add_part(ctx.part[1])
+    for o in ctx.attach:
+        entry.attach(o)
+        try:
+            store.add_asset(o)
+        except FileExistsError:
+            logg.info('asset already in store: {}'.format(o))
+    entry.sign(wallet)
+    store.add_entry(entry, update_ledger=True)
+    ledger.truncate()
+    ledger.sign()
+    ctx.f.write(ledger.to_string())
+    ctx.close()
+
+
+if __name__ == '__main__':
+    main()

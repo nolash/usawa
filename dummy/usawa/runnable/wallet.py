@@ -98,7 +98,7 @@ def setup_wallet(cfg, wallet_dir=None):
     return 0
 
 
-if __name__ == '__main__':
+def main():
     argp = argparse.ArgumentParser()
     argp.add_argument('-c', type=str, help='override config dir')
     argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
@@ -109,3 +109,7 @@ if __name__ == '__main__':
 
     cfg = load_config(config_dir=args.c)
     setup_wallet(cfg)
+
+
+if __name__ == '__main__':
+    main()

@@ -57,47 +57,52 @@ class Context:
         return ctx
 
 
-argp = argparse.ArgumentParser()
-argp.add_argument('-o', type=str, dest='output', help='output dir for resulting XML entry documents')
-argp.add_argument('-c', type=str, help='override config dir')
-argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
-argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
-argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
-arg = argp.parse_args()
-ctx = Context.from_args(arg)
+def main():
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-o', type=str, dest='output', help='output dir for resulting XML entry documents')
+    argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
+    argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
+    argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
+    arg = argp.parse_args()
+    ctx = Context.from_args(arg)
 
-#ledger = None
-#ledger_tree = load(arg.ledger_xml_file)
-#uidx = UnitIndex.from_tree(ledger_tree)
-#ledger = Ledger.from_tree(ledger_tree)
-ledger = Ledger.from_file(arg.ledger_xml_file)
+    #ledger = None
+    #ledger_tree = load(arg.ledger_xml_file)
+    #uidx = UnitIndex.from_tree(ledger_tree)
+    #ledger = Ledger.from_tree(ledger_tree)
+    ledger = Ledger.from_file(arg.ledger_xml_file)
 
-cfg = usawa.config.load_config(config_dir=arg.c)
-store_type = cfg.get('STORE_TYPE')
-db = None
-if store_type == 'valkey':
-        db = ValkeyStore(
-            "",
-            host=cfg.get("VALKEY_HOST"),
-            port=cfg.get("VALKEY_PORT"),
-        )
-elif store_type == 'fs':
-    db = FsStore(
-        base=cfg.get('FSSTORE_BASE', xdg_data_home()),
-        dbname='usawa',
-        )
-else:
-    raise ValueError('invalid store type: ' + store_type)
-store = LedgerStore(db, ledger)
-#storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-#store = LedgerStore(storedb, ledger)
-#pk = store.get_key()
-#wallet = DemoWallet(privatekey=pk)
-#wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
-wallet = store.get_default_key(DemoWallet)
-acl = ACL.from_wallet(wallet)
-store.load(acl=acl)
-resolve = FSResolver(ctx.output)
+    cfg = usawa.config.load_config(config_dir=arg.c)
+    store_type = cfg.get('STORE_TYPE')
+    db = None
+    if store_type == 'valkey':
+            db = ValkeyStore(
+                "",
+                host=cfg.get("VALKEY_HOST"),
+                port=cfg.get("VALKEY_PORT"),
+            )
+    elif store_type == 'fs':
+        db = FsStore(
+            base=cfg.get('FSSTORE_BASE', xdg_data_home()),
+            dbname='usawa',
+            )
+    else:
+        raise ValueError('invalid store type: ' + store_type)
+    store = LedgerStore(db, ledger)
+    #storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
+    #store = LedgerStore(storedb, ledger)
+    #pk = store.get_key()
+    #wallet = DemoWallet(privatekey=pk)
+    #wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
+    wallet = store.get_default_key(DemoWallet)
+    acl = ACL.from_wallet(wallet)
+    store.load(acl=acl)
+    resolve = FSResolver(ctx.output)
 
-for k in ledger.entries:
-    r = resolve.put_entry(ledger.entries[k], lookup='sha512') 
+    for k in ledger.entries:
+        r = resolve.put_entry(ledger.entries[k], lookup='sha512') 
+
+
+if __name__ == '__main__':
+    main()

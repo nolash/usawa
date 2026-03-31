@@ -133,83 +133,88 @@ def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     return v
 
 
-argp = argparse.ArgumentParser()
-argp.add_argument('-i', action='store_true', help='interactive edit')
-argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
-argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
-argp.add_argument('-u', '--unit', type=str, action='append', default=[], help='Units to use for transaction')
-argp.add_argument('-p', action='store_true', help='Use passphrase to open wallet')
-argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
-argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
-argp.add_argument('-c', type=str, help='override config dir')
-arg = argp.parse_args()
+def main():
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-i', action='store_true', help='interactive edit')
+    argp.add_argument('-t', dest='topic', type=str, help='ledger topic')
+    argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
+    argp.add_argument('-u', '--unit', type=str, action='append', default=[], help='Units to use for transaction')
+    argp.add_argument('-p', action='store_true', help='Use passphrase to open wallet')
+    argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
+    argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
+    argp.add_argument('-c', type=str, help='override config dir')
+    arg = argp.parse_args()
 
-if arg.v:
-    logg.setLevel(getattr(logging, arg.v.upper()))
+    if arg.v:
+        logg.setLevel(getattr(logging, arg.v.upper()))
 
-ctx = Context.from_args(arg)
-cfg = usawa.config.load_config(config_dir=arg.c)
-
-
-def do_interactive(ctx):
-    logg.debug("Creating new ledger")
-    v = input_or_default("Topic", ctx.topic)
-
-    ctx.unit = input_or_default("Default unit", ctx.unit)
-    ctx.unit_precision = input_or_default("Unit decimals", ctx.unit_precision)
-    ctx.uri = input_or_default("Source URI", ctx.uri)
-
-    input_or_default("XML output filename", ctx.output)
-    return ctx
+    ctx = Context.from_args(arg)
+    cfg = usawa.config.load_config(config_dir=arg.c)
 
 
-if arg.i:
-    ctx = do_interactive(ctx)
-ctx = ctx.open(ctx.output)
-ctx.validate()
+    def do_interactive(ctx):
+        logg.debug("Creating new ledger")
+        v = input_or_default("Topic", ctx.topic)
 
-ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri)
-store_type = cfg.get('STORE_TYPE')
-db = None
-if store_type == 'valkey':
-        db = ValkeyStore(
-            "",
-            host=cfg.get("VALKEY_HOST"),
-            port=cfg.get("VALKEY_PORT"),
-        )
-elif store_type == 'fs':
-    db = FsStore(
-        base=cfg.get('FSSTORE_BASE', xdg_data_home()),
-        dbname='usawa',
-        )
-else:
-    raise ValueError('invalid store type: ' + store_type)
-store = LedgerStore(db, ledger)
-pk = None
-wallet = None
-dt = datetime.datetime.now()
+        ctx.unit = input_or_default("Default unit", ctx.unit)
+        ctx.unit_precision = input_or_default("Unit decimals", ctx.unit_precision)
+        ctx.uri = input_or_default("Source URI", ctx.uri)
 
-cfg = usawa.config.load_config(config_dir=arg.c)
+        input_or_default("XML output filename", ctx.output)
+        return ctx
 
-ops = int(cfg.get('WALLET_OPSLIMIT', 0))
-mem = int(cfg.get('WALLET_MEMLIMIT', 0))
-pw = cfg.get('WALLET_KEY_PASSPHRASE')
-if arg.p and pw == None:
-    pw = getpass.getpass("passphrase: ")
-logg.debug('ops {}'.format(ops))
-try:
-    wallet = store.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
-except FileNotFoundError:
-    logg.info('no default key found')
-    wallet = DemoWallet()
-    store.add_key(wallet, passphrase=pw, opslimit=ops, memlimit=mem)
-if wallet == None:
-    wallet = DemoWallet(privatekey=pk)
-    logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
 
-acl = ACL.from_wallet(wallet)
-#ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
-ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
-ledger.sign()
-ctx.f.write(ledger.to_string())
-ctx.close()
+    if arg.i:
+        ctx = do_interactive(ctx)
+    ctx = ctx.open(ctx.output)
+    ctx.validate()
+
+    ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri)
+    store_type = cfg.get('STORE_TYPE')
+    db = None
+    if store_type == 'valkey':
+            db = ValkeyStore(
+                "",
+                host=cfg.get("VALKEY_HOST"),
+                port=cfg.get("VALKEY_PORT"),
+            )
+    elif store_type == 'fs':
+        db = FsStore(
+            base=cfg.get('FSSTORE_BASE', xdg_data_home()),
+            dbname='usawa',
+            )
+    else:
+        raise ValueError('invalid store type: ' + store_type)
+    store = LedgerStore(db, ledger)
+    pk = None
+    wallet = None
+    dt = datetime.datetime.now()
+
+    cfg = usawa.config.load_config(config_dir=arg.c)
+
+    ops = int(cfg.get('WALLET_OPSLIMIT', 0))
+    mem = int(cfg.get('WALLET_MEMLIMIT', 0))
+    pw = cfg.get('WALLET_KEY_PASSPHRASE')
+    if arg.p and pw == None:
+        pw = getpass.getpass("passphrase: ")
+    logg.debug('ops {}'.format(ops))
+    try:
+        wallet = store.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+    except FileNotFoundError:
+        logg.info('no default key found')
+        wallet = DemoWallet()
+        store.add_key(wallet, passphrase=pw, opslimit=ops, memlimit=mem)
+    if wallet == None:
+        wallet = DemoWallet(privatekey=pk)
+        logg.info('loaded existing key. {}'.format(wallet.pubkey().hex()))
+
+    acl = ACL.from_wallet(wallet)
+    #ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
+    ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
+    ledger.sign()
+    ctx.f.write(ledger.to_string())
+    ctx.close()
+
+
+if __name__ == '__main__':
+    main()

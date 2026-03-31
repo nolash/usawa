@@ -5,7 +5,7 @@ import signal
 
 import usawa.config
 from usawa import Ledger, Entry, EntryPart, DemoWallet, ACL, UnitIndex, load
-from usawa.context import Context
+from usawa.context import UsawaContext
 from usawa.service import Handler, UnixServer
 from whee.valkey import ValkeyStore
 

@@ -5,6 +5,7 @@ import datetime
 import signal
 import sys
 import shutil
+import getpass
 
 from whee.valkey import ValkeyStore
 from whee.fs import FsStore
@@ -17,6 +18,7 @@ from usawa.constant import CATEGORIES
 
 logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
+
 
 
 class Context:
@@ -79,7 +81,10 @@ class Context:
         self.store = LedgerStore(self.db, self.ledger)
         ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
         mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
-        self.wallet = self.store.get_key(DemoWallet, passphrase=self.cfg.get('WALLET_KEY_PASSPHRASE'), opslimit=ops, memlimit=mem)
+        pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
+        if args.p and pw == None:
+            pw = getpass.getpass("passphrase: ")
+        self.wallet = self.store.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
         self.ledger.set_wallet(self.wallet)
         if args.e:
             self.entry = self.store.get_draft(self.entry)
@@ -151,29 +156,6 @@ class Context:
         return datetime.date.fromisoformat(v)
 
 
-argp = argparse.ArgumentParser()
-argp.add_argument('-e', type=str, help='unique reference of entry')
-argp.add_argument('-x', type=str, action='append', default=[], help='unique reference of attachment')
-argp.add_argument('-z', type=str, action='append', default=[], help='sum of attachment')
-argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
-argp.add_argument('-c', type=str, help='override config dir')
-argp.add_argument('-d', type=str, help='transaction date or datetime')
-argp.add_argument('-o', type=str, help='output ledger state')
-argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
-argp.add_argument('ledger_file', type=str, help='ledger file')
-args = argp.parse_args()
-
-if args.v:
-    logg.setLevel(getattr(logging, args.v.upper()))
-
-ctx = Context(args)
-
-def croak(*args, **kwargs):
-    sys.exit(1)
-
-signal.signal(signal.SIGINT, croak)
-signal.signal(signal.SIGTERM, croak)
-
 def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
     if default != None:
         postfix = ' [{}]'.format(default) + postfix
@@ -243,49 +225,78 @@ def enter_part(ctx, entry):
 
         return True
 
-entry = None
-if ctx.state == 0:
-    do_interactive_one(ctx)
-    entry = Entry.empty(ref=ctx.ref, unitindex=ctx.uidx, tx_date=ctx.txdate)
-    entry = ctx.store.get_draft(entry)
-    entry.description = ctx.description
-    entry.dt = ctx.txdate
-    do_interactive_two(ctx, entry)
-else:
-    entry = ctx.entry
+def main():
+    def croak(*args, **kwargs):
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, croak)
+    signal.signal(signal.SIGTERM, croak)
+
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-e', type=str, help='unique reference of entry')
+    argp.add_argument('-x', type=str, action='append', default=[], help='unique reference of attachment')
+    argp.add_argument('-z', type=str, action='append', default=[], help='sum of attachment')
+    argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
+    argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('-d', type=str, help='transaction date or datetime')
+    argp.add_argument('-o', type=str, help='output ledger state')
+    argp.add_argument('-p', action='store_true', help='unlock wallet with password')
+    argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
+    argp.add_argument('ledger_file', type=str, help='ledger file')
+    args = argp.parse_args()
+
+    if args.v:
+        logg.setLevel(getattr(logging, args.v.upper()))
+
+    ctx = Context(args)
+
+    entry = None
+    if ctx.state == 0:
+        do_interactive_one(ctx)
+        entry = Entry.empty(ref=ctx.ref, unitindex=ctx.uidx, tx_date=ctx.txdate)
+        entry = ctx.store.get_draft(entry)
+        entry.description = ctx.description
+        entry.dt = ctx.txdate
+        do_interactive_two(ctx, entry)
+    else:
+        entry = ctx.entry
 
 
-for v in args.x:
-    k = uuid.UUID(v) 
-    asset = Asset(ref=str(k))
-    asset = ctx.store.get_asset_indexed(asset)
-    entry.attach(asset)
-for v in args.z:
-    k = bytes.fromhex(v)
-    asset = Asset(digest=k)
-    asset = ctx.store.get_asset(asset)
-    entry.attach(asset)
+    for v in args.x:
+        k = uuid.UUID(v) 
+        asset = Asset(ref=str(k))
+        asset = ctx.store.get_asset_indexed(asset)
+        entry.attach(asset)
+    for v in args.z:
+        k = bytes.fromhex(v)
+        asset = Asset(digest=k)
+        asset = ctx.store.get_asset(asset)
+        entry.attach(asset)
 
-if ctx.commit:
-    if entry.serial != -1:
-        raise AttributeError('entry draft already marked as committed')
-    entry.serial = ctx.ledger.next_serial()
+    if ctx.commit:
+        if entry.serial != -1:
+            raise AttributeError('entry draft already marked as committed')
+        entry.serial = ctx.ledger.next_serial()
 
 
-v = input_or_default('Commit? (type YES, any other input is no)', '')
-if v == 'YES':
-    entry.parent = ctx.ledger.cur
-    entry.sign(ctx.wallet)
-    entry.serial = ctx.ledger.next_serial()
-    ctx.store.add_entry(entry, update_ledger=True)
-    ctx.ledger.truncate()
-    ctx.ledger.sign()
-    if ctx.fp_bak != None:
-        shutil.copy(ctx.fp, ctx.fp_bak)
-    f = open(ctx.fp, 'w')
-    f.write(ctx.ledger.to_string())
-    f.close()
-else:
-    ctx.store.put_draft(entry)
+    v = input_or_default('Commit? (type YES, any other input is no)', '')
+    if v == 'YES':
+        entry.parent = ctx.ledger.cur
+        entry.sign(ctx.wallet)
+        entry.serial = ctx.ledger.next_serial()
+        ctx.store.add_entry(entry, update_ledger=True)
+        ctx.ledger.truncate()
+        ctx.ledger.sign()
+        if ctx.fp_bak != None:
+            shutil.copy(ctx.fp, ctx.fp_bak)
+        f = open(ctx.fp, 'w')
+        f.write(ctx.ledger.to_string())
+        f.close()
+    else:
+        ctx.store.put_draft(entry)
 
-print(entry)
+    print(entry)
+
+
+if __name__ == '__main__':
+    main()

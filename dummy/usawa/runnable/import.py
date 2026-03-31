@@ -54,22 +54,27 @@ class Context:
         return ctx
 
 
-argp = argparse.ArgumentParser()
-argp.add_argument('-o', type=str, dest='output', help='output file for resulting XML document')
-argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
-argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
-argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
-arg = argp.parse_args()
-ctx = Context.from_args(arg)
+def main():
+    argp = argparse.ArgumentParser()
+    argp.add_argument('-o', type=str, dest='output', help='output file for resulting XML document')
+    argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
+    argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
+    argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
+    arg = argp.parse_args()
+    ctx = Context.from_args(arg)
 
-ledger = Ledger.from_file(arg.ledger_xml_file)
+    ledger = Ledger.from_file(arg.ledger_xml_file)
 
-cfg = usawa.config.load()
-storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-store = LedgerStore(storedb, ledger)
-#pk = store.get_key()
-#wallet = DemoWallet(privatekey=pk)
-#acl = ACL.from_wallet(wallet)
-#store.load(acl=acl)
-store.put_all(store_assets=True)
-sys.stdout.write(ledger.to_string())
+    cfg = usawa.config.load()
+    storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
+    store = LedgerStore(storedb, ledger)
+    #pk = store.get_key()
+    #wallet = DemoWallet(privatekey=pk)
+    #acl = ACL.from_wallet(wallet)
+    #store.load(acl=acl)
+    store.put_all(store_assets=True)
+    sys.stdout.write(ledger.to_string())
+
+
+if __name__ == '__main__':
+    main()
