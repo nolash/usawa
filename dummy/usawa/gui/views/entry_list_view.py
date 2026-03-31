@@ -610,6 +610,10 @@ class EntryListView(Gtk.Box):
     def _make_entry_item(self, entry) -> EntryItem:
         signers_raw = entry.signer_pubkeys
         signers_display = ", ".join([f"{k[:8]}...{k[-6:]}" for k in signers_raw])
+
+        raw = entry.amount / (10**entry.precision)
+        amount_display = f"{entry.source_unit} {raw:.{entry.precision}f}"
+
         return EntryItem(
             serial=entry.serial,
             parent_digest=entry.parent_digest,
@@ -618,7 +622,7 @@ class EntryListView(Gtk.Box):
             tx_date_rg=entry.date_registered,
             description=entry.description,
             auth_state="trusted",
-            amount=entry.amount,
+            amount=amount_display,
             source_path=entry.source_path,
             source_type=entry.source_type,
             source_unit=entry.source_unit,
