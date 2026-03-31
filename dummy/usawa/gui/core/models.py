@@ -6,7 +6,7 @@ from pathlib import Path
 
 @dataclass
 class LedgerEntry:
-    """DTO for ledger entry input, converted to usawa.Entry before adding to ledger."""
+    """DTO for ledger entry input, converted to usawa.Entry"""
 
     # Basic details
     external_reference: Optional[str] = None
@@ -14,6 +14,7 @@ class LedgerEntry:
 
     # Transaction details
     amount: float = 0.0
+    precision: int = 0
     source_unit: str = ""
     source_type: str = ""
     source_path: str = "general"
