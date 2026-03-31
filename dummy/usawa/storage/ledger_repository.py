@@ -156,9 +156,9 @@ class LedgerRepository:
     def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""
         try:
-            store, _, _ = self._init_store()
+            store, ledger, _ = self._init_store()
             return [
-                EntryMapper.to_domain_entry(storage_entry)
+                EntryMapper.to_domain_entry(ledger=ledger, storage_entry=storage_entry)
                 for _, storage_entry in store.ledger.entries.items()
             ]
         except Exception as e:
