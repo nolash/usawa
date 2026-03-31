@@ -80,7 +80,6 @@ class EntryMapper:
 
         base = ledger.uidx.base
         precision = ledger.uidx.detail[base]
-        logg.debug("Ledger precision: %s", precision)
 
         source_unit = ""
         source_type = ""
