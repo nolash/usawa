@@ -166,7 +166,7 @@ class CreateEntryView(Gtk.Box):
         section_box.append(time_label)
 
         self.time_entry = Gtk.Entry()
-        self.time_entry.set_placeholder_text("HH:MM:SS")
+        self.time_entry.set_placeholder_text("H:MM or H:MM:SS")
         section_box.append(self.time_entry)
 
         # Amount

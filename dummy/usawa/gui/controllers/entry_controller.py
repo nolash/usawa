@@ -17,15 +17,19 @@ class EntryController:
 
     def collect_entry_data(self, view) -> Optional[LedgerEntry]:
         """Collect data from the view and create an entry"""
-
         tx_date_str = view.date_entry.get_text().strip()
         tx_time_str = view.time_entry.get_text().strip()
-
         try:
             if tx_time_str:
-                tx_date = datetime.strptime(
-                    f"{tx_date_str} {tx_time_str}", "%Y-%m-%d %H:%M:%S"
-                )
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                    try:
+                        tx_date = datetime.strptime(f"{tx_date_str} {tx_time_str}", fmt)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    logg.error("Invalid time format, use H:MM or H:MM:SS")
+                    return None
             else:
                 tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
         except ValueError:
@@ -44,13 +48,11 @@ class EntryController:
                 dest_type=view.get_dest_type(),
                 dest_path=view.dest_path_entry.get_text().strip(),
             )
-
             is_valid, error_msg = entry.validate()
             if not is_valid:
                 logg.error(f"Validation failed: {error_msg}")
                 return None
             return entry
-
         except ValueError as e:
             logg.error(f"Failed to collect entry data: {e}")
             return None

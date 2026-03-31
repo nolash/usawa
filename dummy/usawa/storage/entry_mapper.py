@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, date
 
 from usawa.entry import Entry, EntryPart
+from usawa.ledger import Ledger
 from usawa.unit import UnitIndex
 from ..gui.core.models import LedgerEntry
 from usawa import Entry, EntryPart
@@ -72,10 +73,13 @@ class EntryMapper:
         return entry
 
     @staticmethod
-    def to_domain_entry(storage_entry) -> LedgerEntry:
+    def to_domain_entry(ledger: Ledger, storage_entry: Entry) -> LedgerEntry:
         """
         Convert Entry (storage) to LedgerEntry (domain)
         """
+
+        base = ledger.uidx.base
+        precision = ledger.uidx.detail[base]
 
         source_unit = ""
         source_type = ""
@@ -91,28 +95,23 @@ class EntryMapper:
             source_type = debit_part.typ
             source_path = debit_part.account
             amount = abs(float(debit_part.amount))
-            is_debit = debit_part.isdebit
         else:
             source_unit = source_type = source_path = ""
             amount = 0.0
-            is_debit = None
 
         if storage_entry.credit:
             credit_part = storage_entry.credit[0]
             dest_unit = credit_part.unit
             dest_type = credit_part.typ
             dest_path = credit_part.account
-            is_credit = credit_part.isdebit
         else:
             dest_unit = dest_type = dest_path = ""
-            is_credit = None
 
         parent_digest = parent_digest = storage_entry.parent.hex()
 
         tx_date = storage_entry.dt
         date_registered = storage_entry.dtreg
 
-        transaction_ref = str(storage_entry.ref) if storage_entry.ref else None
         external_ref = None
 
         signer_pubkeys = list(storage_entry.sigs.keys())
@@ -121,6 +120,7 @@ class EntryMapper:
             external_reference=external_ref,
             description=storage_entry.description,
             amount=amount,
+            precision=precision,
             source_unit=source_unit,
             source_type=source_type,
             source_path=source_path,
