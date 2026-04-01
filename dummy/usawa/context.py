@@ -20,7 +20,7 @@ class UsawaContext:
 
     pwget = pwgetter
 
-    def __init__(self, cfg, askpass=None, pwgetter=None):
+    def __init__(self, cfg, signing=True, pwgetter=None):
         self.cfg = cfg
         self.db = None
         self.ledger = None
@@ -34,6 +34,7 @@ class UsawaContext:
         self.aidx = None
         self.o = {}
         self.askpass = False
+        self.signing = signing
 
 
     def set(self, k, v):
@@ -65,7 +66,10 @@ class UsawaContext:
         self.create_resolver()
         self.load_accounts()
 
-        self.askpass = args.p
+        try:
+            self.askpass = args.p
+        except AttributeError:
+            pass
         self.load_wallet()
 
 
@@ -80,10 +84,13 @@ class UsawaContext:
     def load_wallet(self):
         if self.wallet != None:
             raise AttributeError('wallet set')
-        ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
-        mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
-        pw = self.getpw()
-        self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+        if not self.signing:
+            self.wallet = self.store.get_default_key(DemoWallet)
+        else:
+            ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
+            mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
+            pw = self.getpw()
+            self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
         if self.ledger != None:
             self.ledger.set_wallet(self.wallet)
 
