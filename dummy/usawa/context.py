@@ -1,3 +1,4 @@
+import logging
 import getpass
 
 from whee.valkey import ValkeyStore
@@ -7,7 +8,10 @@ from usawa.account import AccountIndex
 from usawa.store import LedgerStore, EntryStore, KeyStore
 from usawa.resolve.fs import FSResolver
 
+logg = logging.getLogger('usawa.ctx')
 
+
+# TODO: move this code to a cli module
 def pwgetter():
     return getpass.getpass('passphrase: ')
 
@@ -16,7 +20,7 @@ class UsawaContext:
 
     pwget = pwgetter
 
-    def __init__(self, cfg, askpass=None):
+    def __init__(self, cfg, askpass=None, pwgetter=None):
         self.cfg = cfg
         self.db = None
         self.ledger = None
@@ -135,6 +139,7 @@ class UsawaContext:
             self.resolver = FSResolver(resolver_path)
         else:
             logg.debug('missing resolver')
+        logg.info('created {}'.format(self.resolver))
 
 
 

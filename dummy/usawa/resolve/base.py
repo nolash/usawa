@@ -45,8 +45,9 @@ class BaseResolver:
     :param verifier: Verifier function for checking keys and key/value relation.
     :type verifier: function, by default usawa.resolve.sha512_verify
     """
-    def __init__(self, verifier=sha512_verify):
+    def __init__(self, base, verifier=sha512_verify):
         self.verifier = verifier
+        self.base = base
 
 
     """Get value for key.
@@ -126,3 +127,7 @@ class BaseResolver:
             #logg.debug('getting parent {} {}'.format(k.hex(), v))
             #entry_nolookup = Entry.from_string(v, ledger.uidx)
             #lookup = self.get(entry_nolookup.lookup)
+
+
+    def __str__(self):
+        return 'resolver base {}'.format(self.base)

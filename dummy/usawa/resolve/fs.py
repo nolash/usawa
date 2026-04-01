@@ -27,11 +27,12 @@ class FSResolver(BaseResolver):
     :seealso: usawa.resolve.BaseResolver
     """
     def __init__(self, path, verifier=sha512_verify):
-        super(FSResolver, self).__init__(verifier=verifier)
-        self.path = os.path.realpath(path)
+        path = os.path.realpath(path)
+        super(FSResolver, self).__init__(path, verifier=verifier)
+        self.path = path
         os.makedirs(self.path, exist_ok=True)
 
-    
+
     """Implements usawa.resolve.BaseResolver
     """
     def get(self, k):
