@@ -6,6 +6,7 @@ import signal
 import sys
 import shutil
 import getpass
+import os
 
 from whee.valkey import ValkeyStore
 from whee.fs import FsStore
@@ -13,6 +14,7 @@ from whee.fs import FsStore
 import usawa.config
 from usawa import Entry, Ledger, EntryPart, Asset, DemoWallet
 from usawa.store import LedgerStore
+from usawa.resolve.fs import FSResolver
 from usawa.account import Account, AccountIndex, AccountType, AccountDisplay
 from usawa.constant import CATEGORIES
 
@@ -35,8 +37,8 @@ class Context:
         self.amount = None
         self.output = None
         self.f = None
-        if args.d:
-            self.txdate = datetime.datetime.fromisoformat(args.d)
+        if args.t:
+            self.txdate = datetime.datetime.fromisoformat(args.t)
         else:
             self.txdate = datetime.datetime.now(datetime.UTC)
         self.attach = []
@@ -97,6 +99,10 @@ class Context:
         self.k = 'src'
         self.havedst = False
         self.i = 0
+        self.resolver = None
+        resolver_path = self.cfg.get('FS_RESOLVER_STORE_PATH', args.r)
+        if resolver_path != None:
+            self.resolver = FSResolver(os.path.realpath(resolver_path))
 
 
     def parse_type(self, v):
@@ -238,7 +244,8 @@ def main():
     argp.add_argument('-z', type=str, action='append', default=[], help='sum of attachment')
     argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
     argp.add_argument('-c', type=str, help='override config dir')
-    argp.add_argument('-d', type=str, help='transaction date or datetime')
+    argp.add_argument('-t', type=str, help='transaction date or datetime')
+    argp.add_argument('-r', type=str, help='export resolver spec')
     argp.add_argument('-o', type=str, help='output ledger state')
     argp.add_argument('-p', action='store_true', help='unlock wallet with password')
     argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
@@ -282,8 +289,8 @@ def main():
     v = input_or_default('Commit? (type YES, any other input is no)', '')
     if v == 'YES':
         entry.parent = ctx.ledger.cur
-        entry.sign(ctx.wallet)
         entry.serial = ctx.ledger.next_serial()
+        entry.sign(ctx.wallet)
         ctx.store.add_entry(entry, update_ledger=True)
         ctx.ledger.truncate()
         ctx.ledger.sign()
@@ -292,6 +299,8 @@ def main():
         f = open(ctx.fp, 'w')
         f.write(ctx.ledger.to_string())
         f.close()
+        if ctx.resolver != None:
+            ctx.resolver.put_entry(entry, lookup='sha512')
     else:
         ctx.store.put_draft(entry)
 
