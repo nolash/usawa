@@ -15,8 +15,9 @@ from usawa import Ledger, Entry, EntryPart, DemoWallet, UnitIndex, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
 from usawa.resolve.fs import FSResolver
+from usawa.error import VerifyError
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
 
 
@@ -61,10 +62,15 @@ def main():
     argp = argparse.ArgumentParser()
     argp.add_argument('-o', type=str, dest='output', help='output dir for resulting XML entry documents')
     argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
     argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
     argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
     argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
     arg = argp.parse_args()
+
+    if arg.v:
+        logg.setLevel(getattr(logging, arg.v.upper()))
+
     ctx = Context.from_args(arg)
 
     #ledger = None
@@ -90,18 +96,28 @@ def main():
     else:
         raise ValueError('invalid store type: ' + store_type)
     store = LedgerStore(db, ledger)
-    #storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-    #store = LedgerStore(storedb, ledger)
-    #pk = store.get_key()
-    #wallet = DemoWallet(privatekey=pk)
-    #wallet = store.get_key(DemoWallet, passphrase=cfg.get('WALLET_KEY_PASSPHRASE'))
     wallet = store.get_default_key(DemoWallet)
     acl = ACL.from_wallet(wallet)
     store.load(acl=acl)
-    resolve = FSResolver(ctx.output)
+    resolve_out = FSResolver(ctx.output)
+    resolve_in = None
+    resolve_in_path = cfg.get('FS_RESOLVER_STORE_PATH')
+    if resolve_in_path != None:
+        resolve_in = FSResolver(resolve_in_path)
 
     for k in ledger.entries:
-        r = resolve.put_entry(ledger.entries[k], lookup='sha512') 
+        o = ledger.entries[k]
+        r = resolve_out.put_entry(o, lookup='sha512')
+        if resolve_in != None:
+            for oo in o.attachment:
+                k = oo.get_digest(binary=True)
+                try:
+                    v = resolve_in.get(k)
+                except VerifyError:
+                    logg.error('attachment retrieve fail verify: {}'.format(k.hex()))
+                    continue
+                resolve_out.put(k, v)
+                logg.info('put attachment {}'.format(k.hex()))
 
 
 if __name__ == '__main__':
