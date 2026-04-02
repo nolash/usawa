@@ -56,9 +56,11 @@ class Account:
 
     def __init__(self, sym, typ, segments):
         if not isinstance(typ, AccountType):
-            raise ValueError('invalid account type')
+            raise ValueError('invalid account type: ' + typ)
         self.sym = sym
         self.typ = typ
+        if isinstance(segments, str):
+            segments = [segments]
         self.segments = segments
 
 
