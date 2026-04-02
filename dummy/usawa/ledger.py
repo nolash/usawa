@@ -490,9 +490,11 @@ class Ledger(UsawaElement):
     :raises VerifyError: When entry is missing valid signature.
     """
     def add_entry(self, entry, check_parent=True):
+        parent = entry.parent.hex()
         if check_parent and self.cur != entry.parent:
-            raise ValueError('entry parent {} does not match ledger state {}'.format(entry.parent.hex(), self.cur.hex()))
+            raise ValueError('entry parent {} does not match ledger state {}'.format(parent, self.cur.hex()))
         self.check_sigs(entry)
+        logg.debug('entry state ok: ' + parent)
 
         for fn in self.pre_cb:
             if not fn(entry):

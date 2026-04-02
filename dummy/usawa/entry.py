@@ -214,11 +214,26 @@ class Entry(UsawaElement):
 
 
     @staticmethod
-    def empty(tx_date=None, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None, tags=None):
+    def empty(tx_date=None, ref=None, description=None, parent=None, tx_datereg=None, unitindex=None, tags=None, serial=-1):
         if not tx_date:
             tx_date = datetime.datetime.utcnow()
         logg.debug('txdate is {}'.format(tx_date))
-        return Entry(-1, tx_date, ref=ref, description=description, parent=parent, tx_datereg=tx_datereg, unitindex=unitindex, tags=tags)
+        return Entry(serial, tx_date, ref=ref, description=description, parent=parent, tx_datereg=tx_datereg, unitindex=unitindex, tags=tags)
+
+
+    def clone(self, unitindex=None, description=None, invert_parts=False):
+        if description == None:
+            description = self.description + ' (clone)'
+        o = Entry(-1, self.dt, ref=self.ref, description=self.description, unitindex=unitindex, tags=self.tags)
+        for v in self.debit:
+            if invert_parts:
+                v.amount *= -1
+            o.add_part(v)
+        for v in self.credit:
+            if invert_parts:
+                v.amount *= -1
+            o.add_part(v)
+        return o
 
 
     """Add an entry part to the entry.
@@ -646,10 +661,11 @@ class Entry(UsawaElement):
         else:
             raise ValueError('invalid lookup algo')
 
-        b = lxml.etree.canonicalize(tree, strip_text="True", exclude_tags=['lookup'])
-        h.update(b.encode('utf-8'))
+        s = lxml.etree.canonicalize(tree, strip_text="True", exclude_tags=['lookup'])
+        logg.debug('doing entry {}'.format(s))
+        h.update(s.encode('utf-8'))
 
-        return (h.digest().hex(), b,)
+        return (h.digest().hex(), s,)
 
 
     """Generate canonical XML for signature material.

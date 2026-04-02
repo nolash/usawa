@@ -73,6 +73,17 @@ class UsawaContext:
         self.load_wallet()
 
 
+    def commit(self, ledger=None):
+        if ledger == None:
+            ledger = self.ledger
+        ledger.truncate()
+        ledger.sign()
+        f = open(self.ledger_path_out, 'w')
+        f.write(ledger.to_string())
+        f.close()
+        logg.info('wrote new ledger state {} to {}'.format(ledger, self.ledger_path_out))
+
+
     def getpw(self):
         pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
         if pw == None:

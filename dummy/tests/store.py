@@ -194,5 +194,43 @@ class TestStore(unittest.TestCase):
         self.assertEqual(o.get_ref(binary=True), uuid_for_foo.bytes)
 
 
+    def test_store_more(self):
+        uidx = UnitIndex('FOO')
+        ledger = Ledger(uidx, topic=b'foobar')
+        store = LedgerStore(self.store, ledger)
+        wallet = DemoWallet()
+
+        dst = EntryPart('FOO', 'asset', 'foo', 1337)
+        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        o = Entry(1, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), ref=str(uuid.uuid4()), description='foo', tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src)
+        o.add_part(dst)
+
+        fp = os.path.join(testdir, 'test.xml')
+        asset = Asset.from_file(fp, description='foobar')
+        store.add_asset(asset)
+        o.attach(asset)
+        o.sign(wallet)
+        store.add_entry(o, update_ledger=True)
+
+        dst = EntryPart('FOO', 'expense', 'bar', 42)
+        src = EntryPart('FOO', 'asset', 'bar', -42, debit=True)
+        now = datetime.datetime.now(datetime.UTC)
+        o = Entry(2, now, parent=ledger.cur, ref=str(uuid.uuid4()), description='bar', unitindex=uidx)
+        o.add_part(src)
+        o.add_part(dst)
+        o.sign(wallet)
+        store.add_entry(o)
+
+        acl = ACL.from_wallet(wallet)
+        ledger = Ledger(uidx, topic=b'foobar')
+        store = LedgerStore(self.store, ledger)
+        store.load()
+        #r = store.get_entry(o.serial, acl=acl)
+        #self.assertEqual(r.ref, o.ref)
+        #self.assertEqual(r.description, o.description)
+        #self.assertEqual(r.attachment[0].description, 'foobar')
+
+
 if __name__ == '__main__':
     unittest.main()
