@@ -147,7 +147,7 @@ class UsawaContext:
         if store_scope == 'ledger':
             self.store = LedgerStore(self.db, self.ledger)
             self.keystore = self.store
-        elif store_scope == 'asset' or store_score == 'entry':
+        elif store_scope == 'asset' or store_scope == 'entry':
             self.keystore = KeyStore(self.db)
             if store_scope == 'asset':
                 self.store = AssetStore(self.db)
