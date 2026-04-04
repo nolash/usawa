@@ -71,6 +71,19 @@ def parse_txdate(ctx, v):
     return datetime.date.fromisoformat(v)
 
 
+def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
+    if default != None:
+        postfix = ' [{}]'.format(default) + postfix
+    v = input(prompt + postfix)
+    if len(v) == 0:
+        if default == None:
+            raise ValueError('empty value and no default')
+        v = default
+    if validate_fn != None:
+        validate_fn(v)
+    return v
+
+
 def handle_tag(ctx, entry, v):
     r = input('Tag: ')
     if v == '+':
@@ -101,17 +114,9 @@ def handle_view(ctx, entry, o):
             )
 
 
-def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
-    if default != None:
-        postfix = ' [{}]'.format(default) + postfix
-    v = input(prompt + postfix)
-    if len(v) == 0:
-        if default == None:
-            raise ValueError('empty value and no default')
-        v = default
-    if validate_fn != None:
-        validate_fn(v)
-    return v
+def handle_description(ctx, entry, v):
+    v = input_or_default("description", entry.description)
+    entry.description = v
 
 
 def try_entry_uuid(ctx, v):
@@ -262,6 +267,9 @@ class EntrySession:
             return False
         if v == 'v':
             handle_view(self.ctx, self.entry, v)
+            return True
+        if v == 'd':
+            handle_description(self.ctx, self.entry, v)
             return True
         logg.error('invalid input')
         return True
