@@ -1,6 +1,10 @@
 import uuid
 import datetime
 import logging
+import sys
+import tempfile
+import subprocess
+import mimetypes
 
 from usawa import Asset, Entry, EntryPart
 from usawa.account import Account, AccountDisplay
@@ -75,7 +79,26 @@ def handle_tag(ctx, entry, v):
         entry.untag(r)
 
 
-
+def handle_view(ctx, entry, o):
+    if len(entry.attachment) == 0:
+        logg.error('no asset to resolve')
+        return
+    if ctx.resolver == None:
+        logg.error('no resolver to provide view')
+        return
+    asset = entry.attachment[0]
+    ext = mimetypes.guess_extension(asset.mime)
+    (f, fp) = tempfile.mkstemp(suffix=ext)
+    k = asset.get_digest()
+    asset_data = ctx.resolver.get(k)
+    f = open(fp, 'wb')
+    f.write(asset_data)
+    f.close()
+    subprocess.Popen(
+            ['xdg-open', fp],
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            )
 
 
 def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
@@ -120,6 +143,8 @@ def try_entry(ctx, entry_spec):
         return try_entry_uuid(ctx, entry_spec)
     except ValueError:
         pass
+    except FileNotFoundError:
+        pass
 
     try:
         return try_entry_serial(ctx, entry_spec)
@@ -130,21 +155,32 @@ def try_entry(ctx, entry_spec):
         return try_entry_digest(ctx, entry_spec)
     except ValueError:
         pass
+
     return None
 
 
 class EntrySession:
 
-    def __init__(self, ctx, entry_spec=None):
+    def __init__(self, ctx, entry=None, description=None, extref=None, dt=None, ref=None):
+        # context props
         self.ctx = ctx
         self.unitbase = ctx.uidx.base
+
+        # override props
+        self.description = description
+        self.ref = ref
+        self.extref = extref
+        self.dt = dt
+
+        # state props
         self.commit = False
-        self.ref = None
-        self.dt = None
         self.part_side = 'src'
         self.have_src = False
         self.have_dst = False
-        self.entry = try_entry(self.ctx, entry_spec)
+
+        self.entry = try_entry(self.ctx, entry)
+        if self.entry == None:
+            self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref)
         if self.entry.serial > 0:
             raise NotImplementedError('entry edit not yet implemented')
         self._do_prepare()
@@ -224,6 +260,9 @@ class EntrySession:
             return False
         if v == 't':
             return False
+        if v == 'v':
+            handle_view(self.ctx, self.entry, v)
+            return True
         logg.error('invalid input')
         return True
 
@@ -239,9 +278,10 @@ class EntrySession:
         self.entry.dt = v
 
 
-    def do_interactive_two(self):
+    def do_interactive_two(self, w=sys.stdout):
         r = True
         while r:
+            w.write(str(self) + "\n")
             v = input("> ")
             r = self.handle_input(v)
 
@@ -264,11 +304,26 @@ class EntrySession:
         return True
 
 
-    def start(self):
-        self.do_interactive_one()
+    def start(self, skip_first=False):
+        if not skip_first:
+            self.do_interactive_one()
         try:
             self.do_interactive_two()
         except StopIteration:
-            return False
+            return None
         r = self.finalize()
         return self.entry
+
+
+    def __str__(self):
+        s = """Date: {}
+Description: {}
+Ref: {}
+Extref: {}
+""".format(
+        self.entry.dt,
+        self.entry.description,
+        self.entry.ref,
+        self.entry.extref,
+        )
+        return s
