@@ -283,7 +283,7 @@ class EntrySession:
             handle_reset(self.ctx, self.entry, v)
             return True
         if v == 's':
-            return True
+            return False
         logg.error('invalid input')
         return True
 
@@ -309,9 +309,9 @@ class EntrySession:
 
     def finalize(self):
         if not self.commit:
-            logg.warning('finalize called without commit')
+            logg.debug('skipping ' + str(self.entry))
             return False
-       
+
         if self.final:
             self.entry.parent = self.ctx.ledger.cur
             self.entry.serial = self.ctx.ledger.next_serial()
