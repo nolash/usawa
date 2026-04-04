@@ -5,7 +5,7 @@ logg = logging.getLogger('usawa.balancer')
 
 class Balancer:
 
-    def __init__(self, unitindex):
+    def __init__(self, unitindex, value=None):
         self.uidx = unitindex
         self.r = 0
         self.m = 0

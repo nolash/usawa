@@ -5,7 +5,7 @@ from whee.valkey import ValkeyStore
 from whee.fs import FsStore
 from usawa import DemoWallet, Ledger
 from usawa.account import AccountIndex
-from usawa.store import LedgerStore, EntryStore, KeyStore
+from usawa.store import LedgerStore, EntryStore, KeyStore, AssetStore
 from usawa.resolve.fs import FSResolver
 
 logg = logging.getLogger('usawa.ctx')
@@ -42,7 +42,7 @@ class UsawaContext:
 
 
     def get(self, k):
-        return self.o[k]
+        return self.o.get(k)
 
 
     def init(self, args, store_scope=None):
@@ -96,7 +96,7 @@ class UsawaContext:
         if self.wallet != None:
             raise AttributeError('wallet set')
         if not self.signing:
-            self.wallet = self.store.get_default_key(DemoWallet)
+            self.wallet = self.keystore.get_default_key(DemoWallet)
         else:
             ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
@@ -116,11 +116,14 @@ class UsawaContext:
 
 
     def load_accounts(self):
+        if self.uidx == None:
+            logg.info('no unit index, skip accounts')
+            return
         s = self.cfg.get('ACCOUNTS_FILE')
         if s:
             self.aidx = AccountIndex.from_file(self.uidx, s)
         else:
-            self.aidx = AccountIndex(uidx)
+            self.aidx = AccountIndex(self.uidx)
         if self.cfg.true('ACCOUNTS_STRICT'):
             self.aidx.lock()
 
@@ -145,8 +148,11 @@ class UsawaContext:
             self.store = LedgerStore(self.db, self.ledger)
             self.keystore = self.store
         elif store_scope == 'asset' or store_score == 'entry':
-            self.store = EntryStore(self.db)
             self.keystore = KeyStore(self.db)
+            if store_scope == 'asset':
+                self.store = AssetStore(self.db)
+            else:
+                self.store = EntryStore(self.db)
 
 
     def create_resolver(self, resolver_type='fs'):
@@ -158,6 +164,3 @@ class UsawaContext:
         else:
             logg.debug('missing resolver')
         logg.info('created {}'.format(self.resolver))
-
-
-

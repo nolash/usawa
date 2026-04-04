@@ -112,6 +112,7 @@ class UnitIndex:
             precision = int(o.find('precision', namespaces=nsmap()).text)
             logg.debug('add unit {} precision {}'.format(o.get('sym'), precision))
             r.detail[o.get('sym')] = precision
+            r.rate[o.get('sym')] = 1000000000
             r.check()
         return r
 
@@ -230,9 +231,10 @@ class UnitIndex:
         if l < c:
             r += '0' * (c - l)
         r = s[0] + r
+        r = int(r)
         if neg:
             r *= -1
-        return int(r)
+        return r
 
 
     def from_float(self, sym, v):

@@ -47,6 +47,9 @@ class TestUnit(unittest.TestCase):
         self.assertEqual(v, 123)
         v = self.uidx_default.from_floatstring('BAR', '1.2345')
         self.assertEqual(v, 12345)
+        v = self.uidx_default.from_floatstring('FOO', '-3.390')
+        self.assertEqual(v, -3390)
+
 
 
     def test_unit_rates(self):
