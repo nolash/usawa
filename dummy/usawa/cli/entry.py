@@ -7,7 +7,7 @@ import subprocess
 import mimetypes
 
 from usawa import Asset, Entry, EntryPart
-from usawa.account import Account, AccountDisplay
+from usawa.account import Account, AccountDisplay, AccountType
 
 logg = logging.getLogger('cli.entry')
 
@@ -117,6 +117,11 @@ def handle_view(ctx, entry, o):
 def handle_description(ctx, entry, v):
     v = input_or_default("description", entry.description)
     entry.description = v
+
+
+def handle_reset(ctx, entry, v):
+    entry.debit = []
+    entry.credit = []
 
 
 def try_entry_uuid(ctx, v):
@@ -271,6 +276,11 @@ class EntrySession:
         if v == 'd':
             handle_description(self.ctx, self.entry, v)
             return True
+        if v == 'r':
+            handle_reset(self.ctx, self.entry, v)
+            return True
+        if v == 's':
+            return True
         logg.error('invalid input')
         return True
 
@@ -334,4 +344,17 @@ Extref: {}
         self.entry.ref,
         self.entry.extref,
         )
+
+        s += "Accounts src:\n"
+        for v in self.entry.debit:
+            typ = getattr(AccountType, v.typ)
+            o = Account.from_path(v.account, sym=v.unit, typ=typ)
+            s += "\t" + o.to_path() + " " + self.ctx.uidx.to_floatstring(v.unit, v.amount) + "\n"
+
+        s += "Accounts dst:\n"
+        for v in self.entry.credit:
+            typ = getattr(AccountType, v.typ)
+            o = Account.from_path(v.account, sym=v.unit, typ=typ)
+            s += "\t" + o.to_path() + " " + self.ctx.uidx.to_floatstring(v.unit, v.amount) + "\n"
+
         return s

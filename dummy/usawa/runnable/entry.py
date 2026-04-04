@@ -24,22 +24,6 @@ logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
 
 
-#def parse_type(ctx, v):
-#    v = v.lower()
-#    r = None
-#    for k in CATEGORIES:
-#        if k.startswith(v):
-#            r = k
-#            logg.info("expanded input '{}' to category {}".format(v, r))
-#            break
-#    if not r:
-#        raise ValueError('invalid type: ' + v)
-#    o = getattr(AccountType, r)
-#    logg.debug('accounttype {}'.format(o))
-#    return o
-#
-#
-
 def main():
     def croak(*args, **kwargs):
         sys.exit(1)
@@ -64,24 +48,11 @@ def main():
     if args.v:
         logg.setLevel(getattr(logging, args.v.upper()))
 
-    #ctx = Context(args)
-
     cfg = usawa.config.load_config(config_dir=args.c) 
     ctx = UsawaContext(cfg)
-    #dp = os.path.realpath(args.src_dir)
-    #ctx.set('srcdir', dp)
     ctx.init(args)
     ctx.set('unitbase', ctx.uidx.base)
     ctx.set('commit', False)
-
-#    entry = try_entry(ctx, args)
-#    if entry.serial > 0:
-#        raise NotImplementedError('entry edit not yet implemented')
-#    do_prepare(ctx, entry=entry)
-#    entry = Entry.empty(ref=ctx.get('ref'), unitindex=ctx.uidx, tx_date=ctx.get('dt'))
-    #entry = ctx.store.get_draft(entry)
-    #entry.description = ctx.get('description')
-    #entry.dt = ctx.txdate
 
     o = EntrySession(ctx, args.entry)
 
@@ -92,13 +63,6 @@ def main():
         o.attach_digest(v)
         
     entry = o.start()
-    
-#    if ctx.commit:
-#        if entry.serial != -1:
-#            raise AttributeError('entry draft already marked as committed')
-#        entry.serial = ctx.ledger.next_serial()
-
-#    v = input_or_default('Commit? (type YES, any other input is no)', '')
     
     print(entry)
 
