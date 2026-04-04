@@ -184,6 +184,7 @@ class EntrySession:
 
         # state props
         self.commit = False
+        self.final = False
         self.part_side = 'src'
         self.have_src = False
         self.have_dst = False
@@ -267,8 +268,10 @@ class EntrySession:
             return True
         if v == 'w':
             self.commit = True
+            self.final = True
             return False
         if v == 't':
+            self.commit = True
             return False
         if v == 'v':
             handle_view(self.ctx, self.entry, v)
@@ -305,7 +308,11 @@ class EntrySession:
 
 
     def finalize(self):
-        if self.commit:
+        if not self.commit:
+            logg.warning('finalize called without commit')
+            return False
+       
+        if self.final:
             self.entry.parent = self.ctx.ledger.cur
             self.entry.serial = self.ctx.ledger.next_serial()
             self.entry.sign(self.ctx.wallet)
