@@ -171,7 +171,7 @@ def try_entry(ctx, entry_spec):
 
 class EntrySession:
 
-    def __init__(self, ctx, entry=None, description=None, extref=None, dt=None, ref=None):
+    def __init__(self, ctx, entry=None, heading=None, description=None, extref=None, dt=None, ref=None, amount=None, lines=[]):
         # context props
         self.ctx = ctx
         self.unitbase = ctx.uidx.base
@@ -189,9 +189,14 @@ class EntrySession:
         self.have_src = False
         self.have_dst = False
 
+        # supplementary props
+        self.heading = heading
+        self.lines = lines
+        self.amount = float(amount)
+
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
-            self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref)
+            self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref, tx_date=self.dt)
         if self.entry.serial > 0:
             raise NotImplementedError('entry edit not yet implemented')
         self._do_prepare()
@@ -326,6 +331,7 @@ class EntrySession:
                 self.ctx.resolver.put_entry(self.entry, lookup='sha512')
         else:
             self.ctx.store.put_draft(self.entry)
+
         return True
 
 
@@ -340,17 +346,30 @@ class EntrySession:
         return self.entry
 
 
+    def get_description(self):
+        description = self.entry.description
+        if self.heading != None:
+            description = self.heading + " " + description
+        return description
+
+
     def __str__(self):
         s = """Date: {}
-Description: {}
 Ref: {}
 Extref: {}
 """.format(
         self.entry.dt,
-        self.entry.description,
         self.entry.ref,
         self.entry.extref,
         )
+
+        if self.amount:
+            s += "Amount: " + str(self.amount) + "\n"
+
+        s += "Description: " + self.get_description() + "\n"
+
+        for v in self.lines:
+            s += "\t" + v + "\n"
 
         s += "Accounts src:\n"
         for v in self.entry.debit:
