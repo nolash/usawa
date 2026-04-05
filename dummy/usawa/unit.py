@@ -28,7 +28,7 @@ class UnitIndex:
     :param precision: The decimal precision of the base unit. Default is 2.
     :type precision: int
     """
-    def __init__(self, base=None, precision=None):
+    def __init__(self, base=None, precision=None, virt=False):
         self.detail = {}
         self.rate = {}
         self.base = None
@@ -38,6 +38,10 @@ class UnitIndex:
             self.detail = {base: precision}
             self.set_rate(base, UnitIndex.default_exchange)
         self.base = base
+        self.real = {base: True}
+        self.virt = {}
+        if virt:
+            self.virt[base] = True
 
 
     def clone(self):
@@ -87,9 +91,15 @@ class UnitIndex:
     :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
     :type ex: int or float
     """
-    def add(self, sym, precision=2, rate=1000000000):
+    def add(self, sym, precision=2, rate=1000000000, virt=None):
+        if self.detail.get(sym) != None:
+            raise AttributeError('sym already added')
         self.detail[sym] = precision
         self.set_rate(sym, rate)
+        if virt:
+            self.virt[sym] = True
+        else:
+            self.real[sym] = True
 
 
     """Create a unit index object from XML.
@@ -109,9 +119,15 @@ class UnitIndex:
         base = tree.get('base')
         r = UnitIndex(base)
         for o in tree.iter(NSPREFIX + 'unit'):
+            sym = o.get('sym')
+            if o.get('real'):
+                r.real[sym] = True
             precision = int(o.find('precision', namespaces=nsmap()).text)
-            logg.debug('add unit {} precision {}'.format(o.get('sym'), precision))
-            r.detail[o.get('sym')] = precision
+            virt = o.find('virt', namespaces=nsmap())
+            if virt != None:
+                r.virt[sym] = True
+            logg.debug('add unit {} precision {}'.format(sym, precision))
+            r.detail[sym] = precision
             r.check()
         return r
 
@@ -159,6 +175,14 @@ class UnitIndex:
     """
     def syms(self):
         return list(self.detail.keys())
+
+
+    def reals(self):
+        return list(self.real.keys())
+
+
+    def virts(self):
+        return list(self.virt.keys())
 
 
     """Generate a string representing the decimal equivalent of the value to the precision of the unit.
@@ -291,9 +315,15 @@ class UnitIndex:
         for k in self.detail.keys():
             unit = lxml.etree.SubElement(tree, 'unit')
             unit.set('sym', k)
+            if self.real.get(k):
+                unit.set('real', '1')
             o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.detail[k])
             unit.append(o)
+            if self.virt.get(k):
+                o = lxml.etree.SubElement(unit, 'virt')
+                o.text = '1' 
+                unit.append(o)
             tree.append(unit)
 
         return tree

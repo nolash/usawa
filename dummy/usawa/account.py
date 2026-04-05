@@ -17,7 +17,7 @@ def check_path_parts(path):
     return (typ, parts[1:],)
 
 
-def from_account_path(p, sym=None, typ=None):
+def from_account_path(p, sym=None, typ=None, virt=False):
     if sym != None:
         p = sym + '.' + p
     o = p.split('.')
@@ -54,7 +54,7 @@ class Account:
 
     path_parser = from_account_path
 
-    def __init__(self, sym, typ, segments):
+    def __init__(self, sym, typ, segments, virt=False):
         if not isinstance(typ, AccountType):
             raise ValueError('invalid account type: ' + typ)
         self.sym = sym
@@ -62,12 +62,13 @@ class Account:
         if isinstance(segments, str):
             segments = [segments]
         self.segments = segments
+        self.virt = False
 
 
     @staticmethod
-    def from_path(path, sym=None, typ=None):
-        o = Account.path_parser(path, sym=sym, typ=typ)
-        return Account(o[0], o[1], o[2])
+    def from_path(path, sym=None, typ=None, virt=False):
+        o = Account.path_parser(path, sym=sym, typ=typ, virt=virt)
+        return Account(o[0], o[1], o[2], virt=virt)
 
 
     def to_path(self, display=AccountDisplay.full):
@@ -112,12 +113,11 @@ class AccountIndex:
                 break
             o.add(v.strip())
         f.close()
-#        return AccountIndex.from_io(f, closer=f.close) 
         return o
 
 
-    def add(self, path, sym=None, typ=None):
-        account = Account.from_path(path, sym=sym, typ=typ)
+    def add(self, path, sym=None, typ=None, virt=False):
+        account = Account.from_path(path, sym=sym, typ=typ, virt=virt)
         try:
             sym = self.uidx.sym(account.sym)
         except KeyError:

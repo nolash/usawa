@@ -139,13 +139,16 @@ class RunningTotal:
     :rtype: usawa.UnitIndex
     """
     @staticmethod
-    def from_tree(tree, unitindex):
+    def from_tree(tree, unitindex, real=False):
         unit = tree.get('unit')
         asset = int(tree.find('asset', namespaces=nsmap()).text)
         liability = int(tree.find('liability', namespaces=nsmap()).text)
         income = int(tree.find('income', namespaces=nsmap()).text)
         expense = int(tree.find('expense', namespaces=nsmap()).text)
-        return RunningTotal(unit, unitindex, asset=int(asset), liability=int(liability), income=int(income), expense=int(expense))
+        o = RunningTotal(unit, unitindex, asset=int(asset), liability=int(liability), income=int(income), expense=int(expense))
+        if real:
+            o.set_real()
+        return o
 
 
 
@@ -243,6 +246,7 @@ class Ledger(UsawaElement):
     :type wallet: usawa.Wallet
     :todo: Add warnings for ignored parameters
     :todo: Remove enclosing array for entries
+    :todo: Implement real and virt unit indices for running totals
     """
     def __init__(self, unitindex, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None, wallet=None):
         self.uidx = unitindex
@@ -597,7 +601,7 @@ class Ledger(UsawaElement):
 
         for v in part.iter(NSPREFIX + 'real'):
             sym = v.get('unit')
-            o = RunningTotal.from_tree(v, unitindex)
+            o = RunningTotal.from_tree(v, unitindex, real=True)
             ledger.running[o.sym] = o
             logg.debug('ledger running total {} (real): {}'.format(o.sym, o))
 
