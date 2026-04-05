@@ -11,6 +11,9 @@ from usawa.account import Account, AccountDisplay, AccountType
 
 logg = logging.getLogger('cli.entry')
 
+class AbortMenu(Exception):
+    pass
+
 
 def choose_account(ctx, include_create=False):
     r = None
@@ -150,15 +153,18 @@ def try_entry(ctx, entry_spec):
         return Entry.empty(unitindex=ctx.uidx)
 
     try:
-        return try_entry_uuid(ctx, entry_spec)
+        return try_entry_serial(ctx, entry_spec)
     except ValueError:
-        pass
-    except FileNotFoundError:
         pass
 
     try:
-        return try_entry_serial(ctx, entry_spec)
+        v = try_entry_uuid(ctx, entry_spec)
+        if v == None:
+            raise AttributeError('entry is committed')
+        return v
     except ValueError:
+        pass
+    except FileNotFoundError:
         pass
 
     try:
@@ -171,10 +177,12 @@ def try_entry(ctx, entry_spec):
 
 class EntrySession:
 
-    def __init__(self, ctx, entry=None, heading=None, description=None, extref=None, dt=None, ref=None, amount=None, lines=[]):
+    def __init__(self, ctx, entry=None, heading=None, description=None, extref=None, dt=None, ref=None, amount=None, lines=[], base=None):
         # context props
         self.ctx = ctx
-        self.unitbase = ctx.uidx.base
+        self.unitbase = base
+        if self.unitbase == None:
+            self.unitbase = self.ctx.uidx.base
 
         # override props
         self.description = description
@@ -200,6 +208,25 @@ class EntrySession:
         if self.entry.serial > 0:
             raise NotImplementedError('entry edit not yet implemented')
         self._do_prepare()
+
+
+    def _cur_amount(self):
+        amount = self.ctx.uidx.val(self.unitbase, self.amount)
+        if amount == None:
+            amount = self.entry.balancer.value()
+        else:
+            amount = amount[0]
+        return amount
+
+
+    def _src_remaining(self):
+        amount = self._cur_amount()
+        return amount - self.entry.balancer.src()
+
+
+    def _dst_remaining(self):
+        amount = self._cur_amount()
+        return amount - self.entry.balancer.dst()
 
 
     def _do_prepare(self):
@@ -239,7 +266,10 @@ class EntrySession:
 
         #v = input_or_default('Entry {} account'.format(ctx.get('partk')))
         #account = parse_account(ctx, v, sym=unit, typ=typ)
-        v = choose_account(self.ctx)
+        try:
+            v = choose_account(self.ctx)
+        except AbortMenu:
+            return False
         account = Account.from_path(v)
 
         #amount = None
@@ -349,7 +379,7 @@ class EntrySession:
     def get_description(self):
         description = self.entry.description
         if self.heading != None:
-            description = self.heading + " " + description
+            description = self.heading + "; " + description
         return description
 
 
@@ -363,21 +393,24 @@ Extref: {}
         self.entry.extref,
         )
 
-        if self.amount:
-            s += "Amount: " + str(self.amount) + "\n"
-
         s += "Description: " + self.get_description() + "\n"
 
         for v in self.lines:
             s += "\t" + v + "\n"
 
-        s += "Accounts src:\n"
+        amount = self._cur_amount()
+        amount = self.ctx.uidx.to_floatstring(self.unitbase, amount)
+        rem = self._src_remaining()
+        rem = self.ctx.uidx.to_floatstring(self.unitbase, rem)
+        s += "Accounts src: {}/{}\n".format(rem, amount)
         for v in self.entry.debit:
             typ = getattr(AccountType, v.typ)
             o = Account.from_path(v.account, sym=v.unit, typ=typ)
             s += "\t" + o.to_path() + " " + self.ctx.uidx.to_floatstring(v.unit, v.amount) + "\n"
 
-        s += "Accounts dst:\n"
+        rem = self._dst_remaining()
+        rem = self.ctx.uidx.to_floatstring(self.unitbase, rem)
+        s += "Accounts dst: {}/{}\n".format(rem, amount)
         for v in self.entry.credit:
             typ = getattr(AccountType, v.typ)
             o = Account.from_path(v.account, sym=v.unit, typ=typ)

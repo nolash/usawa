@@ -5,18 +5,27 @@ logg = logging.getLogger('usawa.balancer')
 
 class Balancer:
 
-    def __init__(self, unitindex, value=None):
+    def __init__(self, unitindex):
         self.uidx = unitindex
         self.r = 0
         self.m = 0
         self.z = 0
+        self.zsrc = 0
+        self.zdst = 0
 
 
     def apply_part(self, part):
         amount = self.uidx.val(part.unit, part.amount)
         fn = getattr(self, '_handle_' + part.typ)
-        v = fn(amount[0], part.isdebit)
-        self.z += abs(amount[0])
+        fn(amount[0], part.isdebit)
+        v = abs(amount[0])
+        logg.debug('amount {} v {}'.format(amount, v))
+        self.z += v
+        self.m += amount[1]
+        if part.isdebit:
+            self.zsrc += v
+        else:
+            self.zdst += v
         logg.debug('after {} {} => {} = {}'.format(part.unit, part.amount, amount[0], self.r))
 
 
@@ -30,6 +39,14 @@ class Balancer:
 
     def value(self):
         return int(self.z / 2)
+
+
+    def src(self):
+        return self.zsrc
+
+
+    def dst(self):
+        return self.zdst
 
 
     def _handle_income(self, amount, issrc=False):

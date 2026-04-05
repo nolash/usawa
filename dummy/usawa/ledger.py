@@ -139,12 +139,13 @@ class RunningTotal:
     :rtype: usawa.UnitIndex
     """
     @staticmethod
-    def from_tree(tree):
-        unit = self.tree.get('unit')
-        asset = int(self.tree.find('asset', namespaces=nsmap()).text)
-        liability = int(self.tree.find('liability', namespaces=nsmap()).text)
-        return RunningTotal(unit, asset=asset, liability=liability)
-
+    def from_tree(tree, unitindex):
+        unit = tree.get('unit')
+        asset = int(tree.find('asset', namespaces=nsmap()).text)
+        liability = int(tree.find('liability', namespaces=nsmap()).text)
+        income = int(tree.find('income', namespaces=nsmap()).text)
+        expense = int(tree.find('expense', namespaces=nsmap()).text)
+        return RunningTotal(unit, unitindex, asset=int(asset), liability=int(liability), income=int(income), expense=int(expense))
 
 
 
@@ -598,18 +599,17 @@ class Ledger(UsawaElement):
             logg.warning('currently only support for single identity')
             break
 
-        o = part.find('real', namespaces=nsmap())
-        asset = int(o.find('asset', namespaces=nsmap()).text)
-        liability = int(o.find('liability', namespaces=nsmap()).text)
-        ledger.real = RunningTotal(unit, unitindex, asset=asset, liability=liability)
+        for v in part.iter(NSPREFIX + 'real'):
+            sym = v.get('unit')
+            o = RunningTotal.from_tree(v, unitindex)
+            ledger.running[o.sym] = o
+            logg.debug('ledger running total {} (real): {}'.format(o.sym, o))
 
         for v in part.iter(NSPREFIX + 'virt'):
-            income = int(v.find('income', namespaces=nsmap()).text)
-            expense = int(v.find('expense', namespaces=nsmap()).text)
-            asset = int(v.find('asset', namespaces=nsmap()).text)
-            liability = int(v.find('liability', namespaces=nsmap()).text)
             sym = v.get('unit')
-            ledger.running[sym] = RunningTotal(sym, unitindex, income=income, expense=expense, asset=asset, liability=liability)
+            o = RunningTotal.from_tree(v, unitindex)
+            ledger.running[o.sym] = o
+            logg.debug('ledger running total {} (virt): {}'.format(o.sym, o))
 
         if ledger.running.get(unit) == None:
             ledger.running[unit] = RunningTotal(unit, unitindex)
@@ -645,7 +645,6 @@ class Ledger(UsawaElement):
         i = 0
         for v in tree.iter(NSPREFIX + 'entry'):
             i += 1
-            logg.debug('>>>>>>>>>>>>> processing entry {}'.format(lxml.etree.tostring(v)))
             o = Entry.from_tree(v, self.uidx, min=self.serial)
             self.add_entry(o)
             (k, v) = o.get_lookup('sha512')
@@ -763,64 +762,6 @@ class Ledger(UsawaElement):
         k = self.wallet.pubkey()
         self.add_signature(r, k)
         return r
-
-
-#    """Generate the simple data structure used for rencode serialization.
-#
-#    :returns: data structure
-#    :rtype: list
-#    """
-#    def to_list(self):
-#        ts = int(self.dt.timestamp())
-#        ts_bytes = ts.to_bytes(4, byteorder='big')
-#        #units = self.uidx.serialize()
-#        units = self.uidx.to_list()
-#        #identities = self.acl.serialize()
-#        identities = self.acl.to_list()
-#        totals = []
-#        #v = self.running[self.uidx.base].serialize()
-#        v = self.running[self.uidx.base].to_list()
-#        totals.append(v)
-#        for k in self.running.keys():
-#            if k == self.uidx.base:
-#                continue
-#            v = self.running[k].serialize()
-#            totals.append(v)
-#        d = [
-#                self.topic,
-#                varints.leb128s.encode(self.serial),
-#                self.cur,
-#                ts_bytes,
-#                units, 
-#                identities,
-#                totals,
-#                ]
-#        return d
-#
-#
-#    """Generate the unit index part of an Entry in wire format.
-#
-#    :returns: String representation of the entry, in rencode format.
-#    :rtype: str
-#    """
-#    def serialize(self):
-#        b = self.to_list()
-#        return rencode.dumps(b)
-#
-
-
-#    """Create a ledger object from serialized data.
-#
-#    :param data: rencoded ledger object, as produced by the serialize() method.
-#    :type data: str
-#    :returns: Ledger object.
-#    :rtype: usawa.Ledger
-#    """
-#    @staticmethod
-#    def deserialize(self, unitindex, serial=None, base=None, acl=None, src=None):
-#        v = rencode.loads(data)
-#        o = Ledger(base=base, serial=serial, acl=acl, src=src, topic=v[0])
-#        return o
 
 
     def __str__(self):

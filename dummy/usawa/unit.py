@@ -73,7 +73,7 @@ class UnitIndex:
         v = int(r)
         m = int((r - v) * 1000000000)
         logg.debug('val {} -> {},{} adj {}'.format(r, v, m, adj))
-        return (v, m,)
+        return (v, m, )
 
 
     """Add a unit to the index.
@@ -112,7 +112,6 @@ class UnitIndex:
             precision = int(o.find('precision', namespaces=nsmap()).text)
             logg.debug('add unit {} precision {}'.format(o.get('sym'), precision))
             r.detail[o.get('sym')] = precision
-            r.rate[o.get('sym')] = 1000000000
             r.check()
         return r
 
@@ -177,6 +176,8 @@ class UnitIndex:
     :todo: Rename to to_decimalstring
     """
     def to_floatstring(self, sym, v, allow_negative=True):
+        if isinstance(v, float):
+            v = self.from_float(sym, v)
         neg = v < 0
         if neg and not allow_negative:
             raise ValueError('negative value not allowed')
