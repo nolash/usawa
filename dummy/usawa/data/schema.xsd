@@ -79,10 +79,10 @@
 	<xs:complexType name="Unit">
 		<xs:sequence>
 			<xs:element name="precision" type="xs:positiveInteger" maxOccurs="1" minOccurs="1" />
-			<xs:element name="virt" type="xs:string" maxOccurs="unbounded" minOccurs="0" />
 		</xs:sequence>
 		<xs:attribute name="sym" type="xs:string" />
 		<xs:attribute name="real" type="xs:boolean" />
+		<xs:attribute name="virt" type="xs:boolean" />
 	</xs:complexType>
 
 	<xs:complexType name="Rate">

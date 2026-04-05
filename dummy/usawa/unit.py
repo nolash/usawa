@@ -91,14 +91,16 @@ class UnitIndex:
     :param ex: The exchange rate of the unit, relative to the base unit. Default is 1000000000 (1.0).
     :type ex: int or float
     """
-    def add(self, sym, precision=2, rate=1000000000, virt=None):
+    def add(self, sym, precision=2, rate=1000000000, virt=False, real=True):
+        if not real and not virt:
+            raise ValueError('either virt or real must be true')
         if self.detail.get(sym) != None:
             raise AttributeError('sym already added')
         self.detail[sym] = precision
         self.set_rate(sym, rate)
         if virt:
             self.virt[sym] = True
-        else:
+        if real:
             self.real[sym] = True
 
 
@@ -122,10 +124,9 @@ class UnitIndex:
             sym = o.get('sym')
             if o.get('real'):
                 r.real[sym] = True
-            precision = int(o.find('precision', namespaces=nsmap()).text)
-            virt = o.find('virt', namespaces=nsmap())
-            if virt != None:
+            if o.get('virt') or r.real.get(sym) == None:
                 r.virt[sym] = True
+            precision = int(o.find('precision', namespaces=nsmap()).text)
             logg.debug('add unit {} precision {}'.format(sym, precision))
             r.detail[sym] = precision
             r.check()
@@ -317,13 +318,11 @@ class UnitIndex:
             unit.set('sym', k)
             if self.real.get(k):
                 unit.set('real', '1')
+            if self.virt.get(k):
+                unit.set('virt', '1')
             o = lxml.etree.SubElement(unit, 'precision')
             o.text = str(self.detail[k])
             unit.append(o)
-            if self.virt.get(k):
-                o = lxml.etree.SubElement(unit, 'virt')
-                o.text = '1' 
-                unit.append(o)
             tree.append(unit)
 
         return tree
