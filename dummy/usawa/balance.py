@@ -9,13 +9,14 @@ class Balancer:
         self.uidx = unitindex
         self.r = 0
         self.m = 0
+        self.z = 0
 
 
     def apply_part(self, part):
         amount = self.uidx.val(part.unit, part.amount)
-        fn = getattr(self, 'handle_' + part.typ)
-        fn(amount[0], part.isdebit)
-        self.m += amount[1]
+        fn = getattr(self, '_handle_' + part.typ)
+        v = fn(amount[0], part.isdebit)
+        self.z += abs(amount[0])
         logg.debug('after {} {} => {} = {}'.format(part.unit, part.amount, amount[0], self.r))
 
 
@@ -23,29 +24,39 @@ class Balancer:
         return self.r == 0
 
 
-    def handle_income(self, amount, issrc=False):
-        if issrc:
-            self.r += amount
-        else:
-            self.r -= amount
+    def balance(self):
+        return self.r
 
 
-    def handle_expense(self, amount, issrc=False):
+    def value(self):
+        return int(self.z / 2)
+
+
+    def _handle_income(self, amount, issrc=False):
+        if not issrc:
+            raise TypeError('income can only be src')
+        self.r -= amount
+        return amount
+
+
+    def _handle_expense(self, amount, issrc=False):
         if issrc:
-            self.r -= amount
-        else:
-            self.r += amount
+            raise TypeError('expense can only be dst')
+        self.r += amount
+        return amount
 
     
-    def handle_asset(self, amount, issrc=False):
+    def _handle_asset(self, amount, issrc=False):
         if issrc:
-            self.r += amount
-        else:
-            self.r -= amount
+            if amount >= 0:
+                raise ValueError('positive asset can only be dst')
+        self.r += amount
+        return amount
 
 
-    def handle_liability(self, amount, issrc=False):
+    def _handle_liability(self, amount, issrc=False):
         if issrc:
-            self.r -= amount
-        else:
-            self.r += amount
+            if amount < 0:
+                raise ValueError('negative liability can only be dst')
+        self.r -= amount
+        return amount
