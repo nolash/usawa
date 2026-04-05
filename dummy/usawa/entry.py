@@ -44,6 +44,8 @@ class EntryPart:
     :todo: Make typ enum
     """
     def __init__(self, unit, typ, account, amount, debit=False):
+        if isinstance(amount, float):
+            raise ValueError('entrydata must pass amount in int including full precision')
         self.unit = unit
         self.typ = typ
         self.account = account
