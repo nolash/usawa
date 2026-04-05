@@ -761,4 +761,4 @@ class Ledger(UsawaElement):
 
 
     def __str__(self):
-        return "state: " + self.base.hex() + " serial " + str(self.serial)
+        return "state from " + self.base.hex() + " to " + self.cur.hex() + " serial " + str(self.serial)

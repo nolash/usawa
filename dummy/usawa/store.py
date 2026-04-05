@@ -366,15 +366,22 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
-    def load(self, acl=None):
-        logg.debug('load ledger from store {}'.format(self.ledger))
+    def load(self, acl=None, until=0):
+        logg.debug('load ledger from store {} until {}'.format(self.ledger, until))
+        v = 0
         while True:
             o = None
             try:
-                o = self.get_entry(self.ledger.next_serial(), acl=acl)
+                if until != 0:
+                    if until == v:
+                        break
+                v = self.ledger.peek()
+                o = self.get_entry(v, acl=acl)
+                self.ledger.next_serial()
             except FileNotFoundError:
                 break
             self.ledger.add_entry(o)
+        logg.info('loaded ledger {}'.format(self.ledger))
 
 
     """Load all entries from store, newest to oldest.

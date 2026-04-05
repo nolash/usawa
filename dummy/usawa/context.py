@@ -20,7 +20,7 @@ class UsawaContext:
 
     pwget = pwgetter
 
-    def __init__(self, cfg, signing=True, pwgetter=None):
+    def __init__(self, cfg, signing=True, pwgetter=None, replay=False):
         self.cfg = cfg
         self.db = None
         self.ledger = None
@@ -35,6 +35,7 @@ class UsawaContext:
         self.o = {}
         self.askpass = False
         self.signing = signing
+        self.replay = replay
 
 
     def set(self, k, v):
@@ -71,6 +72,11 @@ class UsawaContext:
         except AttributeError:
             pass
         self.load_wallet()
+
+        if self.replay:
+            self.store.load()
+            self.ledger.truncate()
+            logg.debug('replayed ledger {}'.format(self.ledger.to_string()))
 
 
     def commit(self, ledger=None):
@@ -110,6 +116,8 @@ class UsawaContext:
         if self.ledger != None:
             raise AttributeError('ledger set')
         self.ledger = Ledger.from_file(self.ledger_path_in)
+        if self.replay:
+            self.ledger = Ledger(self.ledger.uidx, acl=self.ledger.acl, topic=self.ledger.topic)
         self.uidx = self.ledger.uidx
         if self.wallet != None:
             self.ledger.set_wallet(self.wallet)
