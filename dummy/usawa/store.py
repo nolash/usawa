@@ -271,12 +271,12 @@ class EntryStore(KeyStore):
         self.db.put(k, v, exist_ok=True)
 
 
-    def get_draft(self, entry):
+    def get_draft(self, entry, unitindex=None):
         k = pfx_entry_draft(entry)
         v = self.db.get(k)
         if len(v) == 1:
             return None
-        entry = Entry.deserialize(v)
+        entry = Entry.deserialize(v, unitindex=unitindex)
         # TODO: hacky!
         i = 0
         for o in entry.attachment:

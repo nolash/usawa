@@ -8,11 +8,32 @@ import mimetypes
 
 from usawa import Asset, Entry, EntryPart
 from usawa.account import Account, AccountDisplay, AccountType
+from usawa.balance import Balancer
 
 logg = logging.getLogger('cli.entry')
 
 class AbortMenu(Exception):
     pass
+
+
+def writehelp(w=sys.stdout):
+    s = """h: this help
+i: input account
+o: output account
+y: ref
+x: extref
+r: reset accounts
+d: description
++: add tag
+-: remove tag
+v: view matched attachment (in any)
+s: skip entry
+t: save entry to draft
+w: write entry
+q: quit
+"""
+    w.write(s + "\n")
+
 
 
 def choose_account(ctx, include_create=False):
@@ -36,6 +57,8 @@ def choose_account(ctx, include_create=False):
                i = int(v)
             except ValueError:
                 logg.debug('Invalid number, going back to search')
+                a = v
+
             if i != None:
                 try:
                     r = accounts_r[i]
@@ -117,7 +140,7 @@ def handle_view(ctx, entry, o):
             )
 
 
-def handle_description(ctx, entry, v):
+def handle_description(ctx, entry, v, prefix=None):
     v = input_or_default("description", entry.description)
     entry.description = v
 
@@ -125,12 +148,28 @@ def handle_description(ctx, entry, v):
 def handle_reset(ctx, entry, v):
     entry.debit = []
     entry.credit = []
+    entry.balancer = Balancer(self.ctx.uidx)
+
+
+def handle_ref(ctx, entry, v):
+    ref = None
+    label = 'ref'
+    if v == 'y':
+        ref = entry.ref
+    else:
+        ref = entry.extref
+        label = 'ext' + label
+    v = input_or_default(label, ref)
+    if v == 'y':
+        entry.ref = v
+    else:
+        entry.extref = v
 
 
 def try_entry_uuid(ctx, v):
     v = uuid.UUID(v)
     entry = Entry.empty(ref=str(v))
-    return ctx.store.get_draft(entry)
+    return ctx.store.get_draft(entry, unitindex=ctx.uidx)
 
 
 def try_entry_serial(ctx, v):
@@ -258,7 +297,7 @@ class EntrySession:
                 self.part_side = 'dst'
             else:
                 self.part_side = 'src'
-            v = input_or_default('Entry side', self.side)
+            v = input_or_default('Entry side', self.part_side)
             if v == '':
                 return False
             k = parse_side(ctx, v)
@@ -273,7 +312,13 @@ class EntrySession:
         account = Account.from_path(v)
 
         #amount = None
-        v = input_or_default('Account {} amount'.format(account))
+        rem = 0
+        if self.part_side == 'src':
+            rem = self._src_remaining()
+        else:
+            rem = self._dst_remaining()
+        rem = self.ctx.uidx.to_floatstring(account.sym, rem)
+        v = input_or_default('Account {} amount'.format(account), rem)
         amount = parse_amount(self.ctx, account.sym, v)
 
         isdebit = self.part_side=='src'
@@ -311,8 +356,11 @@ class EntrySession:
         if v == 'v':
             handle_view(self.ctx, self.entry, v)
             return True
+        if v == 'x' or v == 'y':
+            handle_ref(self.ctx, self.entry, v)
+            return True
         if v == 'd':
-            handle_description(self.ctx, self.entry, v)
+            handle_description(self.ctx, self.entry, v, prefix=self.heading)
             return True
         if v == 'r':
             handle_reset(self.ctx, self.entry, v)
@@ -342,16 +390,35 @@ class EntrySession:
             r = self.handle_input(v)
 
 
+    def check(self):
+        if self.entry.description == None:
+            raise ValueError('missing description')
+
+    """
+    :return: True to continue edit entry, false to end entry
+    """
     def finalize(self):
         if not self.commit:
             logg.debug('skipping ' + str(self.entry))
             return False
 
+        v = input('write: are you sure? (YES)')
+        if v != 'YES':
+            logg.debug('abort write ' + str(self.entry))
+            return True
+
+        try:
+            self.check()
+        except Exception as e:
+            logg.error('abort write on check error: ' + str(e))
+
         if self.final:
+            self.entry.description = self.get_description()
             self.entry.parent = self.ctx.ledger.cur
             self.entry.serial = self.ctx.ledger.next_serial()
             self.entry.sign(self.ctx.wallet)
             self.ctx.store.add_entry(self.entry, update_ledger=True)
+            self.ctx.store.put_draft(self.entry)
             self.ctx.ledger.truncate()
             self.ctx.ledger.sign()
             f = open(self.ctx.ledger_path_out, 'w')
@@ -362,17 +429,19 @@ class EntrySession:
         else:
             self.ctx.store.put_draft(self.entry)
 
-        return True
+        return False
 
 
     def start(self, skip_first=False):
         if not skip_first:
             self.do_interactive_one()
-        try:
-            self.do_interactive_two()
-        except StopIteration:
-            return None
-        r = self.finalize()
+        r = True
+        while r:
+            try:
+                self.do_interactive_two()
+            except StopIteration:
+                return None
+            r = self.finalize()
         return self.entry
 
 

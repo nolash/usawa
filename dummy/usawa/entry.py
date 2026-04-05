@@ -403,7 +403,7 @@ class Entry(UsawaElement):
     :rtype: usawa.Entry
     """
     @staticmethod
-    def deserialize(data):
+    def deserialize(data, unitindex=None):
         v = rencode.loads(data)
         parent = v[1]
         serial = v[2]
@@ -419,7 +419,7 @@ class Entry(UsawaElement):
             tags = Tags.deserialize(v[10])
         except TypeError:
             pass
-        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags)
+        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex)
         super(Entry, o).deserialize(v[0])
         for v in src_data:
             src = EntryPart.deserialize(v, debit=True)
