@@ -148,7 +148,7 @@ def handle_description(ctx, entry, v, prefix=None):
 def handle_reset(ctx, entry, v):
     entry.debit = []
     entry.credit = []
-    entry.balancer = Balancer(self.ctx.uidx)
+    entry.balancer = Balancer(ctx.uidx)
 
 
 def handle_ref(ctx, entry, v):
@@ -239,7 +239,9 @@ class EntrySession:
         # supplementary props
         self.heading = heading
         self.lines = lines
-        self.amount = float(amount)
+        self.amount = None
+        if amount != None:
+            self.amount = float(amount)
 
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
@@ -338,8 +340,11 @@ class EntrySession:
         if v == 'i' or v == 'o':
             k = 'src'
             if v == 'o':
-                k = 'dst' 
-            self.enter_part(side=k)
+                k = 'dst'
+            try:
+                self.enter_part(side=k)
+            except ValueError as e:
+                logg.error('enter part fail: ' + str(e))
             return True
         if v == 'q':
             raise StopIteration()

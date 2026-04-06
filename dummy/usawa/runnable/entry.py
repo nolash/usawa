@@ -56,6 +56,11 @@ def main():
 
     o = EntrySession(ctx, args.entry)
 
+    for v in args.a:
+        if ctx.resolver == None:
+            logg.warning('attachment specified without resolver, file must be made available manually')
+
+
     for v in args.x:
         o.attach_ref(v)
 
