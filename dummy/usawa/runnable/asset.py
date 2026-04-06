@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import io
+import sys
 
 from whee.valkey import ValkeyStore
 
@@ -20,6 +21,7 @@ def main():
     argp.add_argument('-z', type=str, help='digest of asset')
     argp.add_argument('-n', type=str, help='asset filename')
     argp.add_argument('-f', type=str, help='asset file')
+    argp.add_argument('--force', action='store_true', default=False, help='overwrite if exists')
     argp.add_argument('-d', type=str, help='description of asset')
     argp.add_argument('-m', type=str, help='mime type of asset')
     argp.add_argument('-c', type=str, help='override config dir')
@@ -37,18 +39,25 @@ def main():
     if ctx.resolver:
         w = io.BytesIO()
     asset = None
+    digest = None
     if args.f:
-            asset = Asset.from_file(args.f, extref=args.e, mimetype=args.m, slug=args.n, w=w)
+        asset = Asset.from_file(args.f, extref=args.e, mimetype=args.m, slug=args.n, w=w)
+        digest = asset.get_digest(binary=True)
     elif args.z:
         digest = bytes.fromhex(args.z)
         asset = Asset(digest=digest, ref=args.e, mimetype=args.m, slug=args.n)
     else:
         raise ValueError('Must provide either file path or digest')
 
-    ctx.store.add_asset(asset, overwrite=True)
+    try:
+        ctx.store.add_asset(asset, overwrite=args.force)
+    except FileExistsError:
+        logg.error('record already exists for {}'.format(digest))
+        sys.exit(1)
     if w != None:
-        k = asset.get_digest(binary=True)
-        ctx.resolver.put(k, w.getvalue())
+        k = digest
+        v = w.getvalue()
+        ctx.resolver.put(k, v)
 
     print(asset.ref)
 

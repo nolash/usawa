@@ -189,7 +189,7 @@ def try_entry_digest(ctx, k):
 
 def try_entry(ctx, entry_spec):
     if not entry_spec:
-        return Entry.empty(unitindex=ctx.uidx)
+        return Entry.empty(unitindex=ctx.uidx, parent=ctx.ledger.cur)
 
     try:
         return try_entry_serial(ctx, entry_spec)
@@ -252,6 +252,8 @@ class EntrySession:
 
 
     def _cur_amount(self):
+        if self.amount == None:
+            return 0
         amount = self.ctx.uidx.val(self.unitbase, self.amount)
         if amount == None:
             amount = self.entry.balancer.value()
@@ -379,8 +381,10 @@ class EntrySession:
     def do_interactive_one(self):
         v = input_or_default('Entry description', self.entry.description)
         self.entry.description = v
-        v = input_or_default('External ref', self.entry.ref)
+        v = input_or_default('Internal ref', self.entry.ref)
         self.entry.ref = v
+        v = input_or_default('External ref', self.entry.ref)
+        self.entry.extref = v
         v = input_or_default('Transaction date(time)', self.entry.dt)
         if isinstance(v, str):
             v = parse_txdate(self.ctx, v)
