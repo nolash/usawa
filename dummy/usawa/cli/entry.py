@@ -168,8 +168,11 @@ def handle_ref(ctx, entry, v):
 
 def try_entry_uuid(ctx, v):
     v = uuid.UUID(v)
-    entry = Entry.empty(ref=str(v))
-    return ctx.store.get_draft(entry, unitindex=ctx.uidx)
+    v = str(v)
+    entry = Entry.empty(ref=v)
+    o = ctx.store.get_draft(entry, unitindex=ctx.uidx)
+    if o != None:
+        logg.info('loaded entry draft from uuid ' + str(v))
 
 
 def try_entry_serial(ctx, v):
@@ -190,6 +193,7 @@ def try_entry_digest(ctx, k):
 def try_entry(ctx, entry_spec):
     if not entry_spec:
         return Entry.empty(unitindex=ctx.uidx, parent=ctx.ledger.cur)
+        logg.info('new entry created with ledger ' + str(ctx.ledger))
 
     try:
         return try_entry_serial(ctx, entry_spec)
@@ -245,7 +249,7 @@ class EntrySession:
 
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
-            self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref, tx_date=self.dt)
+            self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref, tx_date=self.dt, parent=self.ctx.ledger.cur)
         if self.entry.serial > 0:
             raise NotImplementedError('entry edit not yet implemented')
         self._do_prepare()
