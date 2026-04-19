@@ -17,7 +17,8 @@ logg = logging.getLogger()
 
 def main():
     argp = argparse.ArgumentParser()
-    argp.add_argument('-e', type=str, help='unique reference of asset')
+    argp.add_argument('-x', type=str, help='unique reference of asset')
+    argp.add_argument('-e', type=str, help='external reference of asset')
     argp.add_argument('-z', type=str, help='digest of asset')
     argp.add_argument('-n', type=str, help='asset filename')
     argp.add_argument('-f', type=str, help='asset file')
@@ -41,11 +42,11 @@ def main():
     asset = None
     digest = None
     if args.f:
-        asset = Asset.from_file(args.f, extref=args.e, mimetype=args.m, slug=args.n, w=w)
+        asset = Asset.from_file(args.f, ref=args.x, extref=args.e, mimetype=args.m, slug=args.n, w=w)
         digest = asset.get_digest(binary=True)
     elif args.z:
         digest = bytes.fromhex(args.z)
-        asset = Asset(digest=digest, ref=args.e, mimetype=args.m, slug=args.n)
+        asset = Asset(digest=digest, ref=args.x, extref=args.e, mimetype=args.m, slug=args.n)
     else:
         raise ValueError('Must provide either file path or digest')
 

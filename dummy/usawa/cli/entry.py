@@ -246,6 +246,7 @@ class EntrySession:
         self.amount = None
         if amount != None:
             self.amount = float(amount)
+        self.attach_count = 0
 
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
@@ -288,6 +289,7 @@ class EntrySession:
         asset = Asset(ref=str(k))
         asset = self.ctx.store.get_asset_indexed(asset)
         self.entry.attach(asset)
+        self.attach_count += 1
 
 
     def attach_digest(self, v):
