@@ -378,7 +378,8 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
                 v = self.ledger.peek()
                 o = self.get_entry(v, acl=acl)
                 self.ledger.next_serial()
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                logg.debug('entry serial {} not found, terminating ({})'.format(v, e))
                 break
             self.ledger.add_entry(o)
         logg.info('loaded ledger {}'.format(self.ledger))

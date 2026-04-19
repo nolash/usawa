@@ -203,7 +203,7 @@ def try_entry(ctx, entry_spec):
     try:
         v = try_entry_uuid(ctx, entry_spec)
         if v == None:
-            raise AttributeError('entry is committed')
+            raise FileExistsError('entry is committed')
         return v
     except ValueError:
         pass
