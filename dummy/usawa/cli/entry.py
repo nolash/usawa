@@ -16,7 +16,7 @@ class AbortMenu(Exception):
     pass
 
 
-def writehelp(w=sys.stdout):
+def writehelp(w=sys.stdout, short=False):
     s = """h: this help
 i: input account
 o: output account
@@ -178,7 +178,7 @@ def try_entry_uuid(ctx, v):
 def try_entry_serial(ctx, v):
     v = int(v)
     entry = Entry(v, None)
-    return ctx.store.get_entry(entry)
+    return ctx.store.get_entry(entry, unitindex=ctx.uidx)
 
 
 def try_entry_digest(ctx, k):
@@ -220,7 +220,7 @@ def try_entry(ctx, entry_spec):
 
 class EntrySession:
 
-    def __init__(self, ctx, entry=None, heading=None, description=None, extref=None, dt=None, ref=None, amount=None, lines=[], base=None):
+    def __init__(self, ctx, entry=None, heading=None, description=None, extref=None, dt=None, ref=None, amount=None, lines=[], base=None, dynamic=False):
         # context props
         self.ctx = ctx
         self.unitbase = base
@@ -239,6 +239,7 @@ class EntrySession:
         self.part_side = 'src'
         self.have_src = False
         self.have_dst = False
+        self.dynamic = dynamic
 
         # supplementary props
         self.heading = heading
@@ -251,9 +252,9 @@ class EntrySession:
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
             self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref, tx_date=self.dt, parent=self.ctx.ledger.cur)
-        if self.entry.serial > 0:
-            raise NotImplementedError('entry edit not yet implemented')
-        self._do_prepare()
+        if self.entry.serial < 1:
+            #raise NotImplementedError('entry edit not yet implemented')
+            self._do_prepare()
 
 
     def _cur_amount(self):
@@ -345,6 +346,30 @@ class EntrySession:
 
 
     def handle_input(self, v):
+        if v == 'x':
+            handle_ref(self.ctx, self.entry, v)
+            return True
+        if v == '+' or v == '-':
+            r = handle_tag(self.ctx, self.entry, v)
+            return True
+        if v == 'q':
+            raise StopIteration()
+        if v == 'w':
+            self.commit = True
+            self.final = True
+            return False
+        if v == 'v':
+            handle_view(self.ctx, self.entry, v)
+            return True
+
+        if self.entry.serial > 0:
+            logg.error('illegal choice for committed entry')
+            return True
+
+        if v == 't':
+            self.commit = True
+            return False
+
         if v == 'i' or v == 'o':
             k = 'src'
             if v == 'o':
@@ -354,22 +379,7 @@ class EntrySession:
             except ValueError as e:
                 logg.error('enter part fail: ' + str(e))
             return True
-        if v == 'q':
-            raise StopIteration()
-        if v == '+' or v == '-':
-            r = handle_tag(self.ctx, self.entry, v)
-            return True
-        if v == 'w':
-            self.commit = True
-            self.final = True
-            return False
-        if v == 't':
-            self.commit = True
-            return False
-        if v == 'v':
-            handle_view(self.ctx, self.entry, v)
-            return True
-        if v == 'x' or v == 'y':
+        if v == 'y':
             handle_ref(self.ctx, self.entry, v)
             return True
         if v == 'd':
@@ -448,8 +458,9 @@ class EntrySession:
 
 
     def start(self, skip_first=False):
-        if not skip_first:
-            self.do_interactive_one()
+        if self.entry.serial < 1:
+            if not skip_first:
+                self.do_interactive_one()
         r = True
         while r:
             try:
@@ -477,6 +488,10 @@ Extref: {}
         self.entry.extref,
         )
 
+        tags = []
+        if self.entry.tags:
+            tags = self.entry.tags
+        s += "Tags: " + ', '.join(tags) + "\n"
         s += "Description: " + self.get_description() + "\n"
 
         for v in self.lines:

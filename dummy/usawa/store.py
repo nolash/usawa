@@ -317,10 +317,10 @@ class EntryStore(KeyStore):
     :raises: FileExistsError if entry is already in store.
     :todo: optimize replacing asset stub with deserialized asset
     """
-    def get_entry(self, entry, acl=None):
+    def get_entry(self, entry, acl=None, unitindex=None):
         k = pfx_entry(self.ledger, entry)
         v = self.db.get(k)
-        entry = Entry.unwrap(v)
+        entry = Entry.unwrap(v, unitindex=unitindex)
         # TODO: hacky!
         i = 0
         for o in entry.attachment:

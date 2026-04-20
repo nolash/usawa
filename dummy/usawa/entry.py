@@ -363,9 +363,9 @@ class Entry(UsawaElement):
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
-        tags = None
+        tags = []
         if self.tags:
-            tags = self.tags.serialize()
+            tags = self.tags
 
         base = super(Entry, self).serialize()
         logg.debug('serializing with parent {}'.format(self.parent.hex()))
@@ -381,6 +381,7 @@ class Entry(UsawaElement):
                 debit,
                 attach,
                 tags,
+                self.extref,
                 ]
         return d
 
@@ -408,19 +409,28 @@ class Entry(UsawaElement):
         parent = v[1]
         serial = v[2]
         ref = v[3].decode('utf-8')
+        extref = None
+        try:
+            extref = v[11]
+        except IndexError:
+            pass
         date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d%H%M%S')
         description = v[6].decode('utf-8')
         dst_data = v[7]
         src_data = v[8]
         attach_data = v[9]
-        tags = None
-        try: 
-            tags = Tags.deserialize(v[10])
-        except TypeError:
-            pass
+        #tags = None
+        #try: 
+        #    tags = Tags.deserialize(v[10])
+        #except TypeError:
+        #    pass
+        tags = []
+        for s in v[10]:
+            tags.append(s.decode('utf-8'))
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex)
         super(Entry, o).deserialize(v[0])
+        o.balancer = Balancer(unitindex)
         for v in src_data:
             src = EntryPart.deserialize(v, debit=True)
             o.add_part(src)
@@ -522,9 +532,9 @@ class Entry(UsawaElement):
     :todo: Current version only takes into account single signature
     """
     @staticmethod
-    def unwrap(data, acl=None):
+    def unwrap(data, acl=None, unitindex=None):
         v = rencode.loads(data)
-        entry = Entry.deserialize(v[2])
+        entry = Entry.deserialize(v[2], unitindex=unitindex)
         pubkey_bytes = v[0][0][1]
         sig = v[1][0]
         entry.add_signature(pubkey_bytes, sig)
@@ -596,6 +606,10 @@ class Entry(UsawaElement):
         data.append(o)
 
         o = lxml.etree.Element('ref')
+        o.text = self.ref
+        data.append(o)
+
+        o = lxml.etree.Element('extref')
         o.text = self.ref
         data.append(o)
 
@@ -680,7 +694,7 @@ class Entry(UsawaElement):
     """
     def canon(self):
         tree = self.to_tree(canon=True)
-        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup'])
+        b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup', 'extref'])
         return b.encode('utf-8')
 
 
@@ -688,7 +702,7 @@ class Entry(UsawaElement):
     def tag(self, tag):
         if self.tags == None:
             self.tags = []
-        elif not tag in self.tags:
+        if not tag in self.tags:
             self.tags.append(tag)
 
 

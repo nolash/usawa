@@ -54,7 +54,7 @@ def main():
     ctx.set('unitbase', ctx.uidx.base)
     ctx.set('commit', False)
 
-    o = EntrySession(ctx, args.entry)
+    o = EntrySession(ctx, entry=args.entry)
 
     for v in args.x:
         o.attach_ref(v)
