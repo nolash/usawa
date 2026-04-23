@@ -16,7 +16,7 @@ class Balancer:
 
     def apply_part(self, part):
         amount = self.uidx.val(part.unit, part.amount)
-        fn = getattr(self, '_handle_' + part.typ)
+        fn = getattr(self, '_handle_' + part.typ.lower())
         fn(amount[0], part.isdebit)
         v = abs(amount[0])
         logg.debug('amount {} v {}'.format(amount, v))

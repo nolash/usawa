@@ -76,6 +76,7 @@ class UsawaContext:
         self.load_wallet()
 
         if self.replay:
+            #self.store.load(unitindex=self.uidx)
             self.store.load()
             self.ledger.truncate()
             logg.debug('replayed ledger {}'.format(self.ledger.to_string()))

@@ -53,7 +53,7 @@ def main():
     try:
         ctx.store.add_asset(asset, overwrite=args.force)
     except FileExistsError:
-        logg.error('record already exists for {}'.format(digest))
+        logg.error('record already exists for {}'.format(digest.hex()))
         sys.exit(1)
     if w != None:
         k = digest

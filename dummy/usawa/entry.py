@@ -426,11 +426,16 @@ class Entry(UsawaElement):
         #except TypeError:
         #    pass
         tags = []
-        for s in v[10]:
-            tags.append(s.decode('utf-8'))
+#        for s in v[10]:
+#            try:
+#                tags.append(s.decode('utf-8'))
+#            except AttributeError as e:
+#                logg.debug('fail tag decode, use raw: {}'.format(s.hex()))
+#                tags.append(s)
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex)
         super(Entry, o).deserialize(v[0])
-        o.balancer = Balancer(unitindex)
+        if unitindex != None:
+            o.balancer = Balancer(unitindex)
         for v in src_data:
             src = EntryPart.deserialize(v, debit=True)
             o.add_part(src)
@@ -608,10 +613,11 @@ class Entry(UsawaElement):
         o = lxml.etree.Element('ref')
         o.text = self.ref
         data.append(o)
-
-        o = lxml.etree.Element('extref')
-        o.text = self.ref
-        data.append(o)
+        
+        if self.extref:
+            o = lxml.etree.Element('extref')
+            o.text = self.extref
+            data.append(o)
 
         o = lxml.etree.Element('serial')
         o.text = str(self.serial)
@@ -697,6 +703,13 @@ class Entry(UsawaElement):
         b = lxml.etree.canonicalize(tree, strip_text=True, exclude_tags=['sig', 'lookup', 'extref'])
         return b.encode('utf-8')
 
+
+    def get_canon(self):
+        b = self.canon()
+        h = hashlib.sha512()
+        h.update(b)
+        z = h.digest()
+        return(z.hex(), b,)
 
 
     def tag(self, tag):

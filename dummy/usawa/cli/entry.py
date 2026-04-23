@@ -97,13 +97,14 @@ def parse_txdate(ctx, v):
     return datetime.date.fromisoformat(v)
 
 
-def input_or_default(prompt, default=None, postfix=': ', validate_fn=None):
+def input_or_default(prompt, default=None, allow_empty=False, postfix=': ', validate_fn=None):
     if default != None:
         postfix = ' [{}]'.format(default) + postfix
     v = input(prompt + postfix)
     if len(v) == 0:
-        if default == None:
-            raise ValueError('empty value and no default')
+        if not allow_empty:
+            if default == None:
+                raise ValueError('empty value and no default')
         v = default
     if validate_fn != None:
         validate_fn(v)
@@ -399,7 +400,7 @@ class EntrySession:
         self.entry.description = v
         v = input_or_default('Internal ref', self.entry.ref)
         self.entry.ref = v
-        v = input_or_default('External ref', self.entry.ref)
+        v = input_or_default('External ref', allow_empty=True)
         self.entry.extref = v
         v = input_or_default('Transaction date(time)', self.entry.dt)
         if isinstance(v, str):

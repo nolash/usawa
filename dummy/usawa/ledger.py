@@ -510,6 +510,7 @@ class Ledger(UsawaElement):
         #oldsum = self.cur
         #self.cur = entry.sum()[0]
         (k, v) = entry.get_lookup(self.lookup_algo)
+        #(k, v) = entry.get_canon() #self.lookup_algo)
         logg.debug('addentr entry for algo {}: {} {}'.format(self.lookup_algo, k, v))
         #entry.parent = oldsum
         # TODO: parent being changed after sealed and signed, why?
