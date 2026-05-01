@@ -59,7 +59,7 @@ class EntryMapper:
             source_amount,
             debit=True,
         )
-        entry.add_part(source_part, debit=True)
+        entry.add_part(source_part)
 
         dest_part = EntryPart(
             unitindex.default_unit,
@@ -68,7 +68,7 @@ class EntryMapper:
             dest_amount,
             debit=False,
         )
-        entry.add_part(dest_part, debit=False)
+        entry.add_part(dest_part)
 
         return entry
 
