@@ -53,6 +53,10 @@ class EntryPart:
         self.isdebit = debit
 
 
+    def account_path(self):
+        return self.unit + '.' + self.typ + '/' + self.account
+
+
     """Create object from an entry part defined as an XML tree.
 
     The XML expected is the ledger/entry/data/debit or ledger/entry/data/credit (in schema, defined as the EntryPart complexType).
@@ -206,6 +210,8 @@ class Entry(UsawaElement):
         self.description = description
         self.debit = []
         self.credit = []
+        self.srcs = self.debit
+        self.dsts = self.credit
         self.lookup = None
         self.lookup_algo = None
         self.parts = []
