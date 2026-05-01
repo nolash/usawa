@@ -117,11 +117,12 @@ class AccountIndex:
 
 
     def add(self, path, sym=None, typ=None, virt=False):
+        logg.debug('parse account path {}'.format(path))
         account = Account.from_path(path, sym=sym, typ=typ, virt=virt)
         try:
             sym = self.uidx.sym(account.sym)
         except KeyError:
-            raise AccountError('unknown unit ' + sym)
+            raise AccountError('unknown unit ' + account.sym)
         if self.locked:
             raise AccountError('account index locked')
         if self.accounts.get(sym) == None:
