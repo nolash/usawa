@@ -94,7 +94,12 @@ def parse_side(ctx, v):
 
 
 def parse_txdate(ctx, v):
-    return datetime.date.fromisoformat(v)
+    r = None
+    try:
+        r = datetime.date.fromisoformat(v)
+    except ValueError:
+        r = datetime.datetime.fromisoformat(v)
+    return r
 
 
 def input_or_default(prompt, default=None, allow_empty=False, postfix=': ', validate_fn=None):
@@ -397,6 +402,8 @@ class EntrySession:
 
     def do_interactive_one(self):
         v = input_or_default('Entry description', self.entry.description)
+        if len(v) < 2:
+            raise ValueError('description must be more than one letter')
         self.entry.description = v
         v = input_or_default('Internal ref', self.entry.ref)
         self.entry.ref = v

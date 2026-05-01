@@ -242,6 +242,11 @@ class Asset(UsawaElement):
         o.text = self.digest.hex()
         tree.append(o)
 
+        if self.extref:
+            o = lxml.etree.SubElement(tree, "extref")
+            o.text = self.extref
+            tree.append(o)
+
         return tree
 
     """Generate and return an XML representation of the asset.

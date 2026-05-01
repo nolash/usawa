@@ -129,6 +129,7 @@ class UnitIndex:
             precision = int(o.find('precision', namespaces=nsmap()).text)
             logg.debug('add unit {} precision {}'.format(sym, precision))
             r.detail[sym] = precision
+            r.rate[sym] = 1000000000
             r.check()
         return r
 
