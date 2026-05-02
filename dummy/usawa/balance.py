@@ -15,8 +15,8 @@ class Balancer:
 
 
     def apply_part(self, part):
-        amount = self.uidx.val(part.unit, part.amount)
-        fn = getattr(self, '_handle_' + part.typ.lower())
+        amount = self.uidx.val(part.get_unit(), part.amount)
+        fn = getattr(self, '_handle_' + part.get_type())
         fn(amount[0], part.isdebit)
         v = abs(amount[0])
         logg.debug('amount {} v {}'.format(amount, v))
@@ -26,7 +26,7 @@ class Balancer:
             self.zsrc += v
         else:
             self.zdst += v
-        logg.debug('after {} {} => {} = {}'.format(part.unit, part.amount, amount[0], self.r))
+        logg.debug('after {} {} => {} = {}'.format(part.get_unit(), part.amount, amount[0], self.r))
 
 
     def balanced(self):

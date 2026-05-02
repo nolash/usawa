@@ -77,7 +77,21 @@ class Account:
             path = '{}.{}/{}'.format(self.sym, self.typ.value.lower(), path)
         elif display == AccountDisplay.typ:
             path = '{}/{}'.format(self.typ.value.lower(), path)
+        elif display != AccountDisplay.path:
+            raise ValueError('invalid display mode')
         return path
+
+
+    def get_unit(self):
+        return self.sym
+
+
+    def get_type(self):
+        return self.typ
+
+
+    def get_type_str(self):
+        return self.typ.value
 
 
     def __str__(self):

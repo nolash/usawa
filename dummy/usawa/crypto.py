@@ -59,9 +59,9 @@ def key_from_export(v, passphrase="", did=None, opslimit=0, memlimit=0):
     salt = v[: argon2i.SALTBYTES]
     ciphertext = v[argon2i.SALTBYTES:]
     if not opslimit:
-        opslimit = nacl.pwhash.OPSLIMIT_INTERACTIVE
+        opslimit = nacl.pwhash.OPSLIMIT_MODERATE
     if not memlimit:
-        memlimit = nacl.pwhash.MEMLIMIT_INTERACTIVE
+        memlimit = nacl.pwhash.MEMLIMIT_MODERATE
     
     logg.debug('pwhash ops {} mem {} salt {} pw {}'.format(opslimit, memlimit, salt, passphrase.hex()))
 
@@ -185,10 +185,10 @@ class Wallet:
             logg.warning("exporting key with no passphrase")
 
         salt = os.urandom(argon2i.SALTBYTES)
-        if not opslimit:
-            opslimit = nacl.pwhash.OPSLIMIT_INTERACTIVE
-        if not memlimit:
-            memlimit = nacl.pwhash.MEMLIMIT_INTERACTIVE
+        if opslimit == 0:
+            opslimit = nacl.pwhash.OPSLIMIT_MODERATE
+        if memlimit == 0:
+            memlimit = nacl.pwhash.MEMLIMIT_MODERATE
         logg.debug('pwhash ops {} mem {} salt {} pw {}'.format(opslimit, memlimit, salt, passphrase.hex()))
         key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt, opslimit=opslimit, memlimit=memlimit)
         box = nacl.secret.SecretBox(key)

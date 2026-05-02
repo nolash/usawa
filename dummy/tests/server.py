@@ -71,10 +71,10 @@ class TestSocket(unittest.TestCase):
 
     def test_socket_entry_get(self):
         s = 'FOO'
-        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
-        y = EntryPart(s, 'asset', 'foo', 1337)
+        x = EntryPart(s + '.Income/foo', 1337, debit=True)
+        y = EntryPart(s + '.Asset/foo', 1337)
         entry = Entry(self.ledger.peek(), datetime.datetime.now(), parent=self.ledger.current())
-        entry.add_part(x, debit=True)
+        entry.add_part(x)
         entry.add_part(y)
         entry.sign(self.wallet)
         self.store.add_entry(entry, update_ledger=True)
@@ -111,10 +111,10 @@ class TestSocket(unittest.TestCase):
 
     def test_socket_entry_putget(self):
         s = 'FOO'
-        x = EntryPart(s, 'income', 'foo', 1337, debit=True)
-        y = EntryPart(s, 'asset', 'foo', 1337)
+        x = EntryPart(s + '.Income/foo', 1337, debit=True)
+        y = EntryPart(s + '.Asset/foo', 1337)
         entry = Entry(self.ledger.peek(), datetime.datetime.now(), parent=self.ledger.current())
-        entry.add_part(x, debit=True)
+        entry.add_part(x)
         entry.add_part(y)
 
         s = str(uuid.uuid4())
@@ -131,7 +131,8 @@ class TestSocket(unittest.TestCase):
         client.close()
         srv.stop()
         th.join()
-        Entry.unwrap(r, acl=self.acl)
+        #Entry.unwrap(r, acl=self.acl)
+        Entry.unwrap(r)
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ class TestWallet(unittest.TestCase):
 
         b = wallet.export()
         with self.assertRaises(VerifyError):
-            wallet = DemoWallet.from_export(b, passphrase='baz')
+            wallet = DemoWallet.from_export(b, passphrase='baz', opslimit=3)
         wallet = DemoWallet.from_export(b)
         wallet.verify(v, r)
 

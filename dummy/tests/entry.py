@@ -23,8 +23,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_serialize(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -46,8 +46,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_sign_verify(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -57,8 +57,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_sign_verify_imported(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -74,8 +74,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_acl_verify(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -93,8 +93,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_export_import(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -108,8 +108,8 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_attach(self):
-        dst = EntryPart('FOO', 'asset', 'foo', 1337)
-        src = EntryPart('FOO', 'income', 'foo', 1337, debit=True)
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst)
@@ -127,9 +127,9 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_mux(self):
-        dst_one = EntryPart('FOO', 'asset', 'foo', 1337)
-        dst_two = EntryPart('FOO', 'asset', 'bar', 42)
-        src = EntryPart('FOO', 'income', 'baz', 1337+42, debit=True)
+        dst_one = EntryPart('FOO.Asset/foo', 1337)
+        dst_two = EntryPart('FOO.Asset/bar', 42)
+        src = EntryPart('FOO.Income/baz', 1337+42, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg)
         o.add_part(src)
         o.add_part(dst_one)
@@ -139,19 +139,19 @@ class TestEntry(unittest.TestCase):
 
 
     def test_entry_balance(self):
-        dst_one = EntryPart('FOO', 'asset', 'foo', 1337)
-        dst_two = EntryPart('FOO', 'asset', 'bar', 42)
-        src = EntryPart('FOO', 'income', 'baz', 1337+42, debit=True)
+        dst_one = EntryPart('FOO.Asset/foo', 1337)
+        dst_two = EntryPart('FOO.Asset/bar', 42)
+        src = EntryPart('FOO.Income/baz', 1337+42, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=self.uidx)
         o.add_part(src)
         o.add_part(dst_one)
         o.add_part(dst_two)
 
 
-    def test_entry_serialize_full(self):
-        dst_one = EntryPart('FOO', 'asset', 'foo', 1337)
-        dst_two = EntryPart('FOO', 'asset', 'bar', 42)
-        src = EntryPart('FOO', 'income', 'baz', 1337+42, debit=True)
+    def test_entry_full_serialize(self):
+        dst_one = EntryPart('FOO.Asset/foo', 1337)
+        dst_two = EntryPart('FOO.Asset/bar', 42)
+        src = EntryPart('FOO.Income/baz', 1337+42, debit=True)
         o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=self.uidx)
         o.add_part(src)
         o.add_part(dst_one)

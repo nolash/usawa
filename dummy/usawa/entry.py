@@ -14,6 +14,7 @@ from .error import ACLError, VerifyError
 from .xml import nsmap
 from .asset import Asset
 from .tag import Tags
+from .account import Account, AccountDisplay, AccountType
 
 logg = logging.getLogger('usawa.entry')
 
@@ -43,18 +44,26 @@ class EntryPart:
     :type debit: boolean
     :todo: Make typ enum
     """
-    def __init__(self, unit, typ, account, amount, debit=False):
+    def __init__(self, account, amount, debit=False):
         if isinstance(amount, float):
             raise ValueError('entrydata must pass amount in int including full precision')
-        self.unit = unit
-        self.typ = typ
+        if isinstance(account, str):
+            account = Account.from_path(account)
+        elif not isinstance(account, Account):
+            raise TypeError('account must be account type')
         self.account = account
         self.amount = amount
         self.isdebit = debit
 
 
-    def account_path(self):
-        return self.unit + '.' + self.typ + '/' + self.account
+    def account_path(self, with_unit=True):
+        #return self.unit + '.' + self.typ + '/' + self.account
+        mode = None
+        if with_unit:
+            mode = AccountDisplay.full
+        else:
+            mode = AccountDisplay.typ
+        return self.account.to_path(display=mode)
 
 
     """Create object from an entry part defined as an XML tree.
@@ -73,8 +82,9 @@ class EntryPart:
         typ = tree.get('type')
         unit = tree.find('unit', namespaces=nsmap()).text
         amount = int(tree.find('amount', namespaces=nsmap()).text)
-        account = tree.find('account', namespaces=nsmap()).text
-        return EntryPart(unit, typ, account, amount, debit=debit)
+        account_path = tree.find('account', namespaces=nsmap()).text
+        account = Account.from_path(account_path, sym=unit, typ=getattr(AccountType, typ))
+        return EntryPart(account, amount, debit=debit)
 
 
     """Generate XML element from state of entry part.
@@ -90,14 +100,15 @@ class EntryPart:
         if self.isdebit:
             tag = 'debit'
 
-        tree = lxml.etree.Element(tag, type=self.typ.lower(), nsmap=nsmap())
+        typ = self.account.get_type_str()
+        tree = lxml.etree.Element(tag, type=typ.lower(), nsmap=nsmap())
 
         o = lxml.etree.Element('unit')
-        o.text = self.unit
+        o.text = self.account.get_unit()
         tree.append(o)
 
         o = lxml.etree.Element('account')
-        o.text = self.account
+        o.text = self.account.to_path(display=AccountDisplay.path)
         tree.append(o)
 
         o = lxml.etree.Element('amount')
@@ -114,9 +125,9 @@ class EntryPart:
     """
     def to_list(self):
         d = [
-            self.unit,
-            self.typ,
-            self.account,
+            self.account.get_unit(),
+            self.account.get_type_str(),
+            self.account_path(with_unit=False),
             self.amount,
                 ]
         return d
@@ -145,17 +156,27 @@ class EntryPart:
         v = rencode.loads(data)
         unit = v[0].decode('utf-8')    
         typ = v[1].decode('utf-8')    
-        account = v[2].decode('utf-8')    
+        account_path = v[2].decode('utf-8')
+        account = Account.from_path(account_path, sym=unit)
         amount = v[3]
-        o = EntryPart(unit, typ, account, amount, debit=debit)
+        o = EntryPart(account, amount, debit=debit)
         return o
+
+
+    def get_unit(self):
+        return self.account.get_unit()
+
+
+    def get_type(self):
+        return self.account.get_type_str().lower()
 
 
     def __str__(self):
         pfx = 'credit'
         if self.isdebit:
             pfx = 'debit'
-        return '[{}] {}:{} {}'.format(pfx, self.typ, self.account, self.amount)
+        typ = self.account.get_type()
+        return '[{}] {}:{} {}'.format(pfx, typ, self.account_path(with_unit=False), self.amount)
 
 
 class Entry(UsawaElement):
@@ -260,7 +281,7 @@ class Entry(UsawaElement):
     """
     def add_part(self, part):
         if self.uidx != None:
-            self.uidx.sym(part.unit)
+            self.uidx.sym(part.get_unit())
         if part.isdebit:
             self.debit.append(part)
         else:
