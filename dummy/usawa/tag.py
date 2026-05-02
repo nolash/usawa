@@ -1,5 +1,6 @@
 import rencode
 
+
 class Tags:
 
     def __init__(self, store=None):
@@ -11,6 +12,16 @@ class Tags:
         self.tags[tag] = description
         if self.store != None:
             self.store.put_tag(tag, description)
+
+
+    def has(self, tag):
+        r = False
+        try:
+            v = self.tags.get(tag)
+            r = True
+        except KeyError:
+            pass
+        return r
 
 
     def remove(self, tag):

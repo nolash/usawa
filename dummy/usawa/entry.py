@@ -216,6 +216,8 @@ class Entry(UsawaElement):
         self.lookup_algo = None
         self.parts = []
         self.balancer = None
+        if tags == None:
+            tags = Tags()
         self.tags = tags
         self.extref = extref
         if unitindex != None:
@@ -369,7 +371,6 @@ class Entry(UsawaElement):
         for v in self.attachment:
             attach.append(v.get_digest(binary=True))
 
-        tags = []
         if self.tags:
             tags = self.tags
 
@@ -386,7 +387,7 @@ class Entry(UsawaElement):
                 credit,
                 debit,
                 attach,
-                tags,
+                tags.serialize(),
                 self.extref,
                 ]
         return d
@@ -410,7 +411,7 @@ class Entry(UsawaElement):
     :rtype: usawa.Entry
     """
     @staticmethod
-    def deserialize(data, unitindex=None):
+    def deserialize(data, unitindex=None, store=None):
         v = rencode.loads(data)
         parent = v[1]
         serial = v[2]
@@ -426,12 +427,13 @@ class Entry(UsawaElement):
         dst_data = v[7]
         src_data = v[8]
         attach_data = v[9]
+        tags = Tags.deserialize(v[10], store=store)
         #tags = None
         #try: 
         #    tags = Tags.deserialize(v[10])
         #except TypeError:
         #    pass
-        tags = []
+        #tags = []
 #        for s in v[10]:
 #            try:
 #                tags.append(s.decode('utf-8'))
@@ -718,11 +720,17 @@ class Entry(UsawaElement):
         return(z.hex(), b,)
 
 
-    def tag(self, tag):
-        if self.tags == None:
-            self.tags = []
-        if not tag in self.tags:
-            self.tags.append(tag)
+    def tag(self, tag, description=None):
+        self.tags.add(tag, description=description)
+        #if self.tags == None:
+        #    self.tags = []
+        #if not tag in self.tags:
+        #    self.tags.append(tag)
+
+
+    def has_tag(self, tag):
+        logg.debug("tagssss {}".format(self.tags))
+        return self.tags.has(tag)
 
 
     def untag(self, tag):

@@ -148,5 +148,21 @@ class TestEntry(unittest.TestCase):
         o.add_part(dst_two)
 
 
+    def test_entry_serialize_full(self):
+        dst_one = EntryPart('FOO', 'asset', 'foo', 1337)
+        dst_two = EntryPart('FOO', 'asset', 'bar', 42)
+        src = EntryPart('FOO', 'income', 'baz', 1337+42, debit=True)
+        o = Entry(42, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), parent=self.parent, ref=self.ref, description=self.description, tx_datereg=self.dtreg, unitindex=self.uidx)
+        o.add_part(src)
+        o.add_part(dst_one)
+        o.add_part(dst_two)
+        o.tag('foobar')
+        o.tag('barbaz')
+        b = o.serialize()
+        o = Entry.deserialize(b)
+        self.assertTrue(o.has_tag('foobar'))
+        self.assertTrue(o.has_tag('barbaz'))
+
+
 if __name__ == '__main__':
     unittest.main()
