@@ -496,10 +496,7 @@ Extref: {}
         self.entry.extref,
         )
 
-        tags = []
-        if self.entry.tags:
-            tags = self.entry.tags
-        s += "Tags: " + ', '.join(tags) + "\n"
+        s += "Tags: " + str(self.entry.tags) + "\n"
         s += "Description: " + self.get_description() + "\n"
 
         for v in self.lines:
@@ -511,16 +508,14 @@ Extref: {}
         rem = self.ctx.uidx.to_floatstring(self.unitbase, rem)
         s += "Accounts src: {}/{}\n".format(rem, amount)
         for v in self.entry.debit:
-            typ = getattr(AccountType, v.typ)
-            o = Account.from_path(v.account, sym=v.unit, typ=typ)
-            s += "\t" + o.to_path() + " " + self.ctx.uidx.to_floatstring(v.unit, v.amount) + "\n"
+            typ = getattr(AccountType, v.get_type())
+            s += "\t" + v.account_path(with_unit=False) + " " + self.ctx.uidx.to_floatstring(v.get_unit(), v.amount) + "\n"
 
         rem = self._dst_remaining()
         rem = self.ctx.uidx.to_floatstring(self.unitbase, rem)
         s += "Accounts dst: {}/{}\n".format(rem, amount)
         for v in self.entry.credit:
-            typ = getattr(AccountType, v.typ)
-            o = Account.from_path(v.account, sym=v.unit, typ=typ)
-            s += "\t" + o.to_path() + " " + self.ctx.uidx.to_floatstring(v.unit, v.amount) + "\n"
+            typ = getattr(AccountType, v.get_type())
+            s += "\t" + v.account_path(with_unit=False) + " " + self.ctx.uidx.to_floatstring(v.get_unit(), v.amount) + "\n"
 
         return s
