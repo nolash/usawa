@@ -339,7 +339,7 @@ class EntrySession:
         amount = parse_amount(self.ctx, account.sym, v)
 
         isdebit = self.part_side=='src'
-        part = EntryPart(account.sym, account.typ.value.lower(), account.to_path(display=AccountDisplay.path), amount, debit=isdebit)
+        part = EntryPart(account, amount, debit=isdebit)
         self.entry.add_part(part)
 
         if self.part_side == 'src':

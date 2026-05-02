@@ -13,7 +13,7 @@ from whee.fs import FsStore
 
 import usawa.config
 from usawa.context import UsawaContext
-from usawa import Entry, Ledger, EntryPart, Asset, DemoWallet
+from usawa import Entry, Ledger, Asset, DemoWallet
 from usawa.store import LedgerStore
 from usawa.resolve.fs import FSResolver
 from usawa.account import Account, AccountIndex, AccountType, AccountDisplay
