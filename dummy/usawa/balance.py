@@ -66,7 +66,7 @@ class Balancer:
     def _handle_asset(self, amount, issrc=False):
         if issrc:
             if amount >= 0:
-                raise ValueError('positive asset can only be dst')
+                logg.warning('positive asset should only be dst')
         self.r += amount
         return amount
 
@@ -74,6 +74,6 @@ class Balancer:
     def _handle_liability(self, amount, issrc=False):
         if issrc:
             if amount < 0:
-                raise ValueError('negative liability can only be dst')
+                logg.warning('negative liability should only be dst')
         self.r -= amount
         return amount

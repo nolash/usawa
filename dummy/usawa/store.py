@@ -295,10 +295,10 @@ class EntryStore(KeyStore):
     :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
-    def add_entry(self, entry, update_ledger=False):
+    def add_entry(self, entry, update_ledger=False, overwrite=False):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap()
-        self.db.put(k, v)
+        self.db.put(k, v, exist_ok=overwrite)
         if update_ledger:
             self.ledger.add_entry(entry)
 
@@ -366,7 +366,7 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
-    def load(self, acl=None, until=0, unitindex=None):
+    def load(self, acl=None, until=0, unitindex=None, entry_callback_pre=None, entry_callback_post=None):
         logg.debug('load ledger from store {} until {}'.format(self.ledger, until))
         v = 0
         while True:
@@ -381,7 +381,11 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
             except FileNotFoundError as e:
                 logg.debug('entry serial {} not found, terminating ({})'.format(v, e))
                 break
+            if entry_callback_pre != None:
+                entry_callback_pre(o)
             self.ledger.add_entry(o)
+            if entry_callback_post != None:
+                entry_callback_post(o)
         logg.info('loaded ledger {}'.format(self.ledger))
 
 

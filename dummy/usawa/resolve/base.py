@@ -110,7 +110,7 @@ class BaseResolver:
         return k
 
 
-    def restore_ledger(self, ledger, min=0):
+    def restore_ledger(self, ledger, min=0, entry_callback=None):
         lookup = self.get(ledger.current())
         while True:
             entry = Entry.from_string(lookup, ledger.uidx)
@@ -118,6 +118,8 @@ class BaseResolver:
                 break
             logg.debug('restore entry {} {}'.format(str(entry), lookup))
             k = entry.parent
+            if entry_callback != None:
+                entry_callback(entry)
             ledger.add_entry(entry, check_parent=False)
             if k == DEFAULTPARENT:
                 break

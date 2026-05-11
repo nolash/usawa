@@ -75,6 +75,7 @@ class Asset(UsawaElement):
         self.extref = extref
         self.description = description
 
+
     """Return the preferred filename with extension for the asset.
 
     Must always return a value. The filename may or may not have an extension.
@@ -82,7 +83,6 @@ class Asset(UsawaElement):
     :return: Filename
     :rtype: str
     """
-
     def get_filename(self):
         s = self.slug
         if self.ext != None:
@@ -218,8 +218,8 @@ class Asset(UsawaElement):
 
         h = hashlib.sha1()
         h.update(o.digest)
-        o.extref = extref
         o.description = description
+        o.extref = extref
 
         return o
 
@@ -266,11 +266,6 @@ class Asset(UsawaElement):
 
         tree.set('ref', self.ref)
 
-        if self.extref != None:
-            o = lxml.etree.SubElement(tree, "extref")
-            o.text = self.extref
-            tree.append(o)
-
         o = lxml.etree.SubElement(tree, "filename")
         o.text = self.get_filename()
         tree.append(o)
@@ -303,9 +298,8 @@ class Asset(UsawaElement):
         v = tree.find("digest", namespaces=nsmap()).text
         o.digest = bytes.fromhex(v)
 
-        v = tree.find("extref", namespaces=nsmap())
-        if v != None:
-            o.extref = v.text
+        for v in tree.findall("extref", namespaces=nsmap()):
+            o.add_extref(v.text)
 
         v = tree.find("filename", namespaces=nsmap())
         if v != None:
@@ -335,6 +329,7 @@ class Asset(UsawaElement):
         for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
         #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             v = getattr(self, k)
+            logg.debug('serialize asset part {} {}'.format(k, v))
             d.append(v)
         return d
 
@@ -369,6 +364,7 @@ class Asset(UsawaElement):
                 vv = vv.decode("utf-8")
             setattr(o, k, vv)
             i += 1
+            logg.debug('deserialized asset part {} {}'.format(k, vv))
         if isinstance(digest, str):
             digest = bytes.fromhex(digest)
         o.digest = digest
@@ -376,7 +372,7 @@ class Asset(UsawaElement):
 
     def __str__(self):
         return (
-            "file ̈́"
+            "file "
             + self.get_filename()
             + " mime "
             + self.get_mimestring()

@@ -39,8 +39,11 @@ class Tags:
 
     @staticmethod
     def deserialize(data, store=None):
-        r = rencode.loads(data)
         o = Tags(store=store)
+        try:
+            r = rencode.loads(data)
+        except TypeError:
+            return o
         for k in r:
             k = k.decode('utf-8')
             v = None

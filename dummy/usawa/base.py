@@ -23,7 +23,8 @@ class UsawaElement:
         if ref == None:
             self.ref = str(uuid.uuid4())
         else:
-            self.ref = str(uuid.UUID(ref))
+            str(uuid.UUID(ref))
+            self.ref = ref
         self.kv = {}
 
 

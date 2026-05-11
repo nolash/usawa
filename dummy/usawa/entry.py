@@ -2,6 +2,7 @@ import enum
 import logging
 import datetime
 import hashlib
+import uuid
 
 import lxml.etree
 import rencode
@@ -66,6 +67,10 @@ class EntryPart:
         return self.account.to_path(display=mode)
 
 
+    def account_path_only(self):
+        return self.account.to_path(display=AccountDisplay.path)
+
+
     """Create object from an entry part defined as an XML tree.
 
     The XML expected is the ledger/entry/data/debit or ledger/entry/data/credit (in schema, defined as the EntryPart complexType).
@@ -127,7 +132,8 @@ class EntryPart:
         d = [
             self.account.get_unit(),
             self.account.get_type_str(),
-            self.account_path(with_unit=False),
+            #self.account_path(with_unit=False),
+            self.account_path_only(),
             self.amount,
                 ]
         return d
@@ -155,9 +161,10 @@ class EntryPart:
     def deserialize(data, debit=False):
         v = rencode.loads(data)
         unit = v[0].decode('utf-8')    
-        typ = v[1].decode('utf-8')    
+        typ = getattr(AccountType, v[1].decode('utf-8').lower())
         account_path = v[2].decode('utf-8')
-        account = Account.from_path(account_path, sym=unit)
+        logg.debug('deserializing account path {}'.format(account_path))
+        account = Account.from_path(account_path, sym=unit, typ=typ)
         amount = v[3]
         o = EntryPart(account, amount, debit=debit)
         return o
@@ -337,6 +344,9 @@ class Entry(UsawaElement):
             raise ValueError('entry serial preceeds ledger')
 
         ref = o.find('ref', namespaces=nsmap()).text
+        extref = o.find('extref', namespaces=nsmap())
+        if extref != None:
+            extref = extref.text
         parent = o.find('parent', namespaces=nsmap()).text
         description = o.find('description', namespaces=nsmap())
         if description != None:
@@ -344,15 +354,17 @@ class Entry(UsawaElement):
         dt = datetime.date.fromisoformat(o.find('date', namespaces=nsmap()).text)
         dtreg = datetime.datetime.strptime(o.find('dateTimeRegistered', namespaces=nsmap()).text, '%Y-%m-%dT%H:%M:%SZ')
     
-        src_tree = o.find('debit', namespaces=nsmap())
-        dst_tree = o.find('credit', namespaces=nsmap())
+        entry = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex, extref=extref)
+        logg.debug('parent {} extref {}'.format(parent, extref))
 
-        entry = Entry(serial, dt, ref=ref, parent=parent, tx_datereg=dtreg, description=description, unitindex=unitindex)
-        src = EntryPart.from_tree(src_tree, debit=True)
-        dst = EntryPart.from_tree(dst_tree)
-        entry.add_part(dst)
-        entry.add_part(src)
+        for dst_tree in o.findall('credit', namespaces=nsmap()):
+            dst = EntryPart.from_tree(dst_tree)
+            entry.add_part(dst)
 
+        for src_tree in o.findall('debit', namespaces=nsmap()):
+            src = EntryPart.from_tree(src_tree, debit=True)
+            entry.add_part(src)
+       
         for v in o.findall('attachment', namespaces=nsmap()):
             asset = Asset.from_tree(v)
             entry.attach(asset)
@@ -442,13 +454,19 @@ class Entry(UsawaElement):
             extref = v[11]
         except IndexError:
             pass
+        if extref != None:
+            extref = extref.decode('utf-8')
+        logg.debug('extref {}'.format(extref))
         date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d%H%M%S')
         description = v[6].decode('utf-8')
         dst_data = v[7]
         src_data = v[8]
         attach_data = v[9]
-        tags = Tags.deserialize(v[10], store=store)
+        tags_data = v[10]
+        tags = None
+        if tags_data != None:
+            tags = Tags.deserialize(tags_data, store=store)
         #tags = None
         #try: 
         #    tags = Tags.deserialize(v[10])
@@ -461,7 +479,7 @@ class Entry(UsawaElement):
 #            except AttributeError as e:
 #                logg.debug('fail tag decode, use raw: {}'.format(s.hex()))
 #                tags.append(s)
-        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex)
+        o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex, extref=extref)
         super(Entry, o).deserialize(v[0])
         if unitindex != None:
             o.balancer = Balancer(unitindex)

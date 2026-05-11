@@ -7,6 +7,7 @@ import uuid
 import datetime
 
 import usawa.config
+from usawa.context import UsawaContext
 from usawa import Ledger, Entry, EntryPart, DemoWallet, load, ACL
 from usawa.constant import CATEGORIES
 from usawa.store import LedgerStore
@@ -16,65 +17,29 @@ logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
 
 
-class Context:
-
-    def __init__(self):
-        self.unit = None
-        self.uidx = None
-        self.output = None
-        self.f = None
-        self.valkey_host = None
-        self.valkey_port = None
-
-
-    def close(self):
-        if self.f and self.f != sys.stdout:
-            self.f.close()
-
-
-    def open(self, output):
-        if output == '<stdout>':
-            self.f = sys.stdout.buffer
-            logg.debug('output is stdout')
-        else:
-            self.f = open(output, 'wb')
-        return self
-
-    @staticmethod
-    def from_args(args):
-        ctx = Context()
-        if args.output != None:
-            ctx.output = os.path.realpath(args.output)
-        else:
-            ctx.output = '<stdout>'
-
-        ctx.valkey_host = args.valkey_host
-        ctx.valkey_port = args.valkey_port
-
-        return ctx
-
-
 def main():
     argp = argparse.ArgumentParser()
-    argp.add_argument('-o', type=str, dest='output', help='output file for resulting XML document')
-    argp.add_argument('--valkey-host', dest='valkey_host', type=str, default='localhost', help='Valkey host')
-    argp.add_argument('--valkey-port', dest='valkey_port', type=int, default=6379, help='Valkey port')
-    argp.add_argument('ledger_xml_file', type=str, help='load ledger metadata from XML file')
-    arg = argp.parse_args()
-    ctx = Context.from_args(arg)
+    argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
+    argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('-i', type=str, help='input ledger state')
+    argp.add_argument('-p', action='store_true', help='unlock wallet with password')
+    args = argp.parse_args()
 
-    ledger = Ledger.from_file(arg.ledger_xml_file)
+    if args.v:
+        logg.setLevel(getattr(logging, args.v.upper()))
 
-    cfg = usawa.config.load()
-    storedb = ValkeyStore('', host=ctx.valkey_host, port=ctx.valkey_port)
-    store = LedgerStore(storedb, ledger)
-    #pk = store.get_key()
-    #wallet = DemoWallet(privatekey=pk)
-    #acl = ACL.from_wallet(wallet)
-    #store.load(acl=acl)
-    store.put_all(store_assets=True)
-    sys.stdout.write(ledger.to_string())
+    cfg = usawa.config.load_config(config_dir=args.c) 
+    ctx = UsawaContext(cfg)
+    ctx.init(args)
+    
+    def store_entry(entry):
+        ctx.store.add_entry(entry)
+        logg.debug('store entry {}'.format(entry))
+        for v in entry.attachment:
+            ctx.store.add_asset(v, overwrite=True)
 
+    ctx.resolver.restore_ledger(ctx.ledger, entry_callback=store_entry)
 
+        
 if __name__ == '__main__':
     main()
