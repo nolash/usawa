@@ -39,6 +39,7 @@
 			<xs:element name="expense" type="xs:integer" minOccurs="0" />
 			<xs:element name="asset" type="xs:integer" />
 			<xs:element name="liability" type="xs:integer" />
+			<xs:element name="equity" type="xs:integer" minOccurs="0" maxOccurs="1" />
 		</xs:sequence>
 		<xs:attribute name="unit" type="xs:string" />
 	</xs:complexType>
@@ -144,6 +145,7 @@
 			<xs:element name="serial" type="xs:positiveInteger" />
 			<xs:element name="date" type="xs:date" />
 			<xs:element name="dateTimeRegistered" type="xs:dateTime" />
+			<xs:element name="description" type="xs:string" minOccurs="0" maxOccurs="1" />
 			<xs:element name="debit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="credit" type="EntryPart" minOccurs="1" maxOccurs="unbounded" />
 			<xs:element name="attachment" type="Attachment" minOccurs="0" maxOccurs="unbounded" />

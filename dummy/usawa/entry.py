@@ -718,7 +718,8 @@ class Entry(UsawaElement):
     def to_string(self, canon=False, lookup=None):
         tree = self.to_tree(canon=canon, lookup=lookup)
         #return lxml.etree.canonicalize(tree).decode('utf-8')
-        return lxml.etree.tostring(tree).decode('utf-8')
+        #return lxml.etree.tostring(tree).decode('utf-8')
+        return lxml.etree.tostring(tree, encoding='ascii', method="html")
 
 
     def get_lookup(self, lookup, tree=None):
@@ -768,7 +769,6 @@ class Entry(UsawaElement):
 
 
     def has_tag(self, tag):
-        logg.debug("tagssss {}".format(self.tags))
         return self.tags.has(tag)
 
 

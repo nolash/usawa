@@ -18,10 +18,11 @@ from xdg_base_dirs import xdg_data_home
 logging.basicConfig(level=logging.WARNING)
 logg = logging.getLogger()
 
+prev = None
 
 def main():
     argp = argparse.ArgumentParser()
-    argp.add_argument('-o', type=str, dest='output', help='output file for resulting XML document')
+    argp.add_argument('-o', type=str, dest='output', help='output ledger state')
     #argp.add_argument('-p', action='store_true', help='prompt for password to open wallet')
     argp.add_argument('-c', type=str, help='override config dir')
     argp.add_argument('-v', type=str, choices=['info','debug','warning','error'], help='be verbose')
@@ -37,11 +38,18 @@ def main():
     ctx.init(arg)
 
     def override_parent(entry):
-        entry.parent = ctx.ledger.cur
+        global prev
+        digest = ctx.ledger.cur
+        if prev != None:
+            (k, v) = prev.get_lookup(ctx.ledger.lookup_algo)
+            ctx.ledger.cur = bytes.fromhex(k)
+            entry.parent = ctx.ledger.cur
+        logg.info('entry parent override {}'.format(entry.parent.hex()))
         ctx.store.add_entry(entry, overwrite=True)
+        prev = entry
 
     ctx.store.load(entry_callback_pre=override_parent)
-
+    ctx.commit()
 
 if __name__ == '__main__':
     main()

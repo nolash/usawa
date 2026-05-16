@@ -255,12 +255,14 @@ class EntrySession:
             self.amount = float(amount)
         self.attach_count = 0
 
+        self.edit = False
         self.entry = try_entry(self.ctx, entry)
         if self.entry == None:
             self.entry = Entry.empty(unitindex=self.ctx.uidx, description=self.description, ref=self.ref, extref=self.extref, tx_date=self.dt, parent=self.ctx.ledger.cur)
         if self.entry.serial < 1:
-            #raise NotImplementedError('entry edit not yet implemented')
             self._do_prepare()
+        else:
+            self.edit = True
 
 
     def _cur_amount(self):
@@ -446,19 +448,22 @@ class EntrySession:
             logg.error('abort write on check error: ' + str(e))
 
         if self.final:
-            self.entry.description = self.get_description()
-            self.entry.parent = self.ctx.ledger.cur
-            self.entry.serial = self.ctx.ledger.next_serial()
-            self.entry.sign(self.ctx.wallet)
-            self.ctx.store.add_entry(self.entry, update_ledger=True)
+            if not self.edit:
+                self.entry.description = self.get_description()
+                self.entry.parent = self.ctx.ledger.cur
+                self.entry.serial = self.ctx.ledger.next_serial()
+                self.entry.sign(self.ctx.wallet)
+            update_ledger = not self.edit
+            self.ctx.store.add_entry(self.entry, update_ledger=update_ledger, overwrite=self.edit)
             self.ctx.store.put_draft(self.entry)
             self.ctx.ledger.truncate()
             self.ctx.ledger.sign()
-            f = open(self.ctx.ledger_path_out, 'w')
-            f.write(self.ctx.ledger.to_string())
-            f.close()
-            if self.ctx.resolver != None:
-                self.ctx.resolver.put_entry(self.entry, lookup='sha512')
+            if not self.edit:
+                f = open(self.ctx.ledger_path_out, 'w')
+                f.write(self.ctx.ledger.to_string())
+                f.close()
+                if self.ctx.resolver != None:
+                    self.ctx.resolver.put_entry(self.entry, lookup='sha512')
         else:
             self.ctx.store.put_draft(self.entry)
 

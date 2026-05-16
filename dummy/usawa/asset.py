@@ -329,7 +329,6 @@ class Asset(UsawaElement):
         for k in ['mime', 'ref', 'slug', 'ext', 'description', 'extref', 'enc']:
         #for k in ["mime", "slug", "ext", "description", "extref", "enc"]:
             v = getattr(self, k)
-            logg.debug('serialize asset part {} {}'.format(k, v))
             d.append(v)
         return d
 
@@ -364,7 +363,6 @@ class Asset(UsawaElement):
                 vv = vv.decode("utf-8")
             setattr(o, k, vv)
             i += 1
-            logg.debug('deserialized asset part {} {}'.format(k, vv))
         if isinstance(digest, str):
             digest = bytes.fromhex(digest)
         o.digest = digest

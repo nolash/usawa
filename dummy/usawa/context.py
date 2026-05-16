@@ -47,20 +47,23 @@ class UsawaContext:
 
 
     def init(self, args=None, store_scope=None):
-        v = None
+        #v = None
         if args != None:
             try:
-                v = args.i
+                self.ledger_path_in = args.i
             except AttributeError:
                 pass
-        self.ledger_path_in = self.cfg.get('MAIN_LEDGER_FILE', v)
-        v = None
+        if self.ledger_path_in == None:
+            self.ledger_path_in = self.cfg.get('MAIN_LEDGER_FILE')
+        #v = None
         if args != None:
             try:
-                v = args.o
+                #v = args.o
+                self.ledger_path_out = args.o
             except AttributeError:
                 pass
-        self.ledger_path_out = self.cfg.get('MAIN_LEDGER_FILE', v)
+        if self.ledger_path_out == None:
+            self.ledger_path_out = self.cfg.get('MAIN_LEDGER_FILE')
         if self.ledger_path_out == None:
             self.ledger_path_out = self.ledger_path_in
         if self.ledger_path_in != None:

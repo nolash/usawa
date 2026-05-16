@@ -17,7 +17,7 @@ class Tags:
     def has(self, tag):
         r = False
         try:
-            v = self.tags.get(tag)
+            v = self.tags[tag]
             r = True
         except KeyError:
             pass

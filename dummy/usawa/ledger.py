@@ -479,7 +479,9 @@ class Ledger(UsawaElement):
                 raise ValueError('Signature entry without signature value')
             wallet = DemoWallet(publickey=b)
             v = entry.sum()
-            return wallet.verify(v[0], sig)
+            r = wallet.verify(v[0], sig)
+            logg.debug('signature check {} {} {}'.format(r, k, entry))
+            return r
             have = True
         if not have:
             raise VerifyError()

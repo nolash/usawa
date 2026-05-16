@@ -13,7 +13,7 @@ logg = logging.getLogger('usawa.unit')
 
 class UnitIndex:
 
-    default_precision = 2
+    default_precision = 9
     default_unit = 'BTC'
     default_exchange = 1000000000
 
@@ -42,6 +42,8 @@ class UnitIndex:
         self.virt = {}
         if virt:
             self.virt[base] = True
+        logg.info('unitindex base {}'.format(base))
+
 
 
     def clone(self):
@@ -76,7 +78,7 @@ class UnitIndex:
 
         v = int(r)
         m = int((r - v) * 1000000000)
-        logg.debug('val {} -> {},{} adj {}'.format(r, v, m, adj))
+        logg.info('val {} -> {},{} adj {}'.format(r, v, m, adj))
         return (v, m, )
 
 

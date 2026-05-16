@@ -383,6 +383,7 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
                 break
             if entry_callback_pre != None:
                 entry_callback_pre(o)
+            logg.debug("load entry {}".format(o.to_string(canon=True)))
             self.ledger.add_entry(o)
             if entry_callback_post != None:
                 entry_callback_post(o)
