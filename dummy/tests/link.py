@@ -72,5 +72,17 @@ class TestLink(unittest.TestCase):
         self.assertEqual(r[1], 666)
 
 
+    def test_entry_serialize(self):
+        uu = uuid.uuid4()
+        entry_a = Entry(serial=42, tx_date=datetime.datetime.now(datetime.UTC), ref=str(uu))
+        entry_b = Entry(serial=666, tx_date=datetime.datetime.now(datetime.UTC))
+        self.linker.link_to(entry_a, entry_b)
+        v = entry_a.serialize(linker=self.linker)
+        linker = EntryLink(self.ledger)
+        o = Entry.deserialize(v, linker=linker)
+        v = linker.get(o)
+        self.assertEqual(v, str(uu))
+
+
 if __name__ == '__main__':
     unittest.main()

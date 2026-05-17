@@ -391,7 +391,7 @@ class Entry(UsawaElement):
     :rtype: list
     :todo: Add time component to entry.
     """
-    def to_list(self):
+    def to_list(self, linker=None):
         debit = []
         credit = []
         attach = []
@@ -406,6 +406,13 @@ class Entry(UsawaElement):
 
         if self.tags:
             tags = self.tags
+
+        link = None
+        if linker != None:
+            link = linker.get(self)
+            if link != None:
+                link = uuid.UUID(link)
+                link = link.bytes
 
         base = super(Entry, self).serialize()
         logg.debug('serializing with parent {}'.format(self.parent.hex()))
@@ -422,6 +429,7 @@ class Entry(UsawaElement):
                 attach,
                 tags.serialize(),
                 self.extref,
+                link,
                 ]
         return d
 
@@ -431,8 +439,8 @@ class Entry(UsawaElement):
     :returns: String representation of the entry, in rencode format.
     :rtype: str
     """
-    def serialize(self):
-        b = self.to_list()
+    def serialize(self, linker=None):
+        b = self.to_list(linker=linker)
         return rencode.dumps(b)
 
 
@@ -444,11 +452,18 @@ class Entry(UsawaElement):
     :rtype: usawa.Entry
     """
     @staticmethod
-    def deserialize(data, unitindex=None, store=None):
+    def deserialize(data, unitindex=None, store=None, linker=None):
         v = rencode.loads(data)
         parent = v[1]
         serial = v[2]
         ref = v[3].decode('utf-8')
+        link = None
+        try:
+            link = uuid.UUID(bytes=v[12])
+        except IndexError:
+            pass
+        except TypeError:
+            pass
         extref = None
         try:
             extref = v[11]
@@ -494,6 +509,10 @@ class Entry(UsawaElement):
         for v in attach_data:
             asset = Asset(digest=v)
             o.attach(asset)
+      
+        if link != None:
+            if linker != None:
+                linker.link(o, link_uuid=str(link))
         
         logg.debug('deserialized entry {}'.format(o))
 

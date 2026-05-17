@@ -30,8 +30,10 @@ class TestEntry(unittest.TestCase):
         o.add_part(dst)
 
         s = o.serialize()
+        logg.debug('serialized first {}'.format(s.hex()))
         o = Entry.deserialize(s)
         ss = o.serialize()
+        logg.debug('serialized second {}'.format(ss.hex()))
 
         self.assertEqual(s, ss)
 
