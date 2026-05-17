@@ -46,6 +46,7 @@ def main():
             entry.parent = ctx.ledger.cur
         logg.info('entry parent override {}'.format(entry.parent.hex()))
         ctx.store.add_entry(entry, overwrite=True)
+        ctx.ledger.serial = entry.serial
         prev = entry
 
     ctx.store.load(entry_callback_pre=override_parent)
