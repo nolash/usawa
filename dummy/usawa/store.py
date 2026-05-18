@@ -295,9 +295,9 @@ class EntryStore(KeyStore):
     :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
-    def add_entry(self, entry, update_ledger=False, overwrite=False):
+    def add_entry(self, entry, update_ledger=False, overwrite=False, linker=None):
         k = pfx_entry(self.ledger, entry)
-        v = entry.wrap()
+        v = entry.wrap(linker=linker)
         self.db.put(k, v, exist_ok=overwrite)
         if update_ledger:
             self.ledger.add_entry(entry)
@@ -317,10 +317,10 @@ class EntryStore(KeyStore):
     :raises: FileExistsError if entry is already in store.
     :todo: optimize replacing asset stub with deserialized asset
     """
-    def get_entry(self, entry, acl=None, unitindex=None):
+    def get_entry(self, entry, acl=None, unitindex=None, linker=None):
         k = pfx_entry(self.ledger, entry)
         v = self.db.get(k)
-        entry = Entry.unwrap(v, unitindex=unitindex)
+        entry = Entry.unwrap(v, unitindex=unitindex, linker=linker)
         # TODO: hacky!
         i = 0
         for o in entry.attachment:
@@ -366,7 +366,7 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
-    def load(self, acl=None, until=0, unitindex=None, entry_callback_pre=None, entry_callback_post=None):
+    def load(self, acl=None, until=0, unitindex=None, entry_callback_pre=None, entry_callback_post=None, linker=None):
         logg.debug('load ledger from store {} until {}'.format(self.ledger, until))
         v = 0
         while True:
@@ -376,7 +376,7 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
                     if until == v:
                         break
                 v = self.ledger.peek()
-                o = self.get_entry(v, acl=acl, unitindex=unitindex)
+                o = self.get_entry(v, acl=acl, unitindex=unitindex, linker=linker)
                 self.ledger.next_serial()
             except FileNotFoundError as e:
                 logg.debug('entry serial {} not found, terminating ({})'.format(v, e))
@@ -396,13 +396,13 @@ class LedgerStore(EntryStore, AssetStore, KeyStore):
 
     :raises FileNotFoundError: If an entry cannot be found.
     """
-    def restore(self, until=0, acl=None):
+    def restore(self, until=0, acl=None, linker=None):
         logg.debug('restore ledger from store {}'.format(self.ledger))
         i = self.ledger.current_serial()
         while i > until: 
             logg.debug('get entry serial {} ledger {}'.format(i, self.ledger))
             #try:
-            o = self.get_entry(i, acl=acl)
+            o = self.get_entry(i, acl=acl, linker=linker)
             #except FileNotFoundError:
             #    break
             self.ledger.add_entry(o, check_parent=False)

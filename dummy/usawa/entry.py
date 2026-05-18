@@ -555,17 +555,17 @@ class Entry(UsawaElement):
     :type wallet: usawa.Wallet
     :todo: Current specifying wallet has no effect.
     """
-    def wrap(self, wallet=None):
+    def wrap(self, wallet=None, linker=None):
         digest = None
         data = None
         if wallet != None:
             (digest, _sig, _data) = self.sign(wallet)
-            data = self.serialize()
+            data = self.serialize(linker=linker)
         elif len(self.sigs) == 0:
             raise PermissionError('at least one signature required')
         else:
             (digest, _data) = self.sum()
-            data = self.serialize()
+            data = self.serialize(linker=linker)
 
         hdr = []
         sigs = []
@@ -603,9 +603,9 @@ class Entry(UsawaElement):
     :todo: Current version only takes into account single signature
     """
     @staticmethod
-    def unwrap(data, acl=None, unitindex=None):
+    def unwrap(data, acl=None, unitindex=None, linker=None):
         v = rencode.loads(data)
-        entry = Entry.deserialize(v[2], unitindex=unitindex)
+        entry = Entry.deserialize(v[2], unitindex=unitindex, linker=linker)
         pubkey_bytes = v[0][0][1]
         sig = v[1][0]
         entry.add_signature(pubkey_bytes, sig)
