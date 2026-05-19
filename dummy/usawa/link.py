@@ -30,7 +30,7 @@ class EntryLink:
         self.idx[entry.serial] = s
         if self.idx_ref != None:
             self.idx_ref[entry.ref] = s
-        logg.debug('link {} added entry {}'.format(link_uuid, entry))
+        logg.info('link {} added entry {}'.format(link_uuid, entry))
 
     
     def link_to(self, anchor, entry):
