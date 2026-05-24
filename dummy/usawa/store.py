@@ -370,9 +370,6 @@ class EntryStore(KeyStore, LinkStore):
         return entry
 
 
-
-
-#class LedgerStore(EntryStore, AssetStore, KeyStore):
 class LedgerStore(EntryStore, AssetStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 

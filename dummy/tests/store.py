@@ -227,11 +227,7 @@ class TestStore(unittest.TestCase):
         ledger = Ledger(uidx, topic=b'foobar')
         store = LedgerStore(self.store, ledger)
         store.load()
-        #r = store.get_entry(o.serial, acl=acl)
-        #self.assertEqual(r.ref, o.ref)
-        #self.assertEqual(r.description, o.description)
-        #self.assertEqual(r.attachment[0].description, 'foobar')
-
+        
 
     def test_store_link(self):
         uidx = UnitIndex('FOO')
