@@ -14,6 +14,7 @@ logg = logging.getLogger()
 
 testdir = os.path.realpath(os.path.dirname(__file__))
 
+
 class TestLink(unittest.TestCase):
  
     def setUp(self):
@@ -113,6 +114,44 @@ class TestLink(unittest.TestCase):
         r = linker.get_for(entry_a_recover)
         self.assertEqual(len(r), 1)
         self.assertEqual(r[0], 666)
+
+
+    def test_link_store_update(self):
+        wallet = DemoWallet()
+        uu = uuid.uuid4()
+        db = MemStore()
+        store = LedgerStore(db, self.ledger)
+        entry_a = Entry(serial=42, tx_date=datetime.datetime.now(datetime.UTC), ref=str(uu))
+        entry_b = Entry(serial=666, tx_date=datetime.datetime.now(datetime.UTC))
+        entry_c = Entry(serial=1337, tx_date=datetime.datetime.now(datetime.UTC))
+        self.linker.link_to(entry_a, entry_b)
+        entry_a.sign(wallet)
+        store.add_entry(entry_a, linker=self.linker)
+        entry_b.sign(wallet)
+        store.add_entry(entry_b, linker=self.linker)
+        entry_c.sign(wallet)
+        store.add_entry(entry_c)
+
+        linker = EntryLink(self.ledger)
+        entry_a_recover = store.get_entry(entry_a, linker=linker)
+        store.get_entry(entry_b, linker=linker)
+        linker.link_to(entry_a, entry_c)
+        print(">>>>>>>>>> have links {}".format(linker.links))
+        store.add_entry(entry_c, overwrite=True, linker=linker)
+
+        linker_updated = EntryLink(self.ledger)
+        entry_a_updated = store.get_entry(entry_a, linker=linker_updated)
+        store.get_entry(entry_b, linker=linker_updated)
+        store.get_entry(entry_c, linker=linker_updated)
+        r = linker_updated.get_for(entry_c)
+        self.assertEqual(len(r), 2)
+        self.assertEqual(r[0], 42)
+        self.assertEqual(r[1], 666)
+
+        r = linker_updated.get_for(entry_a)
+        self.assertEqual(len(r), 2)
+        self.assertEqual(r[0], 666)
+        self.assertEqual(r[1], 1337)
 
 
 if __name__ == '__main__':

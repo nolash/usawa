@@ -410,6 +410,7 @@ class Entry(UsawaElement):
         link = None
         if linker != None:
             link = linker.get(self)
+            logg.debug('ser add link {}'.format(link))
             if link != None:
                 link = uuid.UUID(link)
                 link = link.bytes
@@ -471,7 +472,6 @@ class Entry(UsawaElement):
             pass
         if extref != None:
             extref = extref.decode('utf-8')
-        logg.debug('extref {}'.format(extref))
         date_reg = datetime.datetime.strptime(v[4].decode('utf-8'), '%Y%m%d%H%M%S')
         date = datetime.datetime.strptime(v[5].decode('utf-8'), '%Y%m%d%H%M%S')
         description = v[6].decode('utf-8')
@@ -512,6 +512,7 @@ class Entry(UsawaElement):
       
         if link != None:
             if linker != None:
+                logg.debug('applying link {}'.format(link))
                 linker.link(o, link_uuid=str(link))
         
         logg.debug('deserialized entry {}'.format(o))

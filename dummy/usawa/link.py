@@ -46,12 +46,13 @@ class EntryLink:
         return v
 
 
+    # serial to serial list
     def get_for(self, entry):
         v = self.get(entry)
         if v == None:
             return None
         r = []
-        logg.debug('link {} found for entry {}'.format(v, entry))
+        logg.debug('(serial) link {} found for entry {}'.format(v, entry))
         for v in self.links[v]:
             if v == entry.serial:
                 continue
@@ -59,6 +60,7 @@ class EntryLink:
         return r
 
 
+    # serial to link ref
     def get(self, entry):
         v = self.idx.get(entry.serial)
         if v != None:
