@@ -273,8 +273,32 @@ class AssetStore(BaseStore):
         return Asset.deserialize(v, k[1:])
 
 
-class EntryStore(KeyStore):
 
+class LinkStore(BaseStore):
+
+    def put_link(self, link, refs=None):
+        if refs == None:
+            refs = link.refs()
+        elif isinstance(refs, str):
+            refs = [refs]
+        for ref in refs:
+            v = link.serialize_for(ref)
+            k = pfx_entry_link(ref)
+            self.db.put(k, v, exist_ok=True)
+
+
+    def get_link(self, link, refs=None):
+        if isinstance(refs, str):
+            refs = [refs]
+        elif refs == None:
+            raise NotImplementedError('load all links not implemented yet')
+        for ref in refs:
+            k = pfx_entry_link(ref)
+            v = self.db.get(k)
+            link.deserialize_for(ref, v)
+
+
+class EntryStore(KeyStore, LinkStore):
 
     # TODO: this will overwrite the draft when the entry has a serial, but on check is being performed that the ledger entry was actually added.
     def put_draft(self, entry):
@@ -345,27 +369,6 @@ class EntryStore(KeyStore):
             i += 1
         return entry
 
-
-    def put_link(self, link, refs=None):
-        if refs == None:
-            refs = link.refs()
-        elif isinstance(refs, str):
-            refs = [refs]
-        for ref in refs:
-            v = link.serialize_for(ref)
-            k = pfx_entry_link(ref)
-            self.db.put(k, v, exist_ok=True)
-
-
-    def get_link(self, link, refs=None):
-        if isinstance(refs, str):
-            refs = [refs]
-        elif link == None or refs == None:
-            raise NotImplementedError('load all links not implemented yet')
-        for ref in refs:
-            k = pfx_entry_link(ref)
-            v = self.db.get(k)
-            link.deserialize_for(ref, v)
 
 
 
