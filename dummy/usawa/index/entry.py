@@ -1,7 +1,11 @@
+import logging
+
 import lxml.etree
 
-from usawa.xml import nsmap
 from usawa import Entry
+from usawa.xml import nsmap, XML_FORMAT_VERSION
+
+logg = logging.getLogger('usawa.entryindex')
 
 
 class EntryIndex:
@@ -52,7 +56,7 @@ class EntryIndex:
 
 
     def to_tree(self):
-        tree = lxml.etree.Element('index', nsmap=nsmap())
+        tree = lxml.etree.XML('<ledger xmlns="http://usawa.defalsify.org/" version="{}"></ledger>'.format(XML_FORMAT_VERSION))
         i = 0
         while True:
             i += 1
@@ -60,13 +64,15 @@ class EntryIndex:
                 v = self.get_digest(i)
             except KeyError:
                 break
-            o = lxml.etree.Element('entry')
-            o.text = v.hex()
-            o.set('serial', str(i))
+            entry = lxml.etree.Element('entry', nsmap=nsmap())
+            entry.set('digest', v.hex())
+            o = lxml.etree.SubElement(entry, 'serial')
+            o.text = str(i)
             if self.m & 1 > 0:
                 v = self.get_ref(i)
-                o.set('ref', v)
-            tree.append(o)
+                o = lxml.etree.SubElement(entry, 'ref')
+                o.text = str(v)
+            tree.append(entry)
         return tree
 
 
@@ -74,13 +80,27 @@ class EntryIndex:
     def from_tree(tree):
         have_refs = False
         idx = EntryIndex(ref=True, digest=True)
-        for v in tree.findall('entry'):
-            ref = v.get('ref')
-            if ref != None:
-                have_refs = True
-            digest = v.text
+        for v in tree.findall('entry', namespaces=nsmap()):
+            digest = v.get('digest')
             digest = bytes.fromhex(digest)
-            serial = int(v.get('serial'))
-            o = Entry.empty(serial=serial, ref=ref)
-            idx.register(o, digest=digest)
+            o = v.find('serial', namespaces=nsmap())
+            serial = int(o.text)
+            o = v.find('ref', namespaces=nsmap())
+            ref = None
+            if o != None:
+                have_refs = True
+                ref = o.text
+            entry = Entry.empty(serial=serial, ref=ref)
+            idx.register(entry, digest=digest)
         return idx
+
+
+    def to_string(self):
+        tree = self.to_tree()
+        return lxml.etree.tostring(tree, encoding='ascii', method="html")
+
+
+    @staticmethod
+    def from_string(s):
+        tree = lxml.etree.fromstring(s)
+        return EntryIndex.from_tree(tree)
