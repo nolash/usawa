@@ -248,7 +248,7 @@ class Ledger(UsawaElement):
     :todo: Remove enclosing array for entries
     :todo: Implement real and virt unit indices for running totals
     """
-    def __init__(self, unitindex, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None, wallet=None):
+    def __init__(self, unitindex, acl=None, serial=0, base=DEFAULTPARENT, topic=None, src=None, wallet=None, entry_index=None):
         self.uidx = unitindex
         self.sigs = {}
         self.entries = {}
@@ -258,6 +258,7 @@ class Ledger(UsawaElement):
         self.lookup_algo = 'sha512'
         self.pre_cb = []
         self.post_cb = []
+        self.entry_index = entry_index
 
         for k in self.uidx.syms():
             if self.running.get(k) != None:
@@ -527,6 +528,9 @@ class Ledger(UsawaElement):
         for fn in self.post_cb:
             if not fn(entry):
                 raise VerifyError('entry post callback not passed')
+
+        if self.entry_index:
+            self.entry_index.register(entry)
 
 
     """Update running total according to the entry.

@@ -5,7 +5,6 @@ import os
 
 from whee.mem import MemStore
 
-from usawa import UnitIndex
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, ACL, schema_path
 from usawa.store import LedgerStore
 from usawa.account import AccountIndex, AccountType, AccountDisplay
@@ -17,7 +16,7 @@ logg = logging.getLogger()
 
 testdir = os.path.realpath(os.path.dirname(__file__))
 
-class TestIndex(unittest.TestCase):
+class TestAccountsIndex(unittest.TestCase):
 
 
     def setUp(self):
@@ -71,7 +70,6 @@ class TestIndex(unittest.TestCase):
         for v in r:
             entry = Entry.empty(serial=v)
             entry = store.get_entry(entry)
-
 
 
 if __name__ == '__main__':
