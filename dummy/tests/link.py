@@ -136,7 +136,6 @@ class TestLink(unittest.TestCase):
         entry_a_recover = store.get_entry(entry_a, linker=linker)
         store.get_entry(entry_b, linker=linker)
         linker.link_to(entry_a, entry_c)
-        print(">>>>>>>>>> have links {}".format(linker.links))
         store.add_entry(entry_c, overwrite=True, linker=linker)
 
         linker_updated = EntryLink(self.ledger)
@@ -152,6 +151,30 @@ class TestLink(unittest.TestCase):
         self.assertEqual(len(r), 2)
         self.assertEqual(r[0], 666)
         self.assertEqual(r[1], 1337)
+
+
+    def test_link_store_index(self):
+        wallet = DemoWallet()
+        uu = uuid.uuid4()
+        db = MemStore()
+        store = LedgerStore(db, self.ledger)
+        entry_a = Entry(serial=42, tx_date=datetime.datetime.now(datetime.UTC), ref=str(uu))
+        entry_b = Entry(serial=666, tx_date=datetime.datetime.now(datetime.UTC))
+        entry_c = Entry(serial=1337, tx_date=datetime.datetime.now(datetime.UTC))
+        self.linker.link_to(entry_a, entry_b)
+        entry_a.sign(wallet)
+        store.add_entry(entry_a, linker=self.linker, update_link=True)
+        entry_b.sign(wallet)
+        store.add_entry(entry_b, linker=self.linker, update_link=True)
+        entry_c.sign(wallet)
+        store.add_entry(entry_c)
+
+        link = EntryLink(self.ledger)
+        store.get_link(link, str(uu))
+        r = link.get_for(entry_a)
+        self.assertEqual(len(r), 1)
+        r = link.get_for(entry_b)
+        self.assertEqual(len(r), 1)
 
 
 if __name__ == '__main__':

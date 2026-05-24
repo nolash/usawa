@@ -1,6 +1,8 @@
 import uuid
 import logging
 
+import rencode
+
 from .entry import Entry
 
 logg = logging.getLogger('link')
@@ -32,7 +34,11 @@ class EntryLink:
             self.idx_ref[entry.ref] = s
         logg.info('link {} added entry {}'.format(link_uuid, entry))
 
-    
+
+    def refs(self):
+        return list(self.links.keys())
+
+
     def link_to(self, anchor, entry):
         if not isinstance(anchor, Entry):
             anchor = Entry.empty(serial=anchor.serial)
@@ -44,6 +50,22 @@ class EntryLink:
             self.link(anchor, link_uuid=v)
         self.link(entry, link_uuid=v)
         return v
+
+    
+    def to_list_for(self, ref):
+        d = self.links[ref]
+        return d
+
+
+    def serialize_for(self, ref):
+        b = self.to_list_for(ref)
+        return rencode.dumps(b)
+
+
+    def deserialize_for(self, ref, data):
+        for v in rencode.loads(data):
+            entry = Entry.empty(serial=v)
+            self.link(entry, link_uuid=ref)
 
 
     # serial to serial list

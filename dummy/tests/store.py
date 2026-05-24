@@ -11,6 +11,7 @@ from whee.mem import MemStore
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, Asset
 from usawa.store import LedgerStore, AssetStore
 from usawa.crypto import ACL
+from usawa.link import EntryLink
 
 logging.basicConfig(level=logging.DEBUG)
 logg = logging.getLogger()
@@ -230,6 +231,26 @@ class TestStore(unittest.TestCase):
         #self.assertEqual(r.ref, o.ref)
         #self.assertEqual(r.description, o.description)
         #self.assertEqual(r.attachment[0].description, 'foobar')
+
+
+    def test_store_link(self):
+        uidx = UnitIndex('FOO')
+        ledger = Ledger(uidx, topic=b'foobar')
+        store = LedgerStore(self.store, ledger)
+        ref_a = uuid.uuid4()
+        ref_b = uuid.uuid4()
+        link = EntryLink(ledger)
+        entry_a = Entry.empty(serial=1, ref=str(ref_a))
+        entry_b = Entry.empty(serial=2, ref=str(ref_b))
+        link.link_to(entry_a, entry_b)
+        store.put_link(link)
+
+        link = EntryLink(ledger)
+        store.get_link(link, str(ref_a))
+        r = link.get_for(entry_a)
+        self.assertEqual(len(r), 1)
+        r = link.get_for(entry_b)
+        self.assertEqual(len(r), 1)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,14 @@
 import enum
 import os
 import logging
+import uuid
 
 from whee import Interface
 
 from .ledger import Ledger
 from .entry import Entry
 from .asset import Asset
+from usawa.link import EntryLink
 
 
 PFX_KEY = b'\x00'
@@ -14,6 +16,7 @@ PFX_LEDGER = b'\x01'
 PFX_LEDGER_INDEX = b'\x02'
 PFX_LEDGER_LOCK = b'\x03'
 PFX_ENTRY = b'\x04'
+PFX_ENTRY_LINK = b'\x05'
 PFX_UNIT_INDEX = b'\x08'
 PFX_ASSET = b'\x10'
 PFX_ASSET_INDEX = b'\x11'
@@ -112,6 +115,17 @@ def pfx_asset_index(asset):
     if not isinstance(asset, Asset):
         raise ValueError('invalid asset')
     return PFX_ASSET_INDEX + asset.get_ref(binary=True)
+
+
+def pfx_entry_link(ref):
+    if isinstance(ref, str):
+        ref = uuid.UUID(ref)
+    if isinstance(ref, uuid.UUID):
+        ref = ref.bytes
+    else:
+        uu = uuid.UUID(bytes=ref)
+        ref = uu.bytes
+    return PFX_ENTRY_LINK + ref
 
 
 class BaseStore(Interface):
@@ -295,13 +309,14 @@ class EntryStore(KeyStore):
     :raises: ValueError if the entry is not the right object type.
     :raises: FileExistsError if entry is already in store.
     """
-    def add_entry(self, entry, update_ledger=False, overwrite=False, linker=None):
+    def add_entry(self, entry, update_ledger=False, overwrite=False, linker=None, update_link=False):
         k = pfx_entry(self.ledger, entry)
         v = entry.wrap(linker=linker)
         self.db.put(k, v, exist_ok=overwrite)
         if update_ledger:
             self.ledger.add_entry(entry)
-
+        if update_link:
+            self.put_link(linker, refs=linker.get(entry))
 
 
     """Restore an entry from data from the store.
@@ -331,7 +346,31 @@ class EntryStore(KeyStore):
         return entry
 
 
-class LedgerStore(EntryStore, AssetStore, KeyStore):
+    def put_link(self, link, refs=None):
+        if refs == None:
+            refs = link.refs()
+        elif isinstance(refs, str):
+            refs = [refs]
+        for ref in refs:
+            v = link.serialize_for(ref)
+            k = pfx_entry_link(ref)
+            self.db.put(k, v, exist_ok=True)
+
+
+    def get_link(self, link, refs=None):
+        if isinstance(refs, str):
+            refs = [refs]
+        elif link == None or refs == None:
+            raise NotImplementedError('load all links not implemented yet')
+        for ref in refs:
+            k = pfx_entry_link(ref)
+            v = self.db.get(k)
+            link.deserialize_for(ref, v)
+
+
+
+#class LedgerStore(EntryStore, AssetStore, KeyStore):
+class LedgerStore(EntryStore, AssetStore):
     """Wrapper for an implementation of the whee store that handles encoding of ledgers and entries.
 
     :param implementation: Store implementation.
