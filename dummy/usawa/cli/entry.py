@@ -30,6 +30,8 @@ v: view matched attachment (in any)
 s: skip entry
 t: save entry to draft
 w: write entry
+l: link
+u: unlink
 q: quit
 """
     w.write(s + "\n")
@@ -395,6 +397,12 @@ class EntrySession:
             return True
         if v == 'r':
             handle_reset(self.ctx, self.entry, v)
+            return True
+        if v == 'l':
+            handle_link(self.ctx, self.entry, v)
+            return True
+        if v == 'u':
+            handle_unlink(self.ctx, self.entry, v)
             return True
         if v == 's':
             return False

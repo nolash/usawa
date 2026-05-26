@@ -4,8 +4,8 @@ lxml==6.0.2
 pycparser==2.23
 PyNaCl==1.6.0
 python-gnupg==0.4.9
-rencode==1.0.8
-wheepy[valkey]~=0.0.3
+rencode==1.0.6
+wheepy[valkey,fs]~=0.0.6a1
 filemagic~=1.6
 PyGObject~=3.52.3
 xdg-base-dirs~=6.0.2
