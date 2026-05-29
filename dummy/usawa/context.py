@@ -36,6 +36,7 @@ class UsawaContext:
         self.askpass = False
         self.signing = signing
         self.replay = replay
+        self.pwgetter = pwgetter
 
 
     def set(self, k, v):
@@ -100,7 +101,10 @@ class UsawaContext:
         pw = self.cfg.get('WALLET_KEY_PASSPHRASE')
         if pw == None:
             if self.askpass:
-                pw = UsawaContext.pwget()
+                if self.pwgetter != None:
+                    pw = self.pwgetter()
+                else:
+                    pw = UsawaContext.pwget()
         return pw
 
 

@@ -9,7 +9,7 @@ import lxml.etree
 from whee.mem import MemStore
 
 from usawa import Ledger, UnitIndex, EntryPart, Entry, DemoWallet, Asset
-from usawa.store import LedgerStore, AssetStore
+from usawa.store import LedgerStore, AssetStore, KeyStore
 from usawa.crypto import ACL
 from usawa.link import EntryLink
 
@@ -247,6 +247,21 @@ class TestStore(unittest.TestCase):
         self.assertEqual(len(r), 1)
         r = link.get_for(entry_b)
         self.assertEqual(len(r), 1)
+
+
+    def test_store_keys(self):
+        store = KeyStore(self.store)
+        wallet_one = DemoWallet()
+        store.add_key(wallet_one, passphrase='foo')
+        wallet_two = DemoWallet()
+        store.add_key(wallet_two, default=True, passphrase='bar')
+        r = store.get_key(DemoWallet, pubkey=wallet_one.pubkey(), passphrase='foo')
+        self.assertEqual(wallet_one.privkey(), r.privkey())
+        r = store.get_default_key(DemoWallet)
+        v = r.pubkey()
+        self.assertEqual(wallet_two.pubkey(), v)
+        r = store.get_key(DemoWallet, pubkey=v, passphrase='bar')
+        self.assertEqual(wallet_two.privkey(), r.privkey())
 
 
 if __name__ == '__main__':
