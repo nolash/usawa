@@ -63,7 +63,7 @@ def key_from_export(v, passphrase="", did=None, opslimit=0, memlimit=0):
     if not memlimit:
         memlimit = nacl.pwhash.MEMLIMIT_MODERATE
     
-    logg.debug('pwhash ops {} mem {} salt {} pw {}'.format(opslimit, memlimit, salt, passphrase.hex()))
+    logg.debug('pwhash ops {} mem {} salt {}'.format(opslimit, memlimit, salt))
 
     key = argon2i.kdf(nacl.secret.SecretBox.KEY_SIZE, passphrase, salt, opslimit=opslimit, memlimit=memlimit)
 
