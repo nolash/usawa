@@ -356,6 +356,9 @@ class EntrySession:
 
 
     def handle_input(self, v):
+        if v == 'h':
+            writehelp()
+            return True
         if v == 'x':
             handle_ref(self.ctx, self.entry, v)
             return True
