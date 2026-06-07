@@ -108,16 +108,27 @@ class UsawaContext:
         return pw
 
 
-    def load_wallet(self):
+    def check_wallet(self):
         if self.wallet != None:
+            return True
+        self.keystore.get_default_key(DemoWallet)
+        return True
+
+
+    def load_wallet(self, signing=False, replace=False):
+        if self.wallet != None and not replace:
             raise AttributeError('wallet set')
-        if not self.signing:
+        if not self.signing and not signing:
+            self.wallet = self.keystore.get_default_key(DemoWallet)
+        elif not signing:
             self.wallet = self.keystore.get_default_key(DemoWallet)
         else:
+            logg.debug('decrypting wallet')
             ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
             pw = self.getpw()
             self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+            logg.debug('have wallet {}'.format(self.wallet))
         if self.ledger != None:
             self.ledger.set_wallet(self.wallet)
 
@@ -165,11 +176,11 @@ class UsawaContext:
         if store_scope == 'ledger':
             self.store = LedgerStore(self.db, self.ledger)
             self.keystore = self.store
-        elif store_scope == 'asset' or store_scope == 'entry':
+        elif store_scope == 'asset' or store_scope == 'entry' or store_scope == 'key':
             self.keystore = KeyStore(self.db)
             if store_scope == 'asset':
                 self.store = AssetStore(self.db)
-            else:
+            elif store_scope == 'entry':
                 self.store = EntryStore(self.db)
 
 

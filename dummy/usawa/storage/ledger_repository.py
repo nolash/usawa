@@ -29,11 +29,7 @@ class LedgerRepository:
 
     def __init__(
         self,
-        ledger_path=None,
-        unix_client: UnixClient = None,
-        valkey_store: ValkeyStore = None,
-        cfg=None,
-        wallet=None,
+        ctx,
     ):
         """
         Initialize the LedgerRepository.
@@ -45,40 +41,15 @@ class LedgerRepository:
         :type unix_client: usawa.UnixClient
 
         """
-        self.valkey_store = valkey_store
-        self.unix_client = unix_client
-        self._wallet = wallet
+        self.resolver = ctx.resolver
+        self.wallet = ctx.wallet
+        self.store = ctx.store
+        self.ledger = ctx.ledger
 
-        self.ledger_path = ledger_path
-        self.cfg = cfg
-
-        logg.debug("fs resolver path: %s", self.cfg.get("FS_RESOLVER_STORE_PATH"))
-        logg.debug(
-            "fs_resolver as URI: %s",
-            path_from_uri(self.cfg.get("FS_RESOLVER_STORE_PATH")),
-        )
-
-        self.resolver = FSResolver(
-            path_from_uri(self.cfg.get("FS_RESOLVER_STORE_PATH"))
-        )
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, Wallet]:
-        ledger_tree = load(self.ledger_path)
-        ledger = Ledger.from_tree(ledger_tree)
+        return self.store, self.ledger, self.wallet
 
-        if write:
-            logg.info("init store for write")
-            self.store = LedgerStore(self.valkey_store, ledger)
-        else:
-            logg.info("init store for read")
-            self.store = LedgerStore(self.valkey_store, ledger)
-
-        logg.info("wallet ready, pubkey: %s...", self._wallet.pubkey().hex()[:16])
-
-        ledger.set_wallet(self._wallet)
-        ledger.acl = ACL.from_wallet(self._wallet)
-        self.store.load(acl=ledger.acl)
-        return self.store, ledger, self._wallet
 
     def save(self, domain_entry: LedgerEntry) -> None:
         """
@@ -144,14 +115,6 @@ class LedgerRepository:
             logg.debug(f"Failed to save entry: {e}", exc_info=True)
             raise
 
-    def save_wallet(self, wallet, passphrase):
-        store, _, _ = self._init_store()
-        try:
-            store.get_key(DemoWallet, passphrase=passphrase)
-            logg.info("key already exists in store, skipping")
-        except FileNotFoundError:
-            logg.info("key written to store")
-            store.add_key(wallet, passphrase=passphrase)
 
     def get_all_entries(self) -> List[LedgerEntry]:
         """Get all entries"""

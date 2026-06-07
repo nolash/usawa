@@ -19,17 +19,15 @@ from datetime import datetime
 from usawa.store import LedgerStore
 from whee.valkey import ValkeyStore
 from whee.fs import FsStore
+import usawa.error
 
 logg = logging.getLogger("gui.mainwindow")
 
 
 class UsawaMainWindow(Adw.ApplicationWindow):
 
-    def __init__(self, application, ledger_path=None, account_list=None, **kwargs):
+    def __init__(self, application, ctx, **kwargs):
         super().__init__(application=application, **kwargs)
-        logg.debug('foo')
-
-        self.account_list = account_list
 
         self.set_title("Usawa")
         self.set_default_size(1000, 600)
@@ -47,23 +45,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.toast_overlay = Adw.ToastOverlay()
         toolbar_view.set_content(self.toast_overlay)
 
-        self.cfg = self.get_application().cfg
-        self.unix_client = UnixClient(path=self.cfg.get("SERVER_SOCKET_FILE_PATH"))
-        store_type = self.cfg.get('STORE_TYPE')
-        if store_type == 'valkey':
-            self.store = ValkeyStore(
-                "",
-                host=self.cfg.get("VALKEY_HOST"),
-                port=self.cfg.get("VALKEY_PORT"),
-            )
-        elif store_type == 'fs':
-            self.store = FsStore(
-                base=self.cfg.get('FSSTORE_BASE'),
-                )
-        else:
-            raise ValueError('invalid store type: ' + store_type)
-
-        self.ledger_path = ledger_path
+        self.ctx = ctx
 
         self.nav_view = Adw.NavigationView()
         self.toast_overlay.set_child(self.nav_view)
@@ -133,7 +115,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             entries=entries,
             refresh_callback=self.refresh_entries,
             toast_overlay=self.toast_overlay,
-            account_list=self.account_list,
+            #account_list=self.account_list,
         )
         self.entry_list_view._load_entries()
         page.set_child(self.entry_list_view)
@@ -145,42 +127,23 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         self.entry_list_view._load_entries()
 
     def _check_wallet_status(self):
-        wallet_path = StateManager.get("wallet_path")
-        if not wallet_path or not Path(wallet_path).exists():
-            logg.info("no wallet in store, showing import dialog")
-            dialog = ImportWalletDialog(self)
-            dialog.present(self)
-        else:
-            ledger_tree = load(self.ledger_path)
-            ledger = Ledger.from_tree(ledger_tree)
-            store = LedgerStore(self.store, ledger)
+        try:
+            self.ctx.load_wallet(replace=True, signing=True)
+            self._init_with_wallet()
+        except usawa.error.VerifyError:
             dialog = PassphraseDialog(
-                store=store,
+                store=self.ctx.keystore,
                 wallet_class=DemoWallet,
-                on_success=lambda wallet, passphrase: self._init_with_wallet(
-                    wallet, passphrase, False
-                ),
+                on_success=self._init_with_wallet,
                 on_cancel=self._on_wallet_cancelled,
             )
             dialog.present(self)
 
-    def _init_with_wallet(self, wallet, passphrase, save_wallet: bool = True):
-        """Called after wallet is successfully imported."""
-        self.wallet = wallet
-
-        repository = LedgerRepository(
-            ledger_path=self.ledger_path,
-            unix_client=self.unix_client,
-            valkey_store=self.store,
-            cfg=self.cfg,
-            wallet=self.wallet,
-        )
+    def _init_with_wallet(self):
+        repository = LedgerRepository(self.ctx)
         entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(entry_service=entry_service)
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
-
-        if save_wallet:
-            self.entry_controller.save_wallet(wallet, passphrase)
 
         entry_list_page = self._create_entry_list_page()
         self.nav_view.add(entry_list_page)
