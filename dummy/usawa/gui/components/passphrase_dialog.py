@@ -24,9 +24,11 @@ class PassphraseDialog(Adw.Dialog):
     :type on_cancel: callable or None
     """
 
-    def __init__(self, store, wallet_class, on_success, on_cancel=None):
+    #def __init__(self, ctx, store, wallet_class, on_success, on_cancel=None):
+    def __init__(self, ctx, wallet_class, on_success, on_cancel=None):
         super().__init__()
-        self.store = store
+        #self.store = store
+        self.ctx = ctx
         self.wallet_class = wallet_class
         self.on_success = on_success
         self.on_cancel = on_cancel
@@ -120,11 +122,10 @@ class PassphraseDialog(Adw.Dialog):
 
     def _do_unlock(self, passphrase):
         try:
-            wallet = self.store.get_key(
-                wallet_class=self.wallet_class,
-                passphrase=passphrase,
-            )
-            GLib.idle_add(self._unlock_success, wallet, passphrase)
+            # TODO: hacky, the passphrase pwgetter should instead be the value from the form
+            self.ctx.cfg.add(passphrase, 'WALLET_KEY_PASSPHRASE', exists_ok=True)
+            self.ctx.load_wallet(signing=True, replace=True)
+            GLib.idle_add(self._unlock_success, self.ctx.wallet, passphrase)
         except Exception as e:
             logg.warning("Passphrase unlock failed: %s", e)
             GLib.idle_add(self._unlock_failure, str(e))
@@ -135,7 +136,8 @@ class PassphraseDialog(Adw.Dialog):
         self._unlocked = True
         self.force_close()
         if self.on_success:
-            self.on_success(wallet, passphrase)
+            #self.on_success(wallet, passphrase)
+            self.on_success(wallet)
 
     def _unlock_failure(self, error_msg):
         self._set_loading(False)

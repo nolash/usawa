@@ -132,14 +132,15 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             self._init_with_wallet()
         except usawa.error.VerifyError:
             dialog = PassphraseDialog(
-                store=self.ctx.keystore,
+                    #store=self.ctx.keystore,
+                ctx=self.ctx,
                 wallet_class=DemoWallet,
                 on_success=self._init_with_wallet,
                 on_cancel=self._on_wallet_cancelled,
             )
             dialog.present(self)
 
-    def _init_with_wallet(self):
+    def _init_with_wallet(self, wallet):
         repository = LedgerRepository(self.ctx)
         entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(entry_service=entry_service)
