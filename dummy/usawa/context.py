@@ -69,6 +69,7 @@ class UsawaContext:
             self.ledger_path_out = self.ledger_path_in
         if self.ledger_path_in != None:
             self.load_ledger()
+        self.set('ledger_path', self.ledger_path_in)
         self.create_store(store_scope=store_scope)
         self.create_resolver()
         self.load_accounts()

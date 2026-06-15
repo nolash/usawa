@@ -3,6 +3,7 @@ from datetime import datetime, date
 
 from usawa.entry import Entry, EntryPart
 from usawa.ledger import Ledger
+from usawa.account import Account
 from usawa.unit import UnitIndex
 from ..gui.core.models import LedgerEntry
 from usawa import Entry, EntryPart
@@ -39,7 +40,7 @@ class EntryMapper:
         ref = domain.transaction_ref if domain.transaction_ref else None
 
         entry = Entry(
-            serial=ledger.serial,
+            serial=ledger.next_serial(),
             tx_date=tx_date,
             parent=parent,
             description=domain.description or "",
@@ -52,23 +53,26 @@ class EntryMapper:
         )
         dest_amount = -source_amount
 
+        account = Account(unitindex.default_unit, domain.source_type.lower(), domain.source_path)
         source_part = EntryPart(
-            unitindex.default_unit,
-            domain.source_type.lower(),
-            domain.source_path,
+            #unitindex.default_unit,
+            #domain.source_type.lower(),
+            #domain.source_path,
+            account,
             source_amount,
             debit=True,
         )
-        entry.add_part(source_part, debit=True)
+        #entry.add_part(source_part, debit=True)
+        entry.add_part(source_part)
 
+        account = Account(unitindex.default_unit, domain.dest_type.lower(), domain.dest_path)
         dest_part = EntryPart(
-            unitindex.default_unit,
-            domain.dest_type.lower(),
-            domain.dest_path,
+            account,
             dest_amount,
             debit=False,
         )
-        entry.add_part(dest_part, debit=False)
+        #entry.add_part(dest_part, debit=False)
+        entry.add_part(dest_part)
 
         return entry
 
@@ -91,9 +95,9 @@ class EntryMapper:
         dest_path = ""
         if storage_entry.debit:
             debit_part = storage_entry.debit[0]
-            source_unit = debit_part.unit
-            source_type = debit_part.typ
-            source_path = debit_part.account
+            source_unit = debit_part.get_unit()
+            source_type = debit_part.get_type()
+            source_path = debit_part.account_path_only()
             amount = abs(float(debit_part.amount))
         else:
             source_unit = source_type = source_path = ""
@@ -101,9 +105,9 @@ class EntryMapper:
 
         if storage_entry.credit:
             credit_part = storage_entry.credit[0]
-            dest_unit = credit_part.unit
-            dest_type = credit_part.typ
-            dest_path = credit_part.account
+            dest_unit = credit_part.get_unit()
+            dest_type = credit_part.get_type()
+            dest_path = credit_part.account_path_only()
         else:
             dest_unit = dest_type = dest_path = ""
 

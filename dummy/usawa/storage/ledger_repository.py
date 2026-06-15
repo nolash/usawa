@@ -44,11 +44,32 @@ class LedgerRepository:
         self.resolver = ctx.resolver
         self.wallet = ctx.wallet
         self.store = ctx.store
+        self.db = ctx.db
         self.ledger = ctx.ledger
+        self.ledger_path = ctx.get('ledger_path')
 
 
     def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, Wallet]:
-        return self.store, self.ledger, self.wallet
+        ledger_tree = load(self.ledger_path)
+        ledger = Ledger.from_tree(ledger_tree)
+
+        if write:
+            logg.info("init store for write")
+            self.store = LedgerStore(self.db, ledger)
+        else:
+            logg.info("init store for read")
+            self.store = LedgerStore(self.db, ledger)
+
+        logg.info("wallet ready, pubkey: %s...", self.wallet.pubkey().hex()[:16])
+
+        ledger.set_wallet(self.wallet)
+        ledger.acl = ACL.from_wallet(self.wallet)
+        self.store.load(acl=ledger.acl)
+        return self.store, ledger, self.wallet
+
+
+    #def _init_store(self, write=False) -> tuple[LedgerStore, Ledger, Wallet]:
+    #    return self.store, self.ledger, self.wallet
 
 
     def save(self, domain_entry: LedgerEntry) -> None:

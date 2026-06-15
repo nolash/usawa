@@ -37,6 +37,7 @@ class EntryController:
             return None
         try:
             entry = LedgerEntry(
+                serial=self.next_serial(),
                 external_reference=view.ref_entry.get_text().strip() or None,
                 description=view.desc_entry.get_text().strip() or None,
                 amount=float(view.amount_entry.get_text() or "0"),

@@ -55,6 +55,8 @@ class Account:
     path_parser = from_account_path
 
     def __init__(self, sym, typ, segments, virt=False):
+        if isinstance(typ, str):
+            typ = getattr(AccountType, typ)
         if not isinstance(typ, AccountType):
             raise ValueError('invalid account type: ' + typ)
         self.sym = sym
