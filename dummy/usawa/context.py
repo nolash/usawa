@@ -20,7 +20,7 @@ class UsawaContext:
 
     pwget = pwgetter
 
-    def __init__(self, cfg, signing=True, pwgetter=None, replay=False):
+    def __init__(self, cfg, signing=True, pwgetter=None, idgetter=None, replay=False):
         self.cfg = cfg
         self.db = None
         self.ledger = None
@@ -37,6 +37,7 @@ class UsawaContext:
         self.signing = signing
         self.replay = replay
         self.pwgetter = pwgetter
+        self.idgetter = idgetter
 
 
     def set(self, k, v):
@@ -78,7 +79,11 @@ class UsawaContext:
             self.askpass = args.p
         except AttributeError:
             pass
-        self.load_wallet()
+
+        identity = None
+        if self.idgetter != None:
+            identity = self.idgetter()
+        self.load_wallet(identity=identity, signing=self.signing)
 
         if self.replay:
             #self.store.load(unitindex=self.uidx)
@@ -116,7 +121,10 @@ class UsawaContext:
         return True
 
 
-    def load_wallet(self, signing=False, replace=False):
+    def load_wallet(self, signing=False, identity=None, replace=False):
+        pubkey = None
+        if identity != None:
+            pubkey = identity.pubkey
         if self.wallet != None and not replace:
             raise AttributeError('wallet set')
         if not self.signing and not signing:
@@ -124,11 +132,11 @@ class UsawaContext:
         elif not signing:
             self.wallet = self.keystore.get_default_key(DemoWallet)
         else:
-            logg.debug('decrypting wallet')
+            logg.debug('decrypting wallet for user {}'.format(identity))
             ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
             pw = self.getpw()
-            self.wallet = self.keystore.get_key(DemoWallet, passphrase=pw, opslimit=ops, memlimit=mem)
+            self.wallet = self.keystore.get_key(DemoWallet, pubkey=pubkey, passphrase=pw, opslimit=ops, memlimit=mem)
             logg.debug('have wallet {}'.format(self.wallet))
         if self.ledger != None:
             self.ledger.set_wallet(self.wallet)
