@@ -495,6 +495,7 @@ class Entry(UsawaElement):
 #                logg.debug('fail tag decode, use raw: {}'.format(s.hex()))
 #                tags.append(s)
         o = Entry(serial, date, ref=ref, description=description, parent=parent, tx_datereg=date_reg, tags=tags, unitindex=unitindex, extref=extref)
+        logg.debug('vzero {}'.format(v[0]))
         super(Entry, o).deserialize(v[0])
         if unitindex != None:
             o.balancer = Balancer(unitindex)

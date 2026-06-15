@@ -61,17 +61,16 @@ class UsawaElement:
             d.append((k, self.kv[k],))
         return d
 
-        b = self.to_list()
-        return rencode.dumps(b)
-
 
     def deserialize(self, data):
+        self.t = []
+        self.kv = {}
         try:
             o = rencode.loads(data)
         except TypeError:
             o = data
-        self.t = []
-        self.kv = {}
+        except ValueError:
+            return
         i = 0
         for i in range(len(o)):
             v = o[i][1]
