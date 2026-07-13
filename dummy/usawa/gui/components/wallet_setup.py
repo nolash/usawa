@@ -4,10 +4,7 @@ from gi.repository import Gtk, Adw, GLib, Gio
 import threading
 import logging
 import threading
-
-from ..core.state_manager import StateManager
 from usawa.crypto import DemoWallet
-
 
 logg = logging.getLogger("gui.wallet_setup_view")
 
@@ -156,7 +153,6 @@ class ImportWalletDialog(Adw.Dialog):
         toast.set_timeout(3)
         self.parent.toast_overlay.add_toast(toast)
         self.close()
-        StateManager.set("wallet_path", self.privatekey_path)
         self.parent._init_with_wallet(wallet, self.passphrase)
 
     def _on_error(self):
