@@ -199,6 +199,14 @@ class KeyStore(BaseStore):
         self.db.put(k, v)
 
 
+    def reencrypt_key(self, wallet_class, pubkey, passphrase_new=None, passphrase_cur=None, opslimit=0, memlimit=0):
+        wallet = self.get_key(wallet_class, pubkey, passphrase=passphrase_cur)
+        k = pfx_key(pubkey=pubkey)
+        v = wallet.export(passphrase=passphrase_new, opslimit=opslimit, memlimit=memlimit)
+        self.db.put(k, v, exist_ok=True)
+        return wallet
+
+
     """Get a newly instantiated wallet object from a private key in the store.
     
     If public key is not supplied, will retrieve the default private key.
