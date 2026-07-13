@@ -10,10 +10,10 @@ logg = logging.getLogger("gui.entrylist")
 
 
 class EntryListView(Gtk.Box):
-    """The entry list view with filters, table, and FAB"""
 
     def __init__(
         self,
+        ctx,
         nav_view,
         entry_controller,
         toast_overlay,
@@ -31,6 +31,7 @@ class EntryListView(Gtk.Box):
         self.toast_overlay = toast_overlay
         self.account_list = account_list
         self.active_filter = None
+        self.ctx = ctx
 
         overlay = Gtk.Overlay()
         self.append(overlay)
@@ -308,15 +309,17 @@ class EntryListView(Gtk.Box):
         dialog.destroy()
 
     def on_sort_changed(self, button, sort_type):
-        """Handle sort option changes"""
         if button.get_active():
             logg.info(f"Sort changed to: {sort_type}")
             self._sort_and_reload(sort_type)
 
     def on_fab_clicked(self, button):
-        logg.info("FAB clicked - opening create entry window")
-
-        create_page = create_entry_page(self.nav_view, self.entry_controller, account_list=self.account_list)
+        create_page = create_entry_page(
+            self.ctx,
+            self.nav_view,
+            self.entry_controller,
+            account_list=self.account_list,
+        )
         self.nav_view.push(create_page)
 
     def refresh_data(self):
@@ -372,7 +375,6 @@ class EntryListView(Gtk.Box):
         return False
 
     def _create_table_section(self):
-        """Create the entry list table with all columns"""
         table_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         self.entry_store = Gio.ListStore.new(EntryItem)

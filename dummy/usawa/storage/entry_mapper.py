@@ -15,26 +15,15 @@ class EntryMapper:
     """Maps between domain model (LedgerEntry) and storage model (Entry)"""
 
     @staticmethod
-    def to_entry(domain: LedgerEntry, ledger, unitindex=UnitIndex("BTC")):
-        """
-        Convert LedgerEntry (domain) to Entry (storage)
-
-        :param domain: Domain model entry
-        :type domain: LedgerEntry
-        :param ledger: The ledger object (for parent digest)
-        :type ledger: usawa.Ledger
-        :param unitindex: UnitIndex for validation
-        :type unitindex: UnitIndex
-        :return: Storage model entry
-        :rtype: Entry
-        """
-
+    def to_entry(domain: LedgerEntry, ledger):
         if domain.tx_date is None:
             raise ValueError("Transaction date is required for storage")
 
         tx_date = domain.tx_date
         if isinstance(tx_date, date) and not isinstance(tx_date, datetime):
             tx_date = datetime.combine(tx_date, datetime.min.time())
+
+        unitindex = UnitIndex(base=domain.dest_unit)
 
         parent = ledger.current() if ledger else None
         ref = domain.transaction_ref if domain.transaction_ref else None
@@ -45,33 +34,28 @@ class EntryMapper:
             parent=parent,
             description=domain.description or "",
             ref=ref,
-            unitindex=unitindex,
+            unitindex=UnitIndex(domain.dest_unit),
         )
 
-        source_amount = unitindex.from_floatstring(
-            unitindex.default_unit, str(domain.amount)
-        )
+        source_amount = unitindex.from_floatstring(unitindex.base, str(domain.amount))
         dest_amount = -source_amount
 
-        account = Account(unitindex.default_unit, domain.source_type.lower(), domain.source_path)
+        account = Account(
+            unitindex.base, domain.source_type.lower(), domain.source_path
+        )
         source_part = EntryPart(
-            #unitindex.default_unit,
-            #domain.source_type.lower(),
-            #domain.source_path,
             account,
             source_amount,
             debit=True,
         )
-        #entry.add_part(source_part, debit=True)
         entry.add_part(source_part)
 
-        account = Account(unitindex.default_unit, domain.dest_type.lower(), domain.dest_path)
+        account = Account(unitindex.base, domain.dest_type.lower(), domain.dest_path)
         dest_part = EntryPart(
             account,
             dest_amount,
             debit=False,
         )
-        #entry.add_part(dest_part, debit=False)
         entry.add_part(dest_part)
 
         return entry
