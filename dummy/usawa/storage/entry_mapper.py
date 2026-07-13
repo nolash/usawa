@@ -4,7 +4,6 @@ from datetime import datetime, date
 from usawa.entry import Entry, EntryPart
 from usawa.ledger import Ledger
 from usawa.account import Account
-from usawa.unit import UnitIndex
 from ..gui.core.models import LedgerEntry
 from usawa import Entry, EntryPart
 
@@ -15,15 +14,13 @@ class EntryMapper:
     """Maps between domain model (LedgerEntry) and storage model (Entry)"""
 
     @staticmethod
-    def to_entry(domain: LedgerEntry, ledger):
+    def to_entry(ctx, domain: LedgerEntry, ledger):
         if domain.tx_date is None:
             raise ValueError("Transaction date is required for storage")
 
         tx_date = domain.tx_date
         if isinstance(tx_date, date) and not isinstance(tx_date, datetime):
             tx_date = datetime.combine(tx_date, datetime.min.time())
-
-        unitindex = UnitIndex(base=domain.dest_unit)
 
         parent = ledger.current() if ledger else None
         ref = domain.transaction_ref if domain.transaction_ref else None
@@ -34,15 +31,13 @@ class EntryMapper:
             parent=parent,
             description=domain.description or "",
             ref=ref,
-            unitindex=UnitIndex(domain.dest_unit),
+            unitindex=ctx.uidx,
         )
 
-        source_amount = unitindex.from_floatstring(unitindex.base, str(domain.amount))
+        source_amount = ctx.uidx.from_floatstring(ctx.uidx.base, str(domain.amount))
         dest_amount = -source_amount
 
-        account = Account(
-            unitindex.base, domain.source_type.lower(), domain.source_path
-        )
+        account = Account(ctx.uidx.base, domain.source_type.lower(), domain.source_path)
         source_part = EntryPart(
             account,
             source_amount,
@@ -50,7 +45,7 @@ class EntryMapper:
         )
         entry.add_part(source_part)
 
-        account = Account(unitindex.base, domain.dest_type.lower(), domain.dest_path)
+        account = Account(ctx.uidx.base, domain.dest_type.lower(), domain.dest_path)
         dest_part = EntryPart(
             account,
             dest_amount,

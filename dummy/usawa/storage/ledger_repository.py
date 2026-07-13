@@ -25,6 +25,7 @@ class LedgerRepository:
         self,
         ctx,
     ):
+        self.ctx = ctx
         self.resolver = ctx.resolver
         self.wallet = ctx.wallet
         self.store = ctx.store
@@ -47,7 +48,7 @@ class LedgerRepository:
         try:
             store, ledger, wallet = self._init_store(write=True)
 
-            entry = EntryMapper.to_entry(domain_entry, ledger=ledger)
+            entry = EntryMapper.to_entry(self.ctx, domain_entry, ledger=ledger)
             entry.sign(wallet)
 
             for attachment in domain_entry.attachments:
