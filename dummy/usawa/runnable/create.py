@@ -92,6 +92,7 @@ class Context:
         return self
 
 
+# TODO: Move to ledger internal
 def parse_topic(v):
     topic = None
     if len(v) > 2:
@@ -212,6 +213,7 @@ def main():
     #ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
     ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
     ledger.sign()
+    ctx.store.save_state()
     ctx.f.write(ledger.to_string())
     ctx.close()
 

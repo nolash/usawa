@@ -407,6 +407,37 @@ class LedgerStore(EntryStore, AssetStore):
         self.ledger.serial = serial
 
 
+    """Commits the ledger state to store as an XML snapshot.
+
+    """
+    def save_state(self):
+        r = self.ledger.sign()
+        v = self.ledger.to_string(as_bytes=True)
+        k = pfx_ledger_topic(self.ledger.topic)
+        self.db.put(k, v)
+
+
+    """Create a new ledger store from topic.
+
+    Loads the last state of the ledger saved with save_state.
+
+    :param db: Database implementation
+    :type db: whee.Interface (implementation)
+    :param topic: The ledger topic to restore state for.
+    :type topic: 32 byte string.
+    :raises FileNotFoundError: 
+    """
+    @staticmethod
+    def from_state(db, topic, reset=False):
+        k = pfx_ledger_topic(topic)
+        v = db.get(k)
+        o = Ledger.from_string(v.decode('utf-8'))
+        if reset:
+            logg.debug('reset ledger state from store topic {}'.format(o.topic))
+            o = Ledger(o.uidx, topic=o.topic)
+        return LedgerStore(db, o)
+
+
     """Load all entries from store, oldest to newest.
 
     Must be called on an unused ledger instance. Using with a ledger that contains or has contains entries is undefined.

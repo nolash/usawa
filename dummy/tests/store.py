@@ -264,5 +264,39 @@ class TestStore(unittest.TestCase):
         self.assertEqual(wallet_two.privkey(), r.privkey())
 
 
+    def test_store_state(self):
+        wallet = DemoWallet()
+        uidx = UnitIndex('FOO')
+        ledger = Ledger(uidx, topic=b'foobar')
+        ledger.set_wallet(wallet)
+        store = LedgerStore(self.store, ledger)
+
+        dst = EntryPart('FOO.Asset/foo', 1337)
+        src = EntryPart('FOO.Income/foo', 1337, debit=True)
+        o = Entry(1, datetime.datetime.strptime('2025-11-11', '%Y-%m-%d'), ref=str(uuid.uuid4()), description='foo', tx_datereg=self.dtreg, unitindex=uidx)
+        o.add_part(src)
+        o.add_part(dst)
+
+        fp = os.path.join(testdir, 'test.xml')
+        asset = Asset.from_file(fp, description='foobar')
+        store.add_asset(asset)
+        o.attach(asset)
+        o.sign(wallet)
+        store.add_entry(o, update_ledger=True)
+
+        dst = EntryPart('FOO.Expense/bar', 42)
+        src = EntryPart('FOO.Asset/bar', -42, debit=True)
+        now = datetime.datetime.now(datetime.UTC)
+        o = Entry(2, now, parent=ledger.cur, ref=str(uuid.uuid4()), description='bar', unitindex=uidx)
+        o.add_part(src)
+        o.add_part(dst)
+        o.sign(wallet)
+        store.add_entry(o, update_ledger=True)
+
+        store.save_state()
+        store = LedgerStore.from_state(self.store, b'foobar', reset=True)
+        store.load()
+
+
 if __name__ == '__main__':
     unittest.main()
