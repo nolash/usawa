@@ -16,6 +16,20 @@ def pwgetter():
     return getpass.getpass('passphrase: ')
 
 
+# TODO: Move to ledger internal
+def parse_topic(v):
+    topic = None
+    if len(v) > 2:
+        if v[:2] == '0x':
+            v = v[2:]
+            topic = bytes.fromhex(v)
+    elif isinstance(v, str):
+        topic = v.encode('utf-8').hex().encode('utf-8')
+    else:
+        raise ValueError('invalid topic')
+    return topic
+
+
 class UsawaContext:
 
     pwget = pwgetter
@@ -71,7 +85,7 @@ class UsawaContext:
         if self.ledger_path_in != None:
             self.load_ledger()
         self.set('ledger_path', self.ledger_path_in)
-        self.create_store(store_scope=store_scope)
+        self.create_store(store_scope=store_scope, topic=args.t)
         self.create_resolver()
         self.load_accounts()
 
@@ -97,6 +111,7 @@ class UsawaContext:
             ledger = self.ledger
         ledger.truncate()
         ledger.sign()
+        self.store.save_state()
         f = open(self.ledger_path_out, 'w')
         f.write(ledger.to_string())
         f.close()
@@ -166,14 +181,18 @@ class UsawaContext:
             self.aidx.lock()
 
 
-    def create_store(self, store_scope=None):
+    def create_store(self, store_scope=None, topic=None):
+        if topic != None:
+            topic = parse_topic(topic)
+        logg.debug('create store {}'.format(topic))
         if store_scope == None:
             store_scope = 'ledger'
         if self.store != None:
             raise AttributeError('store set')
         if store_scope  == 'ledger':
             if self.ledger == None:
-                raise AttributeError('ledger required for ledger store scope')
+                if not bool(topic):
+                    raise AttributeError('ledger required for ledger store scope')
         if self.cfg.get('STORE_TYPE') == 'valkey':
             dbid = self.cfg.get('VALKEY_ID')
             host = self.cfg.get('VALKEY_HOST')
@@ -183,7 +202,12 @@ class UsawaContext:
             base = self.cfg.get('FSSTORE_BASE')
             self.db = FsStore(base=base, dbname='usawa')
         if store_scope == 'ledger':
-            self.store = LedgerStore(self.db, self.ledger)
+            if self.ledger:
+                self.store = LedgerStore(self.db, self.ledger)
+            else:
+                self.store = LedgerStore.from_state(self.db, topic)
+                self.ledger = self.store.ledger
+                self.uidx = self.ledger.uidx
             self.keystore = self.store
         elif store_scope == 'asset' or store_scope == 'entry' or store_scope == 'key':
             self.keystore = KeyStore(self.db)

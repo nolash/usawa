@@ -212,8 +212,9 @@ def main():
     acl = ACL.from_wallet(wallet)
     #ledger.reset(topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
     ledger = Ledger(ctx.uidx, topic=ctx.topic, src=ctx.uri, acl=acl, wallet=wallet)
+    store = LedgerStore(db, ledger)
     ledger.sign()
-    ctx.store.save_state()
+    store.save_state()
     ctx.f.write(ledger.to_string())
     ctx.close()
 

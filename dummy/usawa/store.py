@@ -414,7 +414,7 @@ class LedgerStore(EntryStore, AssetStore):
         r = self.ledger.sign()
         v = self.ledger.to_string(as_bytes=True)
         k = pfx_ledger_topic(self.ledger.topic)
-        self.db.put(k, v)
+        self.db.put(k, v, exist_ok=True)
 
 
     """Create a new ledger store from topic.

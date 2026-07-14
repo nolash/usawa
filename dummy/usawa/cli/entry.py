@@ -458,6 +458,7 @@ class EntrySession:
         except Exception as e:
             logg.error('abort write on check error: ' + str(e))
 
+        # TODO: move ledger commit to context
         if self.final:
             if not self.edit:
                 self.entry.description = self.get_description()
@@ -469,10 +470,16 @@ class EntrySession:
             self.ctx.store.put_draft(self.entry)
             self.ctx.ledger.truncate()
             self.ctx.ledger.sign()
+            self.ctx.store.save_state()
             if not self.edit:
-                f = open(self.ctx.ledger_path_out, 'w')
+                f = None
+                if self.ctx.ledger_path_out:
+                    f = open(self.ctx.ledger_path_out, 'w')
+                else:
+                    f = sys.stdout
                 f.write(self.ctx.ledger.to_string())
-                f.close()
+                if self.ctx.ledger_path_out:
+                    f.close()
                 if self.ctx.resolver != None:
                     self.ctx.resolver.put_entry(self.entry, lookup='sha512')
         else:
