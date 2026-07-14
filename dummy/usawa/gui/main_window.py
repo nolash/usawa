@@ -1,24 +1,15 @@
 import logging
-from pathlib import Path
-from .core.state_manager import StateManager
 from usawa.crypto import DemoWallet
 from usawa.gui.components.passphrase_dialog import (
     PASSPHRASE_DIALOG_CSS,
     PassphraseDialog,
 )
-from usawa.gui.components.wallet_setup import ImportWalletDialog
-from usawa.ledger import Ledger
-from usawa.service import UnixClient
 from .core.entry_service import EntryService
 from usawa.storage.ledger_repository import LedgerRepository
 from gi.repository import Adw, Gtk, Gio, GLib, Gdk
-from usawa import load
 from usawa.gui.controllers.entry_controller import EntryController
 from usawa.gui.views.entry_list_view import EntryListView
 from datetime import datetime
-from usawa.store import LedgerStore
-from whee.valkey import ValkeyStore
-from whee.fs import FsStore
 import usawa.error
 
 logg = logging.getLogger("gui.mainwindow")
@@ -110,12 +101,12 @@ class UsawaMainWindow(Adw.ApplicationWindow):
         page = Adw.NavigationPage(title="Ledger Entries", tag="entry-list")
         entries = []
         self.entry_list_view = EntryListView(
+            ctx=self.ctx,
             nav_view=self.nav_view,
             entry_controller=self.entry_controller,
             entries=entries,
             refresh_callback=self.refresh_entries,
             toast_overlay=self.toast_overlay,
-            #account_list=self.account_list,
         )
         self.entry_list_view._load_entries()
         page.set_child(self.entry_list_view)
@@ -132,7 +123,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             self._init_with_wallet()
         except usawa.error.VerifyError:
             dialog = PassphraseDialog(
-                    #store=self.ctx.keystore,
+                # store=self.ctx.keystore,
                 ctx=self.ctx,
                 wallet_class=DemoWallet,
                 on_success=self._init_with_wallet,
@@ -140,10 +131,12 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             )
             dialog.present(self)
 
-    def _init_with_wallet(self, wallet):
+    def _init_with_wallet(self):
         repository = LedgerRepository(self.ctx)
         entry_service = EntryService(repository=repository)
-        self.entry_controller = EntryController(entry_service=entry_service)
+        self.entry_controller = EntryController(
+            ctx=self.ctx, entry_service=entry_service
+        )
         self.entry_controller.add_entry_created_listener(self.refresh_entries)
 
         entry_list_page = self._create_entry_list_page()

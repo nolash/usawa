@@ -9,55 +9,45 @@ logg = logging.getLogger("core.entry_service")
 
 
 class EntryService:
-    """Business logic for ledger entries"""
 
     def __init__(self, repository: LedgerRepository):
         self.repository = repository
 
     def save_entry(self, entry: LedgerEntry) -> tuple[bool, str]:
+        entry.date_registered = datetime.now()
+        entry.transaction_ref = str(uuid.uuid4())
+
+        is_valid, error_msg = entry.validate()
+        if not is_valid:
+            logg.error(f"Entry validation failed: {error_msg}")
+            return False, error_msg
+
         try:
-            entry.date_registered = datetime.now()
-            entry.transaction_ref = self._generate_transaction_ref()
-
-            is_valid, error_msg = entry.validate()
-            if not is_valid:
-                logg.error(f"Entry validation failed: {error_msg}")
-                return False, error_msg
-
             self.repository.save(entry)
-
-            logg.info(f"Entry saved successfully")
-            return True, ""
-
-        except FileExistsError as e:
-            error_msg = (
-                "Some file information for this entry is already recorded in the ledger"
+        except (FileExistsError, ValueError, IOError, Exception) as e:
+            error_msg = self._error_message_for(e)
+            logg.error(
+                f"Save failed: {e}",
+                exc_info=not isinstance(e, (FileExistsError, ValueError, IOError)),
             )
             return False, error_msg
 
-        except ValueError as e:
-            error_msg = f"Invalid entry data: {str(e)}"
-            logg.error(f"Validation error: {e}")
-            return False, error_msg
+        logg.info("Entry saved successfully")
+        return True, ""
 
-        except IOError as e:
-            error_msg = f"File error: {str(e)}"
-            logg.error(f"File operation failed: {e}")
-            return False, error_msg
-
-        except Exception as e:
-            error_msg = f"Failed to save entry: {str(e)}"
-            logg.error(f"Unexpected error: {e}", exc_info=True)
-            return False, error_msg
-
-#    def save_wallet(self, wallet, passphrase):
-#        return self.repository.save_wallet(wallet=wallet, passphrase=passphrase)
+    def _error_message_for(self, e: Exception) -> str:
+        if isinstance(e, FileExistsError):
+            return (
+                "Some file information for this entry is already recorded in the ledger"
+            )
+        if isinstance(e, ValueError):
+            return f"Invalid entry data: {e}"
+        if isinstance(e, IOError):
+            return f"File error: {e}"
+        return f"Failed to save entry: {e}"
 
     def get_all_entries(self):
         return self.repository.get_all_entries()
-
-    def _generate_transaction_ref(self) -> str:
-        return str(uuid.uuid4())
 
     def get_asset_bytes(self, digest: bytes) -> bytes:
         return self.repository.get_asset_bytes(digest=digest)

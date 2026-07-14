@@ -4,7 +4,6 @@ from datetime import datetime, date
 from usawa.entry import Entry, EntryPart
 from usawa.ledger import Ledger
 from usawa.account import Account
-from usawa.unit import UnitIndex
 from ..gui.core.models import LedgerEntry
 from usawa import Entry, EntryPart
 
@@ -15,20 +14,7 @@ class EntryMapper:
     """Maps between domain model (LedgerEntry) and storage model (Entry)"""
 
     @staticmethod
-    def to_entry(domain: LedgerEntry, ledger, unitindex=UnitIndex("BTC")):
-        """
-        Convert LedgerEntry (domain) to Entry (storage)
-
-        :param domain: Domain model entry
-        :type domain: LedgerEntry
-        :param ledger: The ledger object (for parent digest)
-        :type ledger: usawa.Ledger
-        :param unitindex: UnitIndex for validation
-        :type unitindex: UnitIndex
-        :return: Storage model entry
-        :rtype: Entry
-        """
-
+    def to_entry(ctx, domain: LedgerEntry, ledger):
         if domain.tx_date is None:
             raise ValueError("Transaction date is required for storage")
 
@@ -45,33 +31,26 @@ class EntryMapper:
             parent=parent,
             description=domain.description or "",
             ref=ref,
-            unitindex=unitindex,
+            unitindex=ctx.uidx,
         )
 
-        source_amount = unitindex.from_floatstring(
-            unitindex.default_unit, str(domain.amount)
-        )
+        source_amount = ctx.uidx.from_floatstring(ctx.uidx.base, str(domain.amount))
         dest_amount = -source_amount
 
-        account = Account(unitindex.default_unit, domain.source_type.lower(), domain.source_path)
+        account = Account(ctx.uidx.base, domain.source_type.lower(), domain.source_path)
         source_part = EntryPart(
-            #unitindex.default_unit,
-            #domain.source_type.lower(),
-            #domain.source_path,
             account,
             source_amount,
             debit=True,
         )
-        #entry.add_part(source_part, debit=True)
         entry.add_part(source_part)
 
-        account = Account(unitindex.default_unit, domain.dest_type.lower(), domain.dest_path)
+        account = Account(ctx.uidx.base, domain.dest_type.lower(), domain.dest_path)
         dest_part = EntryPart(
             account,
             dest_amount,
             debit=False,
         )
-        #entry.add_part(dest_part, debit=False)
         entry.add_part(dest_part)
 
         return entry

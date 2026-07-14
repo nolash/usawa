@@ -7,22 +7,19 @@ import mimetypes
 logg = logging.getLogger("gui.create_entry_view")
 
 
-def create_entry_page(nav_view, controller, account_list=None):
-    """Create a new entry page"""
+def create_entry_page(ctx, nav_view, controller, account_list=None):
     page = Adw.NavigationPage(title="Create New Entry", tag="create-entry")
 
-    view = CreateEntryView(nav_view, controller, account_list=account_list)
+    view = CreateEntryView(ctx, nav_view, controller, account_list=account_list)
     page.set_child(view)
-
     return page
 
 
 class CreateEntryView(Gtk.Box):
-    """Create entry view - UI ONLY"""
 
-    def __init__(self, nav_view, controller, account_list=None):
+    def __init__(self, ctx, nav_view, controller, account_list=None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-
+        self.ctx = ctx
         self.nav_view = nav_view
         self.controller = controller
         self.account_list = account_list
@@ -31,7 +28,6 @@ class CreateEntryView(Gtk.Box):
         self._build_ui(nav_view)
 
     def _build_ui(self, nav_view):
-        """Build the UI"""
         header = self._create_header(nav_view=nav_view)
         self.append(header)
 
@@ -65,7 +61,6 @@ class CreateEntryView(Gtk.Box):
         self.append(action_bar)
 
     def _create_header(self, nav_view):
-        """Create the header with back button and serial number"""
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         header_box.set_margin_top(12)
         header_box.set_margin_bottom(12)
@@ -95,7 +90,6 @@ class CreateEntryView(Gtk.Box):
         return header_box
 
     def _create_basic_section(self):
-        """Create basic details section - UI ONLY"""
         section_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
 
         header = Gtk.Label(label="BASIC DETAILS")
@@ -303,9 +297,9 @@ class CreateEntryView(Gtk.Box):
         unit_label.add_css_class("caption")
         fields.append(unit_label)
 
+        unit = self.ctx.store.ledger.uidx.base
         units = Gtk.StringList()
-        units.append("Bitcoin(BTC)")
-
+        units.append(unit)
         unit_dropdown = Gtk.DropDown(model=units)
         unit_dropdown.set_selected(0)
         fields.append(unit_dropdown)
@@ -439,7 +433,6 @@ class CreateEntryView(Gtk.Box):
         )
 
     def _on_files_selected(self, dialog, result):
-        """Handle multiple file selection"""
         try:
             files = dialog.open_multiple_finish(result)
 

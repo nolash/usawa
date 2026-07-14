@@ -9,16 +9,17 @@ logg = logging.getLogger("gui.entry_controller")
 
 
 class EntryController:
-    """Handles entry creation logic"""
 
-    def __init__(self, entry_service: EntryService):
+    def __init__(self, ctx, entry_service: EntryService):
         self.entry_service = entry_service
         self._entry_created_listeners = []
+        self.ctx = ctx
 
     def collect_entry_data(self, view) -> Optional[LedgerEntry]:
-        """Collect data from the view and create an entry"""
         tx_date_str = view.date_entry.get_text().strip()
         tx_time_str = view.time_entry.get_text().strip()
+        unit = self.ctx.store.ledger.uidx.base
+
         try:
             if tx_time_str:
                 for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -41,11 +42,11 @@ class EntryController:
                 external_reference=view.ref_entry.get_text().strip() or None,
                 description=view.desc_entry.get_text().strip() or None,
                 amount=float(view.amount_entry.get_text() or "0"),
-                source_unit="BTC",
+                source_unit=unit,
                 tx_date=tx_date,
                 source_type=view.get_source_type(),
                 source_path=view.source_path_entry.get_text().strip(),
-                dest_unit="BTC",
+                dest_unit=unit,
                 dest_type=view.get_dest_type(),
                 dest_path=view.dest_path_entry.get_text().strip(),
             )
