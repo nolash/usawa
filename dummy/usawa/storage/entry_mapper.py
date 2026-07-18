@@ -4,7 +4,7 @@ from datetime import datetime, date
 from usawa.entry import Entry, EntryPart
 from usawa.ledger import Ledger
 from usawa.account import Account
-from ..gui.core.models import LedgerEntry
+from ..gui.core.models import EntryPartData, LedgerEntry
 from usawa import Entry, EntryPart
 
 logg = logging.getLogger("storage.entry_mapper")
@@ -34,24 +34,17 @@ class EntryMapper:
             unitindex=ctx.uidx,
         )
 
-        source_amount = ctx.uidx.from_floatstring(ctx.uidx.base, str(domain.amount))
-        dest_amount = -source_amount
+        for part_data in domain.source_parts:
+            account = Account(
+                part_data.unit, part_data.account_type.lower(), part_data.account_path
+            )
+            entry.add_part(EntryPart(account, part_data.amount, debit=True))
 
-        account = Account(ctx.uidx.base, domain.source_type.lower(), domain.source_path)
-        source_part = EntryPart(
-            account,
-            source_amount,
-            debit=True,
-        )
-        entry.add_part(source_part)
-
-        account = Account(ctx.uidx.base, domain.dest_type.lower(), domain.dest_path)
-        dest_part = EntryPart(
-            account,
-            dest_amount,
-            debit=False,
-        )
-        entry.add_part(dest_part)
+        for part_data in domain.dest_parts:
+            account = Account(
+                part_data.unit, part_data.account_type.lower(), part_data.account_path
+            )
+            entry.add_part(EntryPart(account, part_data.amount, debit=False))
 
         return entry
 
@@ -60,37 +53,27 @@ class EntryMapper:
         """
         Convert Entry (storage) to LedgerEntry (domain)
         """
+        source_parts = [
+            EntryPartData(
+                unit=part.get_unit(),
+                account_type=part.get_type(),
+                account_path=part.account_path_only(),
+                amount=abs(int(part.amount)),
+            )
+            for part in storage_entry.debit
+        ]
 
-        base = ledger.uidx.base
-        precision = ledger.uidx.detail[base]
+        dest_parts = [
+            EntryPartData(
+                unit=part.get_unit(),
+                account_type=part.get_type(),
+                account_path=part.account_path_only(),
+                amount=abs(int(part.amount)),
+            )
+            for part in storage_entry.credit
+        ]
 
-        source_unit = ""
-        source_type = ""
-        source_path = ""
-        amount = 0.0
-
-        dest_unit = ""
-        dest_type = ""
-        dest_path = ""
-        if storage_entry.debit:
-            debit_part = storage_entry.debit[0]
-            source_unit = debit_part.get_unit()
-            source_type = debit_part.get_type()
-            source_path = debit_part.account_path_only()
-            amount = abs(float(debit_part.amount))
-        else:
-            source_unit = source_type = source_path = ""
-            amount = 0.0
-
-        if storage_entry.credit:
-            credit_part = storage_entry.credit[0]
-            dest_unit = credit_part.get_unit()
-            dest_type = credit_part.get_type()
-            dest_path = credit_part.account_path_only()
-        else:
-            dest_unit = dest_type = dest_path = ""
-
-        parent_digest = parent_digest = storage_entry.parent.hex()
+        parent_digest = storage_entry.parent.hex()
 
         tx_date = storage_entry.dt
         date_registered = storage_entry.dtreg
@@ -102,14 +85,8 @@ class EntryMapper:
         domain = LedgerEntry(
             external_reference=external_ref,
             description=storage_entry.description,
-            amount=amount,
-            precision=precision,
-            source_unit=source_unit,
-            source_type=source_type,
-            source_path=source_path,
-            dest_unit=dest_unit,
-            dest_type=dest_type,
-            dest_path=dest_path,
+            source_parts=source_parts,
+            dest_parts=dest_parts,
             attachments=(
                 storage_entry.attachment.copy() if storage_entry.attachment else []
             ),
@@ -119,7 +96,7 @@ class EntryMapper:
             date_registered=date_registered,
             signer_pubkeys=signer_pubkeys,
             parent_digest=parent_digest,
-            unit_index=storage_entry.uidx,
+            unit_index=ledger.uidx,
         )
 
         return domain
