@@ -1,26 +1,26 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Union
+from typing import Optional, List
 from datetime import datetime
 from pathlib import Path
 
 
 @dataclass
+class EntryPartData:
+    unit: str
+    account_type: str
+    account_path: str
+    amount: int
+
+
+@dataclass
 class LedgerEntry:
-    """DTO for ledger entry input, converted to usawa.Entry"""
 
     # Basic details
     external_reference: Optional[str] = None
     description: Optional[str] = None
 
-    # Transaction details
-    amount: float = 0.0
-    precision: int = 0
-    source_unit: str = ""
-    source_type: str = ""
-    source_path: str = "general"
-    dest_unit: str = ""
-    dest_type: str = ""
-    dest_path: str = "general"
+    source_parts: List[EntryPartData] = field(default_factory=list)
+    dest_parts: List[EntryPartData] = field(default_factory=list)
 
     # Attachments
     attachments: List[str] = field(default_factory=list)
@@ -37,17 +37,30 @@ class LedgerEntry:
 
     def validate(self) -> tuple[bool, str]:
         """Validate entry data"""
-        if self.amount <= 0:
-            return False, "Amount must be greater than 0"
+        if not self.source_parts:
+            return False, "At least one source part is required"
+        if not self.dest_parts:
+            return False, "At least one destination part is required"
 
-        if not self.source_unit or not self.dest_unit:
-            return False, "Unit/Currency is required for both source and destination"
+        for i, part in enumerate(self.source_parts, start=1):
+            if part.amount <= 0:
+                return False, f"Source part {i}: amount must be greater than 0"
+            if not part.unit:
+                return False, f"Source part {i}: unit is required"
+            if not part.account_type:
+                return False, f"Source part {i}: account type is required"
+            if not part.account_path:
+                return False, f"Source part {i}: account path is required"
 
-        if not self.source_type or not self.dest_type:
-            return False, "Account type is required for both source and destination"
-
-        if not self.source_path or not self.dest_path:
-            return False, "Account path is required for both source and destination"
+        for i, part in enumerate(self.dest_parts, start=1):
+            if part.amount <= 0:
+                return False, f"Destination part {i}: amount must be greater than 0"
+            if not part.unit:
+                return False, f"Destination part {i}: unit is required"
+            if not part.account_type:
+                return False, f"Destination part {i}: account type is required"
+            if not part.account_path:
+                return False, f"Destination part {i}: account path is required"
 
         # Validate attachments
         if self.attachments:
@@ -56,17 +69,3 @@ class LedgerEntry:
                     return False, f"Attachment file not found: {filepath}"
 
         return True, ""
-
-    def add_attachment(self, filepath: Union[str, List[str]]):
-        """
-        Add one or more attachment file paths
-        """
-        if isinstance(filepath, str):
-            if filepath not in self.attachments:
-                self.attachments.append(filepath)
-        elif isinstance(filepath, list):
-            for path in filepath:
-                if path not in self.attachments:
-                    self.attachments.append(path)
-        else:
-            raise TypeError(f"filepath must be str or List[str], got {type(filepath)}")
