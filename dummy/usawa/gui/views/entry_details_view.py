@@ -7,16 +7,17 @@ import subprocess
 import logging
 from datetime import datetime
 
-
 logg = logging.getLogger("gui.entry_details_view")
 
 
 def create_entry_details_page(
-    entry, nav_view, entry_controller, toast_overlay, fetch_fn
+    ctx, entry, nav_view, entry_controller, toast_overlay, fetch_fn
 ):
     """Create an entry details page for the navigation stack"""
     page = Adw.NavigationPage(title="Entry Details", tag=f"entry-{entry.serial}")
-    view = EntryDetailsView(entry, nav_view, entry_controller, toast_overlay, fetch_fn)
+    view = EntryDetailsView(
+        ctx, entry, nav_view, entry_controller, toast_overlay, fetch_fn
+    )
     page.set_child(view)
     return page
 
@@ -24,12 +25,13 @@ def create_entry_details_page(
 class EntryDetailsView(Gtk.Box):
     """Entry details view"""
 
-    def __init__(self, entry, nav_view, entry_controller, toast_overlay, fetch_fn):
+    def __init__(self, ctx, entry, nav_view, entry_controller, toast_overlay, fetch_fn):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.entry = entry
         self.nav_view = nav_view
         self.entry_controller = entry_controller
         self.toast_overlay = toast_overlay
+        self.ctx = ctx
         self.fetch_fn = fetch_fn
         self._build_ui()
 
@@ -204,45 +206,102 @@ class EntryDetailsView(Gtk.Box):
         header.add_css_class("heading")
         section_box.append(header)
 
-        amount_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        amount_label = Gtk.Label(label="Amount")
-        amount_label.set_halign(Gtk.Align.START)
-        amount_label.add_css_class("dim-label")
-        amount_label.add_css_class("caption")
-        amount_box.append(amount_label)
-
-        amount_value = Gtk.Label(label=self.entry.amount)
-        amount_value.set_halign(Gtk.Align.START)
-        amount_value.add_css_class("title-1")
-        amount_box.append(amount_value)
-        section_box.append(amount_box)
-
         ledger_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
         ledger_box.set_homogeneous(True)
 
-        logg.debug("Created EntryItem in TX Section: %s", self.entry)
-
         ledger_box.append(
-            _create_ledger_card(
-                "Source",
-                self.entry.source_unit,
-                self.entry.source_type,
-                self.entry.source_path,
-                is_source=True,
-            )
+            self._create_ledger_side_card("Source", self.entry.source_parts_raw)
         )
         ledger_box.append(
-            _create_ledger_card(
-                "Destination",
-                self.entry.dest_unit,
-                self.entry.dest_type,
-                self.entry.dest_path,
-                is_source=False,
-            )
+            self._create_ledger_side_card("Destination", self.entry.dest_parts_raw)
         )
 
         section_box.append(ledger_box)
         return section_box
+
+    def _create_ledger_side_card(self, title, parts):
+        """Create a card listing every entry part for one side, plus a per-unit sum."""
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class("card")
+        card.set_margin_top(8)
+        card.set_margin_bottom(8)
+        card.set_margin_start(8)
+        card.set_margin_end(8)
+
+        header = Gtk.Label(label=title)
+        header.set_halign(Gtk.Align.START)
+        header.add_css_class("heading")
+        header.set_margin_top(8)
+        header.set_margin_start(8)
+        card.append(header)
+
+        parts_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        parts_box.set_margin_start(8)
+        parts_box.set_margin_end(8)
+
+        if not parts:
+            empty_label = Gtk.Label(label="No parts")
+            empty_label.set_halign(Gtk.Align.START)
+            empty_label.add_css_class("dim-label")
+            parts_box.append(empty_label)
+        else:
+            for i, part in enumerate(parts, start=1):
+                part_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+                part_box.add_css_class("card")
+                part_box.set_margin_bottom(4)
+
+                part_title = Gtk.Label(label=f"Part {i}")
+                part_title.set_halign(Gtk.Align.START)
+                part_title.add_css_class("caption")
+                part_title.add_css_class("dim-label")
+                part_title.set_margin_top(4)
+                part_title.set_margin_start(4)
+                part_box.append(part_title)
+
+                fields_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+                fields_box.set_margin_start(4)
+                fields_box.set_margin_end(4)
+                fields_box.set_margin_bottom(4)
+
+                _add_label_value_pair(fields_box, "Unit:", part.unit)
+                _add_label_value_pair(fields_box, "Type:", part.account_type)
+                _add_label_value_pair(fields_box, "Path:", part.account_path)
+
+                _add_label_value_pair(
+                    fields_box,
+                    "Amount:",
+                    self.ctx.uidx.to_floatstring(part.unit, part.amount),
+                )
+
+                part_box.append(fields_box)
+                parts_box.append(part_box)
+
+        card.append(parts_box)
+
+        totals = {}
+        for part in parts:
+            totals[part.unit] = totals.get(part.unit, 0) + part.amount
+
+        sum_label = Gtk.Label()
+        sum_label.set_halign(Gtk.Align.START)
+        sum_label.add_css_class("dim-label")
+        sum_label.add_css_class("caption")
+        sum_label.set_margin_start(8)
+        sum_label.set_margin_bottom(8)
+        sum_label.set_margin_top(4)
+
+        if totals:
+            pieces = "  ·  ".join(
+                f"{ self.ctx.uidx.to_floatstring(unit, amount)} {unit}"
+                for unit, amount in totals.items()
+            )
+            sum_label.set_text(f"= {pieces}")
+        else:
+            sum_label.set_text("= —")
+
+        card.append(sum_label)
+
+        return card
 
     def _create_attachments_section(self):
         section_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)

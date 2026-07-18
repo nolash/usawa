@@ -3,6 +3,7 @@ import logging
 from gi.repository import Gtk, Adw, Gio, Pango
 from pathlib import Path
 import mimetypes
+from usawa.gui.core.models import EntryPartData
 
 logg = logging.getLogger("gui.create_entry_view")
 
@@ -272,7 +273,7 @@ class CreateEntryView(Gtk.Box):
         return row
 
     def _create_ledger_side_card(self, title, is_source=True):
-        """Create a card for source or destination with its own unit"""
+        """Create a card for source or destination, supporting multiple entry parts."""
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         card.add_css_class("card")
         card.set_margin_top(8)
@@ -280,71 +281,199 @@ class CreateEntryView(Gtk.Box):
         card.set_margin_start(8)
         card.set_margin_end(8)
 
+        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        header_box.set_margin_top(8)
+        header_box.set_margin_start(8)
+        header_box.set_margin_end(8)
+
         header = Gtk.Label(label=title)
         header.set_halign(Gtk.Align.START)
         header.add_css_class("heading")
-        header.set_margin_top(8)
-        header.set_margin_start(8)
-        card.append(header)
+        header.set_hexpand(True)
+        header_box.append(header)
 
-        fields = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        fields.set_margin_start(8)
-        fields.set_margin_end(8)
-        fields.set_margin_bottom(8)
+        add_btn = Gtk.Button()
+        add_btn.set_icon_name("list-add-symbolic")
+        add_btn.add_css_class("flat")
+        header_box.append(add_btn)
+        card.append(header_box)
 
-        unit_label = Gtk.Label(label="Unit")
-        unit_label.set_halign(Gtk.Align.START)
-        unit_label.add_css_class("caption")
-        fields.append(unit_label)
+        entry_parts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        entry_parts.set_margin_start(8)
+        entry_parts.set_margin_end(8)
+        card.append(entry_parts)
 
-        unit = self.ctx.store.ledger.uidx.base
+        sum_label = Gtk.Label()
+        sum_label.set_halign(Gtk.Align.START)
+        sum_label.add_css_class("dim-label")
+        sum_label.add_css_class("caption")
+        sum_label.set_margin_start(8)
+        sum_label.set_margin_bottom(8)
+        card.append(sum_label)
+
+        if is_source:
+            self.source_rows = []
+            self.source_container = entry_parts
+            self.source_sum_label = sum_label
+        else:
+            self.dest_rows = []
+            self.dest_container = entry_parts
+            self.dest_sum_label = sum_label
+
+        add_btn.connect("clicked", lambda b: self._add_entry_part_row(is_source))
+        self._add_entry_part_row(is_source)
+
+        return card
+
+    def _get_side_state(self, is_source):
+        if is_source:
+            return self.source_rows, self.source_container, self.source_sum_label
+        return self.dest_rows, self.dest_container, self.dest_sum_label
+
+    def _add_entry_part_row(self, is_source):
+        rows, parts_list, sum_label = self._get_side_state(is_source)
+
+        row_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        row_box.add_css_class("card")
+        row_box.set_margin_bottom(4)
+
+        row_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row_header.set_margin_top(6)
+        row_header.set_margin_start(6)
+        row_header.set_margin_end(6)
+
+        row_title = Gtk.Label(label=f"Part {len(rows) + 1}")
+        row_title.add_css_class("caption")
+        row_title.add_css_class("dim-label")
+        row_title.set_hexpand(True)
+        row_title.set_halign(Gtk.Align.START)
+        row_header.append(row_title)
+
+        remove_btn = Gtk.Button()
+        remove_btn.set_icon_name("list-remove-symbolic")
+        remove_btn.add_css_class("flat")
+        row_header.append(remove_btn)
+        row_box.append(row_header)
+
+        fields = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        fields.set_margin_start(6)
+        fields.set_margin_end(6)
+        fields.set_margin_bottom(6)
+
         units = Gtk.StringList()
-        units.append(unit)
+        for sym in self.ctx.store.ledger.uidx.syms():
+            units.append(sym)
         unit_dropdown = Gtk.DropDown(model=units)
         unit_dropdown.set_selected(0)
+        unit_dropdown.connect(
+            "notify::selected", lambda d, p: self._update_sum_label(is_source)
+        )
         fields.append(unit_dropdown)
 
-        type_label = Gtk.Label(label="Account type")
-        type_label.set_halign(Gtk.Align.START)
-        type_label.add_css_class("caption")
-        fields.append(type_label)
-
         types = Gtk.StringList()
-        if is_source:
-            types.append("Expense")
-            types.append("Asset")
-            types.append("Liability")
-            types.append("Income")
-        else:
-            types.append("Asset")
-            types.append("Expense")
-            types.append("Liability")
-            types.append("Income")
-
+        type_order = (
+            ["Expense", "Asset", "Liability", "Income"]
+            if is_source
+            else ["Asset", "Expense", "Liability", "Income"]
+        )
+        for t in type_order:
+            types.append(t)
         type_dropdown = Gtk.DropDown(model=types)
         fields.append(type_dropdown)
 
-        path_label = Gtk.Label(label="Account path")
-        path_label.set_halign(Gtk.Align.START)
-        path_label.add_css_class("caption")
-        fields.append(path_label)
-
         path_entry = Gtk.Entry()
+        path_entry.set_placeholder_text("Account path")
         path_entry.set_text("general")
         fields.append(path_entry)
 
-        card.append(fields)
+        amount_entry = Gtk.Entry()
+        amount_entry.set_placeholder_text("Amount")
+        amount_entry.connect("changed", lambda e: self._update_sum_label(is_source))
+        fields.append(amount_entry)
 
-        if is_source:
-            self.source_unit_dropdown = unit_dropdown
-            self.source_type_dropdown = type_dropdown
-            self.source_path_entry = path_entry
+        row_box.append(fields)
+        parts_list.append(row_box)
+
+        row_data = {
+            "box": row_box,
+            "unit_dropdown": unit_dropdown,
+            "type_dropdown": type_dropdown,
+            "path_entry": path_entry,
+            "amount_entry": amount_entry,
+        }
+        rows.append(row_data)
+        remove_btn.connect(
+            "clicked", lambda b: self._remove_part_row(is_source, row_data)
+        )
+        self._update_sum_label(is_source)
+
+    def _remove_part_row(self, is_source, row_data):
+        rows, parts_list, sum_label = self._get_side_state(is_source)
+        if len(rows) <= 1:
+            return  # keep at least one part per side
+        rows.remove(row_data)
+        parts_list.remove(row_data["box"])
+        self._update_sum_label(is_source)
+
+    def _update_sum_label(self, is_source):
+        rows, parts_list, sum_label = self._get_side_state(is_source)
+
+        totals = {}
+        for row in rows:
+            unit_item = row["unit_dropdown"].get_selected_item()
+            unit = unit_item.get_string() if unit_item else None
+            amount_text = row["amount_entry"].get_text().strip()
+            try:
+                amount = float(amount_text) if amount_text else 0.0
+            except ValueError:
+                amount = 0.0
+            if unit:
+                totals[unit] = totals.get(unit, 0.0) + amount
+
+        if not totals:
+            sum_label.set_text("= —")
         else:
-            self.dest_unit_dropdown = unit_dropdown
-            self.dest_type_dropdown = type_dropdown
-            self.dest_path_entry = path_entry
+            parts_str = "  ·  ".join(f"{v:g} {k}" for k, v in totals.items())
+            sum_label.set_text(f"= {parts_str}")
 
-        return card
+    def _rows_to_entry_parts(self, rows) -> list:
+        uidx = self.ctx.store.ledger.uidx
+        parts = []
+
+        for i, row in enumerate(rows, start=1):
+            unit_item = row["unit_dropdown"].get_selected_item()
+            type_item = row["type_dropdown"].get_selected_item()
+            unit = unit_item.get_string() if unit_item else None
+            acc_type = type_item.get_string() if type_item else None
+            path = row["path_entry"].get_text().strip()
+            amount_text = row["amount_entry"].get_text().strip()
+
+            if not unit or not acc_type or not path or not amount_text:
+                raise ValueError(f"Part {i}: all fields are required")
+
+            try:
+                amount = uidx.from_floatstring(unit, amount_text)
+            except (ValueError, KeyError) as e:
+                raise ValueError(
+                    f"Part {i}: invalid amount '{amount_text}' for unit {unit}"
+                ) from e
+
+            parts.append(
+                EntryPartData(
+                    unit=unit,
+                    account_type=acc_type,
+                    account_path=path,
+                    amount=amount,
+                )
+            )
+
+        return parts
+
+    def get_source_entry_parts(self) -> list:
+        return self._rows_to_entry_parts(self.source_rows)
+
+    def get_dest_entry_parts(self) -> list:
+        return self._rows_to_entry_parts(self.dest_rows)
 
     def _create_warning(self):
         """Create warning note"""
@@ -493,8 +622,15 @@ class CreateEntryView(Gtk.Box):
         return f"{size_bytes:.1f} TB"
 
     def _on_finalize(self, button):
-        entry = self.controller.collect_entry_data(self)
 
+        try:
+            source_parts = self.get_source_entry_parts()
+            dest_parts = self.get_dest_entry_parts()
+        except ValueError as e:
+            self._show_error_dialog("Invalid Input", str(e))
+            return
+
+        entry = self.controller.collect_entry_data(self, source_parts, dest_parts)
         if entry is None:
             self._show_error_dialog(
                 "Invalid Input", "Please check your entries and try again."

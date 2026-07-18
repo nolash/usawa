@@ -323,7 +323,7 @@ class EntryListView(Gtk.Box):
         self.nav_view.push(create_page)
 
     def refresh_data(self):
-        filtered = list(self.entries)
+        filtered_entries = list(self.entries)
 
         if self.active_filter == "account_type":
             account_type_idx = self.account_type_dropdown.get_selected()
@@ -331,22 +331,28 @@ class EntryListView(Gtk.Box):
                 account_type_idx
             )
             if account_type != "All types":
-                filtered = [
+                filtered_entries = [
                     e
-                    for e in filtered
-                    if e.source_type.lower() == account_type.lower()
-                    or e.dest_type.lower() == account_type.lower()
+                    for e in filtered_entries
+                    if any(
+                        p.account_type.lower() == account_type.lower()
+                        for p in e.source_parts
+                    )
+                    or any(
+                        p.account_type.lower() == account_type.lower()
+                        for p in e.dest_parts
+                    )
                 ]
 
         elif self.active_filter == "keyword":
             keyword = self.keyword_entry.get_text().strip().lower()
             if keyword:
-                filtered = [
+                filtered_entries = [
                     e
-                    for e in filtered
+                    for e in filtered_entries
                     if keyword in (e.description or "").lower()
-                    or keyword in (e.source_path or "").lower()
-                    or keyword in (e.dest_path or "").lower()
+                    or any(keyword in p.account_path.lower() for p in e.source_parts)
+                    or any(keyword in p.account_path.lower() for p in e.dest_parts)
                 ]
 
         elif self.active_filter == "date":
@@ -354,19 +360,23 @@ class EntryListView(Gtk.Box):
             date_end = self.date_end_entry.get_text().strip()
             logg.info("Date range selected: {} to {}".format(date_start, date_end))
             if date_start:
-                filtered = [e for e in filtered if str(e.tx_date)[5:10] >= date_start]
+                filtered_entries = [
+                    e for e in filtered_entries if str(e.tx_date)[5:10] >= date_start
+                ]
             if date_end:
-                filtered = [e for e in filtered if str(e.tx_date)[5:10] <= date_end]
+                filtered_entries = [
+                    e for e in filtered_entries if str(e.tx_date)[5:10] <= date_end
+                ]
 
         sort_type = "serial" if self.sort_serial_btn.get_active() else "datetime"
         if sort_type == "serial":
-            filtered = sorted(filtered, key=lambda e: e.serial)
+            filtered_entries = sorted(filtered_entries, key=lambda e: e.serial)
         else:
-            filtered = sorted(
-                filtered, key=lambda e: (e.tx_date, e.serial), reverse=True
+            filtered_entries = sorted(
+                filtered_entries, key=lambda e: (e.tx_date, e.serial), reverse=True
             )
 
-        self._reload_store(filtered)
+        self._reload_store(filtered_entries)
 
     def on_create_window_closed(self, window):
         logg.info("Create entry window closed")
@@ -545,13 +555,10 @@ class EntryListView(Gtk.Box):
         list_item.set_child(label)
 
     def _on_source_bind(self, factory, list_item):
-        """Bind source data in compressed format: [BTC] Expense.deposit/rent"""
+        """Bind source data in compressed format"""
         entry = list_item.get_item()
         label = list_item.get_child()
-
-        # Format: [UNIT] Type.path
-        formatted = f"[{entry.source_unit}]\n{entry.source_type}.{entry.source_path}"
-        label.set_text(formatted)
+        label.set_text(entry.source_summary)
 
     def _on_dest_setup(self, factory, list_item):
         """Setup destination cell (compressed format)"""
@@ -566,10 +573,7 @@ class EntryListView(Gtk.Box):
         """Bind destination data in compressed format"""
         entry = list_item.get_item()
         label = list_item.get_child()
-
-        # Format: [UNIT] Type.path
-        formatted = f"[{entry.dest_unit}]\n{entry.dest_type}.{entry.dest_path}"
-        label.set_text(formatted)
+        label.set_text(entry.dest_summary)
 
     def _on_action_setup(self, factory, list_item):
         """Setup action cell"""
@@ -594,6 +598,7 @@ class EntryListView(Gtk.Box):
         """Handle view button click"""
         logg.info(f"View entry clicked: {entry.serial}")
         details_page = create_entry_details_page(
+            self.ctx,
             entry,
             self.nav_view,
             self.entry_controller,
@@ -611,12 +616,26 @@ class EntryListView(Gtk.Box):
             for a in assets
         )
 
+    def _format_parts_summary(self, parts, unit_index) -> str:
+        if not parts:
+            return "—"
+        totals = {}
+        for part in parts:
+            totals[part.unit] = totals.get(part.unit, 0) + part.amount
+        pieces = []
+        for unit, amount in totals.items():
+            display_amount = unit_index.to_floatstring(unit, amount)
+            pieces.append(f"{display_amount} {unit}")
+        return ", ".join(pieces)
+
     def _make_entry_item(self, entry) -> EntryItem:
         signers_raw = entry.signer_pubkeys
         signers_display = ", ".join([f"{k[:8]}...{k[-6:]}" for k in signers_raw])
 
-        raw = entry.amount / (10**entry.precision)
-        amount_display = f"{entry.source_unit} {raw:.{entry.precision}f}"
+        source_summary = self._format_parts_summary(
+            entry.source_parts, entry.unit_index
+        )
+        dest_summary = self._format_parts_summary(entry.dest_parts, entry.unit_index)
 
         return EntryItem(
             serial=entry.serial,
@@ -626,16 +645,12 @@ class EntryListView(Gtk.Box):
             tx_date_rg=entry.date_registered,
             description=entry.description,
             auth_state="trusted",
-            amount=amount_display,
-            source_path=entry.source_path,
-            source_type=entry.source_type,
-            source_unit=entry.source_unit,
-            unit_index=entry.unit_index,
+            source_summary=source_summary,
+            dest_summary=dest_summary,
+            source_parts_raw=entry.source_parts,
+            dest_parts_raw=entry.dest_parts,
             signers=signers_display,
             signers_raw=signers_raw,
-            dest_path=entry.dest_path,
-            dest_unit=entry.dest_unit,
-            dest_type=entry.dest_type,
             attachments=self.format_attachments(entry.attachments),
             attachments_raw=entry.attachments,
         )

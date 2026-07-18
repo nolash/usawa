@@ -15,10 +15,11 @@ class EntryController:
         self._entry_created_listeners = []
         self.ctx = ctx
 
-    def collect_entry_data(self, view) -> Optional[LedgerEntry]:
+    def collect_entry_data(
+        self, view, source_parts, dest_parts
+    ) -> Optional[LedgerEntry]:
         tx_date_str = view.date_entry.get_text().strip()
         tx_time_str = view.time_entry.get_text().strip()
-        unit = self.ctx.store.ledger.uidx.base
 
         try:
             if tx_time_str:
@@ -36,19 +37,15 @@ class EntryController:
         except ValueError:
             logg.error("Invalid date/time format")
             return None
+
         try:
             entry = LedgerEntry(
                 serial=self.next_serial(),
                 external_reference=view.ref_entry.get_text().strip() or None,
                 description=view.desc_entry.get_text().strip() or None,
-                amount=float(view.amount_entry.get_text() or "0"),
-                source_unit=unit,
                 tx_date=tx_date,
-                source_type=view.get_source_type(),
-                source_path=view.source_path_entry.get_text().strip(),
-                dest_unit=unit,
-                dest_type=view.get_dest_type(),
-                dest_path=view.dest_path_entry.get_text().strip(),
+                source_parts=source_parts,
+                dest_parts=dest_parts,
             )
             is_valid, error_msg = entry.validate()
             if not is_valid:
