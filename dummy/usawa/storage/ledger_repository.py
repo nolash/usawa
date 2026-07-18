@@ -1,9 +1,6 @@
 import logging
 from typing import List
 from usawa.gui.core.models import LedgerEntry
-from usawa.storage.xml_utils import (
-    _write_xml_to_file,
-)
 from usawa.asset import Asset
 from usawa.crypto import ACL, Wallet
 from usawa.ledger import Ledger
@@ -157,7 +154,6 @@ class LedgerRepository:
                 return False, f"Entry #{serial} not found"
 
             self.resolver.put_entry(storage_entry, lookup="sha512")
-            _write_xml_to_file(storage_entry.to_string(), output_path)
 
             logg.info("Successfully exported entry #%d", serial)
             return True, ""
