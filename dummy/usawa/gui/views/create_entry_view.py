@@ -49,6 +49,9 @@ class CreateEntryView(Gtk.Box):
         transaction_section = self._create_transaction_section()
         content.append(transaction_section)
 
+        tags_section = self._create_tags_section()
+        content.append(tags_section)
+
         attachments_section = self._create_attachments_section()
         content.append(attachments_section)
 
@@ -187,6 +190,58 @@ class CreateEntryView(Gtk.Box):
         section_box.append(ledger_box)
 
         return section_box
+
+    def _create_tags_section(self):
+        """Create the tags section with add/remove chip-style widget."""
+        section_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+
+        header = Gtk.Label(label="TAGS")
+        header.set_halign(Gtk.Align.START)
+        header.add_css_class("heading")
+        section_box.append(header)
+
+        self.tags_flow = Gtk.FlowBox()
+        self.tags_flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.tags_flow.set_max_children_per_line(8)
+        self.tags_flow.set_row_spacing(6)
+        self.tags_flow.set_column_spacing(6)
+        section_box.append(self.tags_flow)
+
+        input_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+
+        self.tag_input = Gtk.Entry()
+        self.tag_input.set_placeholder_text("Add tag…")
+        self.tag_input.set_hexpand(True)
+        self.tag_input.connect("activate", self._on_tag_input_activate)
+        input_row.append(self.tag_input)
+
+        add_tag_btn = Gtk.Button()
+        add_tag_btn.set_icon_name("list-add-symbolic")
+        add_tag_btn.set_tooltip_text("Add tag")
+        add_tag_btn.connect("clicked", self._on_tag_add_clicked)
+        input_row.append(add_tag_btn)
+
+        section_box.append(input_row)
+
+        self.tags = []
+
+        return section_box
+
+    def _on_tag_add_clicked(self, button):
+        self._commit_tag_input()
+
+    def _on_tag_input_activate(self, entry_widget):
+        self._commit_tag_input()
+
+    def _commit_tag_input(self):
+        text = self.tag_input.get_text().strip()
+        if not text:
+            return
+        if text in self.tags:
+            self.tag_input.set_text("")
+            return
+        self._add_tag_chip(text)
+        self.tag_input.set_text("")
 
     def _create_attachments_section(self):
         """Create the attachments section"""
@@ -630,7 +685,9 @@ class CreateEntryView(Gtk.Box):
             self._show_error_dialog("Invalid Input", str(e))
             return
 
-        entry = self.controller.collect_entry_data(self, source_parts, dest_parts)
+        tags = self.get_tags()
+
+        entry = self.controller.collect_entry_data(self, source_parts, dest_parts, tags)
         if entry is None:
             self._show_error_dialog(
                 "Invalid Input", "Please check your entries and try again."
@@ -693,3 +750,51 @@ class CreateEntryView(Gtk.Box):
         date_str = f"{date.get_year():04d}-{date.get_month():02d}-{date.get_day_of_month():02d}"
         self.date_entry.set_text(date_str)
         popover.popdown()
+
+    def _on_tag_input_activate(self, entry_widget):
+        text = entry_widget.get_text().strip()
+        if not text:
+            return
+        if text in self.tags:
+            entry_widget.set_text("")
+            return
+        self._add_tag_chip(text)
+        entry_widget.set_text("")
+
+    def _add_tag_chip(self, tag_text):
+        self.tags.append(tag_text)
+
+        chip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        chip.add_css_class("card")
+        chip.set_margin_top(2)
+        chip.set_margin_bottom(2)
+        chip.set_margin_start(4)
+        chip.set_margin_end(4)
+
+        label = Gtk.Label(label=tag_text)
+        label.set_margin_start(8)
+        label.set_margin_top(4)
+        label.set_margin_bottom(4)
+        chip.append(label)
+
+        remove_btn = Gtk.Button()
+        remove_btn.set_icon_name("window-close-symbolic")
+        remove_btn.add_css_class("flat")
+        remove_btn.set_margin_end(4)
+        chip.append(remove_btn)
+
+        flow_child = Gtk.FlowBoxChild()
+        flow_child.set_child(chip)
+        self.tags_flow.append(flow_child)
+
+        remove_btn.connect(
+            "clicked", lambda b: self._remove_tag_chip(tag_text, flow_child)
+        )
+
+    def _remove_tag_chip(self, tag_text, flow_child):
+        if tag_text in self.tags:
+            self.tags.remove(tag_text)
+        self.tags_flow.remove(flow_child)
+
+    def get_tags(self) -> list:
+        return list(self.tags)

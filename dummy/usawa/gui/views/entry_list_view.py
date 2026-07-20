@@ -596,7 +596,6 @@ class EntryListView(Gtk.Box):
 
     def _on_view_entry(self, button, entry):
         """Handle view button click"""
-        logg.info(f"View entry clicked: {entry.serial}")
         details_page = create_entry_details_page(
             self.ctx,
             entry,
@@ -646,6 +645,7 @@ class EntryListView(Gtk.Box):
             description=entry.description,
             auth_state="trusted",
             source_summary=source_summary,
+            tags_raw=entry.tags,
             dest_summary=dest_summary,
             source_parts_raw=entry.source_parts,
             dest_parts_raw=entry.dest_parts,
