@@ -16,7 +16,7 @@ class EntryController:
         self.ctx = ctx
 
     def collect_entry_data(
-        self, view, source_parts, dest_parts
+        self, view, source_parts, dest_parts, tags=None
     ) -> Optional[LedgerEntry]:
         tx_date_str = view.date_entry.get_text().strip()
         tx_time_str = view.time_entry.get_text().strip()
@@ -46,6 +46,7 @@ class EntryController:
                 tx_date=tx_date,
                 source_parts=source_parts,
                 dest_parts=dest_parts,
+                tags=tags or [],
             )
             is_valid, error_msg = entry.validate()
             if not is_valid:
@@ -57,9 +58,8 @@ class EntryController:
             return None
 
     def finalize_entry(self, entry: LedgerEntry) -> tuple[bool, str]:
-        logg.debug("Finalizing entry: %s", entry)
-        success, error_msg = self.entry_service.save_entry(entry)
 
+        success, error_msg = self.entry_service.save_entry(entry)
         if success:
             return True, ""
         else:

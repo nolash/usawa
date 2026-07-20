@@ -24,6 +24,7 @@ class EntryItem(GObject.Object):
         tx_date_rg="",
         tx_ref="",
         description="",
+        tags_raw=None,
         auth_state="unsigned",
         source_summary="",
         dest_summary="",
@@ -41,6 +42,7 @@ class EntryItem(GObject.Object):
         self.tx_ref = tx_ref
         self.tx_date_rg = tx_date_rg
         self.description = description
+        self.tags_raw = tags_raw or []
         self.auth_state = auth_state
         self.source_summary = source_summary
         self.dest_summary = dest_summary

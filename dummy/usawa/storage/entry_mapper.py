@@ -46,6 +46,9 @@ class EntryMapper:
             )
             entry.add_part(EntryPart(account, part_data.amount, debit=False))
 
+        for tag_text in domain.tags:
+            entry.tag(tag_text)
+
         return entry
 
     @staticmethod
@@ -82,6 +85,8 @@ class EntryMapper:
 
         signer_pubkeys = list(storage_entry.sigs.keys())
 
+        tags = storage_entry.tags.to_list() if storage_entry.tags else []
+
         domain = LedgerEntry(
             external_reference=external_ref,
             description=storage_entry.description,
@@ -92,6 +97,7 @@ class EntryMapper:
             ),
             serial=storage_entry.serial,
             tx_date=tx_date,
+            tags=tags,
             tx_reference=storage_entry.ref,
             date_registered=date_registered,
             signer_pubkeys=signer_pubkeys,
