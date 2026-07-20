@@ -35,6 +35,8 @@ class LedgerEntry:
     parent_digest: Optional[str] = None
     unit_index: Optional[int] = None
 
+    tags: List[str] = field(default_factory=list)
+
     def validate(self) -> tuple[bool, str]:
         """Validate entry data"""
         if not self.source_parts:
