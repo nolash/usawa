@@ -9,4 +9,4 @@ class UsawaUser:
 
 
     def __str__(self):
-        return "{} ({}) pubkey: {}".format(self.uname, self.uid, self.pubkey)
+        return "{} ({}) pubkey: {}".format(self.uname, self.uid, self.pubkey.hex())

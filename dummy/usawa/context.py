@@ -1,9 +1,11 @@
 import logging
 import getpass
+import hashlib
+import sys
 
 from whee.valkey import ValkeyStore
 from whee.fs import FsStore
-from usawa import DemoWallet, Ledger
+from usawa import DemoWallet, Ledger, UnitIndex
 from usawa.account import AccountIndex
 from usawa.store import LedgerStore, EntryStore, KeyStore, AssetStore
 from usawa.resolve.fs import FSResolver
@@ -14,6 +16,27 @@ logg = logging.getLogger('usawa.ctx')
 # TODO: move this code to a cli module
 def pwgetter():
     return getpass.getpass('passphrase: ')
+
+
+
+
+# TODO: Move to ledger internal
+def parse_topic(v):
+    topic = None
+    if isinstance(v, str):
+        if len(v) > 2:
+            if v[:2] == '0x':
+                v = v[2:]
+                v += b'\x00' * 64
+                v = v[:64]
+                topic = bytes.fromhex(v)
+            else:
+                h = hashlib.sha512()
+                h.update(v.encode('utf-8'))
+                topic = h.digest()
+    else:
+        raise ValueError('invalid topic')
+    return topic
 
 
 class UsawaContext:
@@ -38,6 +61,7 @@ class UsawaContext:
         self.replay = replay
         self.pwgetter = pwgetter
         self.idgetter = idgetter
+        self.fo = None
 
 
     def set(self, k, v):
@@ -48,7 +72,55 @@ class UsawaContext:
         return self.o.get(k)
 
 
-    def init(self, args=None, store_scope=None):
+    def __fp_open(self):
+        if self.fo:
+            return self.fo
+        if self.ledger_path_out == None:
+            return sys.stdout
+        self.fo = open(self.ledger_path_out, 'w')
+        return self.fo
+
+
+    def __fp_close(self):
+        if self.fo:
+            self.fo.close()
+
+
+    def write(self, v):
+        f = self.__fp_open()
+        f.write(v)
+        self.__fp_close()
+
+
+    def ledger_from_args(self, args):
+        try:
+            unitspec = args.unit[0].split(':')
+            unit = unitspec[0]
+            logg.debug('have unit {}'.format(unit))
+            unit_precision = None
+            try:
+                unit_precision = unitspec[1]
+            except IndexError:
+                unit_precision = UnitIndex.default_precision
+        except IndexError:
+            unit = UnitIndex.default_unit 
+            unit_precision = UnitIndex.default_precision
+        self.uidx = UnitIndex(unit, precision=unit_precision)
+        for v in args.unit[1:]:
+            unitspec = v.split(':')
+            unit = unitspec[0]
+            unit_precision = None
+            try:
+                unit_precision = unitspec[1]
+            except IndexError:
+                unit_precision = UnitIndex.default_precision
+            uidx.add(unit, precision=unit_precision)
+        self.topic = parse_topic(self.cfg.get('LEDGER_TOPIC'))
+        self.ledger = Ledger(self.uidx, topic=self.topic, src=args.src_uri)
+        return self.ledger
+
+
+    def init(self, args=None, store_scope=None, create=False):
         #v = None
         if args != None:
             try:
@@ -71,7 +143,7 @@ class UsawaContext:
         if self.ledger_path_in != None:
             self.load_ledger()
         self.set('ledger_path', self.ledger_path_in)
-        self.create_store(store_scope=store_scope)
+        self.create_store(args, store_scope=store_scope, create_ledger=create)
         self.create_resolver()
         self.load_accounts()
 
@@ -97,6 +169,7 @@ class UsawaContext:
             ledger = self.ledger
         ledger.truncate()
         ledger.sign()
+        self.store.save_state()
         f = open(self.ledger_path_out, 'w')
         f.write(ledger.to_string())
         f.close()
@@ -166,14 +239,20 @@ class UsawaContext:
             self.aidx.lock()
 
 
-    def create_store(self, store_scope=None):
+    def create_store(self, args, store_scope=None, create_ledger=False):
+        # TODO: done twice
+        topic = parse_topic(self.cfg.get('LEDGER_TOPIC'))
+        #if topic != None:
+        #    topic = parse_topic(topic)
+        #logg.debug('create store {}'.format(topic))
         if store_scope == None:
             store_scope = 'ledger'
         if self.store != None:
             raise AttributeError('store set')
         if store_scope  == 'ledger':
             if self.ledger == None:
-                raise AttributeError('ledger required for ledger store scope')
+                if not bool(topic):
+                    raise AttributeError('ledger required for ledger store scope')
         if self.cfg.get('STORE_TYPE') == 'valkey':
             dbid = self.cfg.get('VALKEY_ID')
             host = self.cfg.get('VALKEY_HOST')
@@ -183,7 +262,20 @@ class UsawaContext:
             base = self.cfg.get('FSSTORE_BASE')
             self.db = FsStore(base=base, dbname='usawa')
         if store_scope == 'ledger':
-            self.store = LedgerStore(self.db, self.ledger)
+            if self.ledger:
+                logg.debug('using preloaded ledger for store {}'.format(self.ledger))
+                self.store = LedgerStore(self.db, self.ledger)
+            else:
+                try:
+                    self.store = LedgerStore.from_state(self.db, topic)
+                    self.ledger = self.store.ledger
+                    self.uidx = self.ledger.uidx
+                except FileNotFoundError:
+                    if create_ledger:
+                        self.ledger_from_args(args)
+                        self.store = LedgerStore(self.db, self.ledger)
+                    else:
+                        logg.exception('ledger missing and not creating')
             self.keystore = self.store
         elif store_scope == 'asset' or store_scope == 'entry' or store_scope == 'key':
             self.keystore = KeyStore(self.db)

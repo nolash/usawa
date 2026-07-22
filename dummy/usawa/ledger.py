@@ -710,9 +710,12 @@ class Ledger(UsawaElement):
     :return: XML document in UTF-8 format.
     :rtype: str
     """
-    def to_string(self, lookup=None):
+    def to_string(self, lookup=None, as_bytes=False):
         tree = self.to_tree(lookup=lookup)
-        return lxml.etree.tostring(tree).decode('utf-8')
+        r = lxml.etree.tostring(tree)
+        if not as_bytes:
+            r = r.decode('utf-8')
+        return r
 
     
     @staticmethod
