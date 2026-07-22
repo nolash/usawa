@@ -134,7 +134,8 @@ class PassphraseDialog(Adw.Dialog):
         self._unlocked = True
         self.force_close()
         if self.on_success:
-            self.on_success(wallet)
+            #self.on_success(wallet)
+            self.on_success()
 
     def _unlock_failure(self, error_msg):
         self._set_loading(False)

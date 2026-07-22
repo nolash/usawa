@@ -22,6 +22,8 @@ def pwgetter():
 
 # TODO: Move to ledger internal
 def parse_topic(v):
+    if v == None:
+        return None
     topic = None
     if isinstance(v, str):
         if len(v) > 2:
@@ -35,7 +37,7 @@ def parse_topic(v):
                 h.update(v.encode('utf-8'))
                 topic = h.digest()
     else:
-        raise ValueError('invalid topic')
+        raise ValueError('invalid topic {}'.format(v))
     return topic
 
 
