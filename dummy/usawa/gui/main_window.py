@@ -131,7 +131,7 @@ class UsawaMainWindow(Adw.ApplicationWindow):
             )
             dialog.present(self)
 
-    def _init_with_wallet(self):
+    def _init_with_wallet(self, wallet=None):
         repository = LedgerRepository(self.ctx)
         entry_service = EntryService(repository=repository)
         self.entry_controller = EntryController(
