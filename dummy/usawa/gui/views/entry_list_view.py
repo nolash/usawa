@@ -394,6 +394,7 @@ class EntryListView(Gtk.Box):
         column_view.add_css_class("data-table")
         column_view.set_show_row_separators(True)
         column_view.set_show_column_separators(True)
+        column_view.connect("activate", self._on_row_activated)
 
         serial_factory = Gtk.SignalListItemFactory()
         serial_factory.connect("setup", self._on_serial_setup)
@@ -605,6 +606,12 @@ class EntryListView(Gtk.Box):
             self.entry_controller.get_asset_bytes,
         )
         self.nav_view.push(details_page)
+
+    def _on_row_activated(self, column_view, position):
+        """Handle row activation (double-click or Enter)"""
+        entry = self.entry_store.get_item(position)
+        if entry is not None:
+            self._on_view_entry(None, entry)
 
     def format_attachments(self, assets):
         if not assets:
