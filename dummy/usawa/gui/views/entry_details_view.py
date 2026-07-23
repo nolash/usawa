@@ -195,7 +195,11 @@ class EntryDetailsView(Gtk.Box):
         desc_box.append(desc_value)
         grid.attach(desc_box, 0, 4, 2, 1)
 
+        tags_box = _create_tags_display(self.entry.tags_raw)
+
+        grid.attach(tags_box, 0, 5, 2, 1)
         section_box.append(grid)
+
         return section_box
 
     def _create_transaction_section(self):
@@ -442,33 +446,44 @@ def _create_auth_badge(auth_state):
     return badge
 
 
-def _create_ledger_card(title, unit, account_type, path, is_source=True):
-    """Create a source or destination card"""
-    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-    card.add_css_class("card")
-    card.set_margin_top(8)
-    card.set_margin_bottom(8)
-    card.set_margin_start(8)
-    card.set_margin_end(8)
+def _create_tags_display(tags=None):
+    """Read-only tag chips"""
+    tags = tags or []
+    tags_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
 
-    header = Gtk.Label(label=title)
-    header.set_halign(Gtk.Align.START)
-    header.add_css_class("heading")
-    header.set_margin_top(8)
-    header.set_margin_start(8)
-    card.append(header)
+    tags_label = Gtk.Label(label="Tags")
+    tags_label.set_halign(Gtk.Align.START)
+    tags_label.add_css_class("dim-label")
+    tags_label.add_css_class("caption")
+    tags_box.append(tags_label)
 
-    fields_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    fields_box.set_margin_start(8)
-    fields_box.set_margin_end(8)
-    fields_box.set_margin_bottom(8)
+    if not tags:
+        empty_label = Gtk.Label(label="No tags")
+        empty_label.set_halign(Gtk.Align.START)
+        empty_label.add_css_class("dim-label")
+        tags_box.append(empty_label)
+        return tags_box
 
-    _add_label_value_pair(fields_box, "Account Unit:", unit)
-    _add_label_value_pair(fields_box, "Account Type:", account_type)
-    _add_label_value_pair(fields_box, "Account Path:", path)
+    tags_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    tags_row.set_halign(Gtk.Align.START)
 
-    card.append(fields_box)
-    return card
+    for tag in tags:
+        chip = Gtk.Label(label=tag)
+        chip.add_css_class("caption")
+        chip.add_css_class("card")
+        chip.set_margin_top(2)
+        chip.set_margin_bottom(2)
+        chip.set_margin_start(6)
+        chip.set_margin_end(6)
+        tags_row.append(chip)
+
+    scroll = Gtk.ScrolledWindow()
+    scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+    scroll.set_hexpand(True)
+    scroll.set_child(tags_row)
+
+    tags_box.append(scroll)
+    return tags_box
 
 
 def _add_label_value_pair(container, label_text, value_text):
