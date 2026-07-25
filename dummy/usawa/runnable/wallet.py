@@ -118,11 +118,13 @@ def main():
     ctx.create_store(args, store_scope='key')
     wallet = DemoWallet()
 
-    passphrase = getpass.getpass("Enter wallet passphrase: ")
-    passphrase_confirm = getpass.getpass("Confirm wallet passphrase: ")
-    if passphrase != passphrase_confirm:
-        logg.error("passphrases do not match")
-        sys.exit(1)
+    passphrase = None
+    if not cfg.true('WALLET_SYSTEM_KEYRING'):
+        passphrase = getpass.getpass("Enter wallet passphrase: ")
+        passphrase_confirm = getpass.getpass("Confirm wallet passphrase: ")
+        if passphrase != passphrase_confirm:
+            logg.error("passphrases do not match")
+            sys.exit(1)
     ctx.keystore.add_key(wallet, passphrase=passphrase, opslimit=int(cfg.get('WALLET_OPSLIMIT')), memlimit=int(cfg.get('WALLET_MEMLIMIT')))
 
 

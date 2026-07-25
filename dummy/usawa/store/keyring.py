@@ -74,7 +74,7 @@ class KeyringStore(KeyringBaseStore):
         if default:
             self.put(k, pubkey, exist_ok=True)
         k = pfx_key(pubkey=pubkey)
-        v = wallet.export(passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
+        v = wallet.export(opslimit=opslimit, memlimit=memlimit)
         self.put(k, v)
 
 
@@ -108,7 +108,7 @@ class KeyringStore(KeyringBaseStore):
         k = pfx_key(pubkey=pubkey)
         #return self.db.get(k)
         r = self.get(k)
-        return wallet_class.from_export(r, passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
+        return wallet_class.from_export(r, opslimit=opslimit, memlimit=memlimit)
 
 
     """Get the public key of the default key in the store.
