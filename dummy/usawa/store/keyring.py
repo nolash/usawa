@@ -73,17 +73,17 @@ class KeyringStore(KeyringBaseStore):
         pubkey = wallet.pubkey()
         if default:
             self.put(k, pubkey, exist_ok=True)
-        k = pfx_key(pubkey=pubkey)
+        k = pubkey
         v = wallet.export(opslimit=opslimit, memlimit=memlimit)
         self.put(k, v)
-
-
-    def reencrypt_key(self, wallet_class, pubkey, passphrase_new=None, passphrase_cur=None, opslimit=0, memlimit=0):
-        wallet = self.get_key(wallet_class, pubkey, passphrase=passphrase_cur)
         k = pfx_key(pubkey=pubkey)
-        v = wallet.export(passphrase=passphrase_new, opslimit=opslimit, memlimit=memlimit)
-        self.put(k, v, exist_ok=True)
-        return wallet
+        v = wallet.export(passphrase=passphrase, opslimit=opslimit, memlimit=memlimit)
+        self.db.put(k, v)
+
+
+    # NOOP in keyring store
+    def reencrypt_key(self, wallet_class, pubkey, passphrase_new=None, passphrase_cur=None, opslimit=0, memlimit=0):
+        return self.get_key(wallet_class, pubkey, passphrase=passphrase_cur)
 
 
     """Get a newly instantiated wallet object from a private key in the store.
@@ -102,12 +102,7 @@ class KeyringStore(KeyringBaseStore):
     :rtype: usawa.crypto.Wallet
     """
     def get_key(self, wallet_class, pubkey=None, passphrase=None, opslimit=0, memlimit=0):
-        if pubkey == None:
-            k = pfx_key()
-            pubkey = self.get(k)
-        k = pfx_key(pubkey=pubkey)
-        #return self.db.get(k)
-        r = self.get(k)
+        r = self.get(pubkey)
         return wallet_class.from_export(r, opslimit=opslimit, memlimit=memlimit)
 
 

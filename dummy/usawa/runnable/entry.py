@@ -42,6 +42,8 @@ def main():
     argp.add_argument('-i', type=str, help='input ledger state')
     argp.add_argument('-o', type=str, help='output ledger state')
     argp.add_argument('-p', action='store_true', help='unlock wallet with password')
+    argp.add_argument('-k', type=str, dest='pubkey', help='public key identity to use for signing')
+    argp.add_argument('-y', '--with-keyring', type=str, dest='keyring', help='use keyring with given usawa identifier')
     argp.add_argument('--commit', action='store_true', dest='commit', help='commit to ledger')
     argp.add_argument('entry', nargs='?', type=str, help='entry to edit')
     args = argp.parse_args()

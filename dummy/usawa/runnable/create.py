@@ -70,6 +70,8 @@ def main():
     argp.add_argument('-o', type=str, dest='output', help='output file for updated XML document')
     argp.add_argument('-l', type=str, dest='src_uri', help='URI for data source')
     argp.add_argument('-c', type=str, help='override config dir')
+    argp.add_argument('-k', type=str, dest='pubkey', help='public key identity to use for signing')
+    argp.add_argument('-y', '--with-keyring', type=str, dest='keyring', help='use keyring with given usawa identifier')
     args = argp.parse_args()
 
     if args.v:

@@ -66,6 +66,7 @@ class UsawaContext:
         self.pwgetter = pwgetter
         self.idgetter = idgetter
         self.fo = None
+        self.keyring = None
 
 
     def set(self, k, v):
@@ -124,8 +125,44 @@ class UsawaContext:
         return self.ledger
 
 
+
+    def create(self, args):
+        try:
+            self.askpass = args.p
+        except AttributeError:
+            pass
+
+        self.wallet = DemoWallet()
+        self.create_store(args, store_scope='key')
+        keyring = args.keyring
+        if keyring == None:
+            if self.cfg.true('WALLET_SYSTEM_KEYRING'):
+                keyring = self.cfg.get('WALLET_SYSTEM_KEYRING_DOMAIN')
+        if keyring != None:
+            self.keyring = KeyringStore(keyring, self.db)
+        passphrase = self.getpw()
+        if passphrase != '':
+            passphrase_confirm = self.getpw()
+            if passphrase != passphrase_confirm:
+                raise ValueError('Passphrase mismatch')
+        else:
+            passphrase = None
+        if self.keyring:
+            self.keyring.add_key(self.wallet, passphrase=passphrase, opslimit=int(self.cfg.get('WALLET_OPSLIMIT')), memlimit=int(self.cfg.get('WALLET_MEMLIMIT')))
+        else:
+            self.keystore.add_key(self.wallet, passphrase=passphrase, opslimit=int(self.cfg.get('WALLET_OPSLIMIT')), memlimit=int(self.cfg.get('WALLET_MEMLIMIT')))
+
+
+    # TODO: split up args processing in separate functions
     def init(self, args=None, store_scope=None, create=False):
         #v = None
+        identity = None
+        if args != None:
+            if args.pubkey != None:
+                identity = UsawaUser(pubkey=bytes.fromhex(args.pubkey))
+            else:
+                self.cfg.get('WALLET_IDENTITY')
+
         if args != None:
             try:
                 self.ledger_path_in = args.i
@@ -156,13 +193,19 @@ class UsawaContext:
         except AttributeError:
             pass
 
-        identity = None
+        keyring = args.keyring
+        if keyring == None:
+            if self.cfg.true('WALLET_SYSTEM_KEYRING'):
+                keyring = self.cfg.get('WALLET_SYSTEM_KEYRING_DOMAIN')
+        if keyring != None:
+            self.keyring = KeyringStore(keyring, self.db)
+            logg.debug('using keyring {}'.format(self.keyring))
+
         if self.idgetter != None:
             identity = self.idgetter()
         self.load_wallet(identity=identity, signing=self.signing)
 
         if self.replay:
-            #self.store.load(unitindex=self.uidx)
             self.store.load()
             self.ledger.truncate()
             logg.debug('replayed ledger {}'.format(self.ledger.to_string()))
@@ -204,13 +247,14 @@ class UsawaContext:
         if identity != None:
             pubkey = identity.pubkey
         else:
-            pubkey = self.cfg.get("WALLET_IDENTITY")
-            try:
-                pubkey = bytes.fromhex(pubkey)
-            except TypeError:
-                o = self.keystore.get_default_key(DemoWallet)
-                pubkey = o.pubkey()
+        #    pubkey = self.cfg.get("WALLET_IDENTITY")
+        #    try:
+        #        pubkey = bytes.fromhex(pubkey)
+        #    except TypeError:
+            o = self.keystore.get_default_key(DemoWallet)
+            pubkey = o.pubkey()
             identity = UsawaUser(pubkey=pubkey)
+            logg.debug('using default identity {}'.format(identity))
         if self.wallet != None and not replace:
             raise AttributeError('wallet set')
         if not self.signing and not signing:
@@ -218,11 +262,14 @@ class UsawaContext:
         elif not signing:
             self.wallet = self.keystore.get_default_key(DemoWallet)
         else:
-            logg.debug('decrypting wallet for user {}'.format(identity))
             ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
-            pw = self.getpw()
-            self.wallet = self.keystore.get_key(DemoWallet, pubkey=pubkey, passphrase=pw, opslimit=ops, memlimit=mem)
+            if self.keyring != None:
+                self.wallet = self.keyring.get_key(DemoWallet, pubkey=identity.pubkey, opslimit=ops, memlimit=mem)
+            if self.wallet == None:
+                logg.debug('decrypting wallet for user {}'.format(identity))
+                pw = self.getpw()
+                self.wallet = self.keystore.get_key(DemoWallet, pubkey=pubkey, passphrase=pw, opslimit=ops, memlimit=mem)
 
             logg.debug('have wallet {}'.format(self.wallet))
         if self.ledger != None:
@@ -297,9 +344,6 @@ class UsawaContext:
                 self.store = AssetStore(self.db)
             elif store_scope == 'entry':
                 self.store = EntryStore(self.db)
-        # TODO: improve keystore init handling, here replaces
-        if self.cfg.true('WALLET_SYSTEM_KEYRING'):
-            self.keystore = KeyringStore(self.cfg.get('WALLET_SYSTEM_KEYRING_DOMAIN'), self.db)
 
 
     def create_resolver(self, resolver_type='fs'):
