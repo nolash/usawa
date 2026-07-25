@@ -8,7 +8,9 @@ from whee.fs import FsStore
 from usawa import DemoWallet, Ledger, UnitIndex
 from usawa.account import AccountIndex
 from usawa.store import LedgerStore, EntryStore, KeyStore, AssetStore
+from usawa.store.keyring import KeyringStore
 from usawa.resolve.fs import FSResolver
+from usawa.user import UsawaUser
 
 logg = logging.getLogger('usawa.ctx')
 
@@ -196,10 +198,19 @@ class UsawaContext:
         return True
 
 
+    # TODO: Instantiate user earlier from explicit config identity
     def load_wallet(self, signing=False, identity=None, replace=False):
         pubkey = None
         if identity != None:
             pubkey = identity.pubkey
+        else:
+            pubkey = self.cfg.get("WALLET_IDENTITY")
+            try:
+                pubkey = bytes.fromhex(pubkey)
+            except TypeError:
+                o = self.keystore.get_default_key(DemoWallet)
+                pubkey = o.pubkey()
+            identity = UsawaUser(pubkey=pubkey)
         if self.wallet != None and not replace:
             raise AttributeError('wallet set')
         if not self.signing and not signing:
@@ -212,6 +223,7 @@ class UsawaContext:
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
             pw = self.getpw()
             self.wallet = self.keystore.get_key(DemoWallet, pubkey=pubkey, passphrase=pw, opslimit=ops, memlimit=mem)
+
             logg.debug('have wallet {}'.format(self.wallet))
         if self.ledger != None:
             self.ledger.set_wallet(self.wallet)
@@ -285,6 +297,9 @@ class UsawaContext:
                 self.store = AssetStore(self.db)
             elif store_scope == 'entry':
                 self.store = EntryStore(self.db)
+        # TODO: improve keystore init handling, here replaces
+        if self.cfg.true('WALLET_SYSTEM_KEYRING'):
+            self.keystore = KeyringStore(self.cfg.get('WALLET_SYSTEM_KEYRING_DOMAIN'), self.db)
 
 
     def create_resolver(self, resolver_type='fs'):
