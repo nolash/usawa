@@ -246,11 +246,14 @@ class UsawaContext:
         pubkey = None
         if identity != None:
             pubkey = identity.pubkey
-        else:
+        elif self.wallet != None:
+            pubkey = self.wallet.pubkey()
+            identity = UsawaUser(pubkey=pubkey)
         #    pubkey = self.cfg.get("WALLET_IDENTITY")
         #    try:
         #        pubkey = bytes.fromhex(pubkey)
         #    except TypeError:
+        else:
             o = self.keystore.get_default_key(DemoWallet)
             pubkey = o.pubkey()
             identity = UsawaUser(pubkey=pubkey)
