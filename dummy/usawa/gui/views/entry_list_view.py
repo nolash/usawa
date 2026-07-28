@@ -388,9 +388,8 @@ class EntryListView(Gtk.Box):
         table_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         self.entry_store = Gio.ListStore.new(EntryItem)
-        selection_model = Gtk.SingleSelection.new(self.entry_store)
 
-        column_view = Gtk.ColumnView(model=selection_model)
+        column_view = Gtk.ColumnView()
         column_view.add_css_class("data-table")
         column_view.set_show_row_separators(True)
         column_view.set_show_column_separators(True)
@@ -400,14 +399,20 @@ class EntryListView(Gtk.Box):
         serial_factory.connect("setup", self._on_serial_setup)
         serial_factory.connect("bind", self._on_serial_bind)
         serial_col = Gtk.ColumnViewColumn(title="Serial No", factory=serial_factory)
-        serial_col.set_fixed_width(70)
+        serial_col.set_fixed_width(80)
+        serial_col.set_sorter(
+            Gtk.NumericSorter.new(Gtk.PropertyExpression.new(EntryItem, None, "serial"))
+        )
         column_view.append_column(serial_col)
 
         date_factory = Gtk.SignalListItemFactory()
         date_factory.connect("setup", self._on_date_setup)
         date_factory.connect("bind", self._on_date_bind)
         date_col = Gtk.ColumnViewColumn(title="Transaction date", factory=date_factory)
-        date_col.set_fixed_width(100)
+        date_col.set_fixed_width(125)
+        date_col.set_sorter(
+            Gtk.StringSorter.new(Gtk.PropertyExpression.new(EntryItem, None, "tx_date"))
+        )
         column_view.append_column(date_col)
 
         desc_factory = Gtk.SignalListItemFactory()
@@ -415,6 +420,11 @@ class EntryListView(Gtk.Box):
         desc_factory.connect("bind", self._on_desc_bind)
         desc_col = Gtk.ColumnViewColumn(title="Description", factory=desc_factory)
         desc_col.set_expand(True)
+        desc_col.set_sorter(
+            Gtk.StringSorter.new(
+                Gtk.PropertyExpression.new(EntryItem, None, "description")
+            )
+        )
         column_view.append_column(desc_col)
 
         auth_factory = Gtk.SignalListItemFactory()
@@ -422,6 +432,11 @@ class EntryListView(Gtk.Box):
         auth_factory.connect("bind", self._on_auth_bind)
         auth_col = Gtk.ColumnViewColumn(title="Auth state", factory=auth_factory)
         auth_col.set_fixed_width(120)
+        auth_col.set_sorter(
+            Gtk.StringSorter.new(
+                Gtk.PropertyExpression.new(EntryItem, None, "auth_state")
+            )
+        )
         column_view.append_column(auth_col)
 
         source_factory = Gtk.SignalListItemFactory()
@@ -429,6 +444,11 @@ class EntryListView(Gtk.Box):
         source_factory.connect("bind", self._on_source_bind)
         source_col = Gtk.ColumnViewColumn(title="Source", factory=source_factory)
         source_col.set_expand(True)
+        source_col.set_sorter(
+            Gtk.StringSorter.new(
+                Gtk.PropertyExpression.new(EntryItem, None, "source_summary")
+            )
+        )
         column_view.append_column(source_col)
 
         dest_factory = Gtk.SignalListItemFactory()
@@ -436,6 +456,11 @@ class EntryListView(Gtk.Box):
         dest_factory.connect("bind", self._on_dest_bind)
         dest_col = Gtk.ColumnViewColumn(title="Destination", factory=dest_factory)
         dest_col.set_expand(True)
+        dest_col.set_sorter(
+            Gtk.StringSorter.new(
+                Gtk.PropertyExpression.new(EntryItem, None, "dest_summary")
+            )
+        )
         column_view.append_column(dest_col)
 
         action_factory = Gtk.SignalListItemFactory()
@@ -444,6 +469,12 @@ class EntryListView(Gtk.Box):
         action_col = Gtk.ColumnViewColumn(title="Action", factory=action_factory)
         action_col.set_fixed_width(80)
         column_view.append_column(action_col)
+
+        sort_model = Gtk.SortListModel(
+            model=self.entry_store, sorter=column_view.get_sorter()
+        )
+        selection_model = Gtk.SingleSelection(model=sort_model)
+        column_view.set_model(selection_model)
 
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_vexpand(True)
@@ -547,34 +578,102 @@ class EntryListView(Gtk.Box):
             text_label.set_text("No Key")
 
     def _on_source_setup(self, factory, list_item):
-        """Setup source cell (compressed format)"""
+        """Setup source cell with click-to-expand popover"""
+        button = Gtk.Button()
+        button.add_css_class("flat")
+        button.set_halign(Gtk.Align.START)
+
         label = Gtk.Label()
         label.set_halign(Gtk.Align.START)
         label.add_css_class("monospace")
-        label.add_css_class("source-cell")
-        label.set_margin_start(8)
-        list_item.set_child(label)
+        label.set_ellipsize(Pango.EllipsizeMode.END)
+        button.set_child(label)
+
+        list_item.set_child(button)
 
     def _on_source_bind(self, factory, list_item):
-        """Bind source data in compressed format"""
+        """Bind source data, wiring up the popover with full per-part detail"""
         entry = list_item.get_item()
-        label = list_item.get_child()
+        button = list_item.get_child()
+        label = button.get_child()
+
         label.set_text(entry.source_summary)
 
+        if getattr(button, "_popover_handler_id", None) is not None:
+            button.disconnect(button._popover_handler_id)
+
+        button._popover_handler_id = button.connect(
+            "clicked",
+            self._on_show_parts_popover,
+            button,
+            entry.source_parts_raw,
+            self.ctx.uidx,
+        )
+
     def _on_dest_setup(self, factory, list_item):
-        """Setup destination cell (compressed format)"""
+        """Setup destination cell with click-to-expand popover"""
+        button = Gtk.Button()
+        button.add_css_class("flat")
+        button.set_halign(Gtk.Align.START)
+
         label = Gtk.Label()
         label.set_halign(Gtk.Align.START)
         label.add_css_class("monospace")
-        label.add_css_class("dest-cell")
-        label.set_margin_start(8)
-        list_item.set_child(label)
+        label.set_ellipsize(Pango.EllipsizeMode.END)
+        button.set_child(label)
+
+        list_item.set_child(button)
 
     def _on_dest_bind(self, factory, list_item):
-        """Bind destination data in compressed format"""
+        """Bind destination data, wiring up the popover with full per-part detail"""
         entry = list_item.get_item()
-        label = list_item.get_child()
+        button = list_item.get_child()
+        label = button.get_child()
+
         label.set_text(entry.dest_summary)
+
+        if getattr(button, "_popover_handler_id", None) is not None:
+            button.disconnect(button._popover_handler_id)
+
+        button._popover_handler_id = button.connect(
+            "clicked",
+            self._on_show_parts_popover,
+            button,
+            entry.dest_parts_raw,
+            self.ctx.uidx,
+        )
+
+    def _on_show_parts_popover(self, button, anchor_widget, parts, unit_index):
+        popover = Gtk.Popover()
+        popover.set_parent(anchor_widget)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(8)
+        box.set_margin_end(8)
+
+        if not parts:
+            empty_label = Gtk.Label(label="No parts")
+            empty_label.add_css_class("dim-label")
+            box.append(empty_label)
+        else:
+            for part in parts:
+                if unit_index is not None:
+                    display_amount = unit_index.to_floatstring(part.unit, part.amount)
+                else:
+                    display_amount = str(part.amount)
+
+                row = Gtk.Label(
+                    label=f"{display_amount} {part.unit}  ·  {part.account_type}.{part.account_path}"
+                )
+                row.set_halign(Gtk.Align.START)
+                row.add_css_class("caption")
+                row.add_css_class("monospace")
+                box.append(row)
+
+        popover.set_child(box)
+        popover.popup()
 
     def _on_action_setup(self, factory, list_item):
         """Setup action cell"""
