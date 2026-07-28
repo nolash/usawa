@@ -162,6 +162,7 @@ class UsawaContext:
                 identity = UsawaUser(pubkey=bytes.fromhex(args.pubkey))
             else:
                 self.cfg.get('WALLET_IDENTITY')
+        logg.debug('context init identity {}'.format(identity))
 
         if args != None:
             try:
@@ -203,6 +204,7 @@ class UsawaContext:
 
         if self.idgetter != None:
             identity = self.idgetter()
+        logg.debug('identity load wallet {}'.format(identity))
         self.load_wallet(identity=identity, signing=self.signing)
 
         if self.replay:
@@ -268,7 +270,10 @@ class UsawaContext:
             ops = int(self.cfg.get('WALLET_OPSLIMIT', 0))
             mem = int(self.cfg.get('WALLET_MEMLIMIT', 0))
             if self.keyring != None:
-                self.wallet = self.keyring.get_key(DemoWallet, pubkey=identity.pubkey, opslimit=ops, memlimit=mem)
+                try:
+                    self.wallet = self.keyring.get_key(DemoWallet, pubkey=identity.pubkey, opslimit=ops, memlimit=mem)
+                except TypeError:
+                    pass
             if self.wallet == None:
                 logg.debug('decrypting wallet for user {}'.format(identity))
                 pw = self.getpw()

@@ -1,5 +1,6 @@
 import os
 import confini
+from confini.crypt.pgp import PGPDecrypter
 import logging
 
 __datadir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -11,6 +12,7 @@ def load_config(config_dir=None, schemas=[], topic=None):
     for v in schemas:
         cfg.add_schema_dir(v)
     cfg.censor("WALLET_KEY_PASSPHRASE")
+    cfg.add_decrypt(PGPDecrypter())
     cfg.process()
     if topic != None:
         cfg.add(topic, 'LEDGER_TOPIC', exists_ok=True)
