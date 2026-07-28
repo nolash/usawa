@@ -320,7 +320,7 @@ class EntryDetailsView(Gtk.Box):
         if self.entry.attachments_raw:
             for asset in self.entry.attachments_raw:
                 attach_card = _create_attachment_card(
-                    asset.slug or "Unnamed",
+                    asset.description or asset.slug or "Unnamed",
                     asset.mime or "unknown",
                     on_click=lambda f, a=asset: _open_attachment_viewer(
                         self.get_root(), a, fetch_fn=self.fetch_fn

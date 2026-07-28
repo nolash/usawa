@@ -16,7 +16,7 @@ class EntryController:
         self.ctx = ctx
 
     def collect_entry_data(
-        self, view, source_parts, dest_parts, tags=None
+        self, view, source_parts, dest_parts, tags=None, attachment_paths=None
     ) -> Optional[LedgerEntry]:
         tx_date_str = view.date_entry.get_text().strip()
         tx_time_str = view.time_entry.get_text().strip()
@@ -47,6 +47,7 @@ class EntryController:
                 source_parts=source_parts,
                 dest_parts=dest_parts,
                 tags=tags or [],
+                attachments=attachment_paths or [],
             )
             is_valid, error_msg = entry.validate()
             if not is_valid:
