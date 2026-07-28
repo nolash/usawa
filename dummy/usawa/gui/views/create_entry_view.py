@@ -687,15 +687,14 @@ class CreateEntryView(Gtk.Box):
 
         tags = self.get_tags()
 
-        entry = self.controller.collect_entry_data(self, source_parts, dest_parts, tags)
+        entry = self.controller.collect_entry_data(
+            self, source_parts, dest_parts, tags, self.attachment_paths
+        )
         if entry is None:
             self._show_error_dialog(
                 "Invalid Input", "Please check your entries and try again."
             )
             return
-
-        if self.attachment_paths:
-            entry.add_attachment(self.attachment_paths)
 
         if entry.attachments:
             for attachment_path in entry.attachments:
